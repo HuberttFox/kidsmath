@@ -32,6 +32,16 @@ def test_negative_count_raises():
         resolve(Config(count=0))
 
 
+def test_count_cap_raises():
+    with pytest.raises(ConfigError, match="题目数量过大"):
+        resolve(Config(count=501))
+
+
+def test_sheets_cap_raises():
+    with pytest.raises(ConfigError, match="卷子份数过大"):
+        resolve(Config(sheets=101))
+
+
 def test_all_grades_resolve():
     for g in range(1, 7):
         r = resolve(Config(grade=g))

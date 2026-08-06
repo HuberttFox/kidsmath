@@ -2,9 +2,13 @@
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
+from typing import TypeVar
 
 from mathgen.config import ResolvedConfig
 from mathgen.core.question import Question
+
+T = TypeVar("T")
 
 
 class GenerationError(RuntimeError):
@@ -13,6 +17,30 @@ class GenerationError(RuntimeError):
 
 def gen_operand(rng: random.Random, lo: int, hi: int) -> int:
     return rng.randint(lo, hi)
+
+
+def check_result(cfg: ResolvedConfig) -> Callable[[int], bool]:
+    """结果范围谓词：lo ≤ r ≤ hi 且 r ≥ 0（或 cfg.allow_negative）。"""
+    lo, hi = cfg.result_range
+
+    def ok(r: int) -> bool:
+        return lo <= r <= hi and (r >= 0 or cfg.allow_negative)
+
+    return ok
+
+
+def gen_result(make: Callable[[], T], check: Callable[[T], bool]) -> T:
+    """按 make() 生成候选，重试至多 1000 次直到 check 通过；失败抛 GenerationError。
+
+    全题型共用：保证结果落在 result_range 且（默认）非负。
+    """
+    for _ in range(1000):
+        result = make()
+        if check(result):
+            return result
+    raise GenerationError(
+        f"在运算数范围、结果范围约束下找不到题目。"
+        f"建议：扩大结果范围或调小数值范围。")
 
 
 def has_carry(a: int, b: int) -> bool:

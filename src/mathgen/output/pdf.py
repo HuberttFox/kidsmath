@@ -46,9 +46,14 @@ def render_pdf(questions: list[Question], cfg: ResolvedConfig) -> bytes:
     font = register_fonts()
     width, height = A4
     c.setFont(font, 16)
-    c.drawCentredString(width / 2, height - MARGIN, cfg.title)
-    c.setFont(font, 11)
-    c.drawString(MARGIN, height - MARGIN - 18, cfg.header)
+
+    def draw_header() -> None:
+        c.setFont(font, 16)
+        c.drawCentredString(width / 2, height - MARGIN, cfg.title)
+        c.setFont(font, 11)
+        c.drawString(MARGIN, height - MARGIN - 18, cfg.header)
+
+    draw_header()
     top = height - MARGIN - 40
     ncols = cfg.columns
     col_w = (width - 2 * MARGIN) / ncols
@@ -60,13 +65,14 @@ def render_pdf(questions: list[Question], cfg: ResolvedConfig) -> bytes:
         nonlocal top
         if top - needed < MARGIN:
             c.showPage()
-            c.setFont(font, 13)
             nonlocal_page()
+            c.setFont(font, 13)
 
     def nonlocal_page() -> None:
         nonlocal page, top
         page += 1
-        top = height - MARGIN
+        top = height - MARGIN - 40
+        draw_header()
 
     for idx, q in enumerate(questions, 1):
         col = (idx - 1) % ncols

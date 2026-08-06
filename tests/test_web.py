@@ -63,3 +63,20 @@ def test_download_malformed_range_400():
     r = client.get("/download.pdf", params={"grade": "1", "ranges": "abc", "seed": "1"})
     assert r.status_code == 400
     assert "参数格式不正确" in r.text
+
+
+def test_download_generation_conflict_400_chinese():
+    r = client.get("/download.pdf", params={
+        "grade": "1", "operators": "-", "ranges": "0-9,0-9",
+        "result_range": "100-200", "seed": "1"})
+    assert r.status_code == 400
+    assert "结果范围" in r.text
+    assert "Traceback" not in r.text
+
+
+def test_download_zip_generation_conflict_400_chinese():
+    r = client.get("/download.zip", params={
+        "grade": "1", "operators": "-", "ranges": "0-9,0-9",
+        "result_range": "100-200", "seed": "1"})
+    assert r.status_code == 400
+    assert "结果范围" in r.text

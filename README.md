@@ -34,3 +34,7 @@ mathgen serve --host 0.0.0.0 --port 8080
 年级预设一键套用，显式参数覆盖。常用：`--operators`（+-×÷ 组合）、`--ranges`（每个运算数范围，逗号分隔）、`--carry/--borrow`（yes/no/any）、`--remainder`、`--table`（乘法表/商范围）、`--divisor-range`、`--gap`（题间距，写步骤留空）、`--answer-lines`（每题答题横线）、`--seed`（复现）、`--sheets`（多份不重复卷子）。
 
 详见设计文档 `docs/superpowers/specs/2026-08-06-mathgen-design.md`。
+
+## 许可
+
+字体使用 SIL OFL 1.1 许可，见 src/mathgen/assets/font/OFL.txt。

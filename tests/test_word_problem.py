@@ -1,6 +1,7 @@
 import random
 
 from mathgen.config import Config, resolve
+from mathgen.core.engine import generate
 from mathgen.topics.word_problem import gen
 
 
@@ -12,6 +13,15 @@ def test_statement_contains_numbers_and_question():
         assert "？" in q.statement
         assert q.expression
         assert q.answer == str(eval(q.expression.replace("×", "*").replace("÷", "//")))
+
+
+def test_word_problem_result_within_range():
+    for seed in range(4):
+        cfg = resolve(Config(grade=3, topic="word_problem", count=40, seed=seed))
+        lo, hi = cfg.result_range
+        for q in generate(cfg):
+            assert lo <= int(q.answer) <= hi, q.expression
+            assert int(q.answer) >= 0, q.expression
 
 
 def test_answer_matches_expression():

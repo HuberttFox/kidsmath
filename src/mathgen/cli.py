@@ -57,8 +57,11 @@ def _parse_argv(argv: list[str] | None) -> argparse.Namespace:
 
 
 def _parse_range(s: str) -> tuple[int, int]:
-    lo, hi = s.split("-")
-    return int(lo), int(hi)
+    try:
+        lo, hi = s.split("-")
+        return int(lo), int(hi)
+    except ValueError:
+        raise ConfigError(f"范围格式应为 最小-最大，如 10-99（收到 {s!r}）。") from None
 
 
 def _cfg_from_ns(ns: argparse.Namespace) -> Config:
@@ -88,7 +91,10 @@ def _cfg_from_ns(ns: argparse.Namespace) -> Config:
     if ns.table:
         overrides["multiplication_table"] = _parse_range(ns.table)
     data.update({k: v for k, v in overrides.items() if v is not None})
-    return Config(**data)
+    try:
+        return Config(**data)
+    except TypeError as e:
+        raise ConfigError(f"配置项有误：未知的配置键或类型错误（{e}）。") from None
 
 
 def _generate_sheet(cfg: Config, sheet_no: int) -> bytes:

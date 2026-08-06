@@ -1,6 +1,7 @@
 import random
 
 from mathgen.config import Config, resolve
+from mathgen.core.engine import generate
 from mathgen.topics.vertical import gen
 
 
@@ -12,6 +13,24 @@ def test_add_vertical_layout():
     a, b = int(q.layout["numbers"][0]), int(q.layout["numbers"][1])
     assert q.answer == str(a + b)
     assert a + b == int(q.answer)
+
+
+def test_vertical_result_within_range():
+    for seed in range(4):
+        cfg = resolve(Config(grade=2, topic="vertical", count=40, seed=seed))
+        lo, hi = cfg.result_range
+        for q in generate(cfg):
+            assert lo <= int(q.answer) <= hi, q.expression
+            assert int(q.answer) >= 0, q.expression
+
+
+def test_vertical_mul_result_within_range():
+    for seed in range(4):
+        cfg = resolve(Config(grade=3, topic="vertical", operators="×",
+                             count=40, seed=seed))
+        lo, hi = cfg.result_range
+        for q in generate(cfg):
+            assert lo <= int(q.answer) <= hi, q.expression
 
 
 def test_sub_vertical_nonnegative():

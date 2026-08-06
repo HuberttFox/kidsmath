@@ -167,9 +167,12 @@ async def download_pdf(request: Request):
     cfg, err = _download_params(dict(request.query_params))
     if err:
         return Response(err, status_code=400, media_type="text/plain; charset=utf-8")
-    resolved = resolve(cfg)
-    questions = generate(resolved)
-    data = render_pdf(questions, resolved)
+    try:
+        resolved = resolve(cfg)
+        questions = generate(resolved)
+        data = render_pdf(questions, resolved)
+    except (GenerationError, ValueError) as e:
+        return Response(str(e), status_code=400, media_type="text/plain; charset=utf-8")
     return Response(data, media_type="application/pdf",
                     headers={"Content-Disposition": "attachment; filename=math-sheet.pdf"})
 
@@ -179,13 +182,17 @@ async def download_zip(request: Request):
     cfg, err = _download_params(dict(request.query_params))
     if err:
         return Response(err, status_code=400, media_type="text/plain; charset=utf-8")
-    resolved = resolve(cfg)
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w") as z:
-        for i in range(1, resolved.sheets + 1):
-            resolved.seed = (cfg.seed or 0) + i - 1
-            z.writestr(f"sheet-{i:02d}.pdf", render_pdf(generate(resolved), resolved))
-    return Response(buf.getvalue(), media_type="application/zip",
+    try:
+        resolved = resolve(cfg)
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w") as z:
+            for i in range(1, resolved.sheets + 1):
+                resolved.seed = (cfg.seed or 0) + i - 1
+                z.writestr(f"sheet-{i:02d}.pdf", render_pdf(generate(resolved), resolved))
+        data = buf.getvalue()
+    except (GenerationError, ValueError) as e:
+        return Response(str(e), status_code=400, media_type="text/plain; charset=utf-8")
+    return Response(data, media_type="application/zip",
                     headers={"Content-Disposition": "attachment; filename=math-sheets.zip"})
 
 

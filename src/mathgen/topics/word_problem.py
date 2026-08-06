@@ -4,7 +4,7 @@ from __future__ import annotations
 import random
 
 from mathgen.config import ResolvedConfig
-from mathgen.core.engine import gen_pair
+from mathgen.core.engine import check_result, gen_pair, gen_result
 from mathgen.core.question import Question
 
 # (模板, 运算)；槽位 a、b 即运算式 "a op b" 的两个数
@@ -25,22 +25,33 @@ TEMPLATES = [
 def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
     template, op = rng.choice(TEMPLATES)
     if op in "+-":
-        a, b = gen_pair(rng, cfg.operand_ranges,
-                        None if op == "+" else cfg.borrow,
-                        None if op == "-" else None,
-                        True if op == "+" else cfg.allow_negative)
-        result = a + b if op == "+" else a - b
+        def make():
+            a, b = gen_pair(rng, cfg.operand_ranges,
+                            None if op == "+" else cfg.borrow,
+                            None if op == "-" else None,
+                            True if op == "+" else cfg.allow_negative)
+            return a, b, (a + b if op == "+" else a - b)
+
+        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]))
     elif op == "×":
         lo, hi = cfg.multiplication_table
-        a = rng.randint(lo, hi)
-        b = rng.randint(lo, hi)
-        result = a * b
+
+        def make():
+            a = rng.randint(lo, hi)
+            b = rng.randint(lo, hi)
+            return a, b, a * b
+
+        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]))
     else:
         lo, hi = cfg.multiplication_table
         d_lo, d_hi = cfg.divisor_range
-        divisor = rng.randint(d_lo, d_hi)
-        quotient = rng.randint(lo, hi)
-        a = divisor * quotient
+
+        def make():
+            divisor = rng.randint(d_lo, d_hi)
+            quotient = rng.randint(lo, hi)
+            return divisor, quotient, divisor * quotient
+
+        divisor, quotient, a = gen_result(make, lambda t: check_result(cfg)(t[1]))
         b = divisor
         result = quotient
     statement = template.format(a=a, b=b)

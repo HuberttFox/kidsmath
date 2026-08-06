@@ -206,8 +206,12 @@ def resolve(cfg: Config) -> ResolvedConfig:
         raise ConfigError(f"运算符 {data['operators']!r} 不合法，可选字符：+ − × ÷（如 \"+−×\"）。")
     if data["count"] <= 0:
         raise ConfigError(f"题目数量必须 > 0，当前 {data['count']}。建议改为 1 或更大。")
+    if data["count"] > 500:
+        raise ConfigError(f"题目数量过大（{data['count']}），建议 ≤ 500。")
     if data["sheets"] <= 0:
         raise ConfigError(f"卷子份数必须 > 0，当前 {data['sheets']}。")
+    if data["sheets"] > 100:
+        raise ConfigError(f"卷子份数过大（{data['sheets']}），建议 ≤ 100。")
     if data["columns"] not in (1, 2, 3):
         raise ConfigError(f"分栏数 {data['columns']} 不支持，可选 1、2、3。")
     if data["gap"] < 0:

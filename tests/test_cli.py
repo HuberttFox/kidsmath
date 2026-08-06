@@ -36,6 +36,26 @@ def test_config_file_toml():
     assert "1." in r.stdout
 
 
+def test_generation_conflict_returns_1_chinese_no_traceback():
+    r = run_cli("--operators", "-", "--ranges", "0-9,0-9",
+                "--result-range", "100-200", "--format", "text")
+    assert r.returncode == 1
+    assert "生成失败" in r.stderr
+    assert "Traceback" not in r.stderr
+
+
+def test_config_unknown_key_returns_2_chinese_no_traceback():
+    import tempfile
+    import pathlib
+    with tempfile.TemporaryDirectory() as d:
+        p = pathlib.Path(d) / "c.toml"
+        p.write_text('operator = "+"\ncount = 4\n', encoding="utf-8")
+        r = run_cli("-c", str(p), "--format", "text")
+    assert r.returncode == 2
+    assert "配置项有误" in r.stderr
+    assert "Traceback" not in r.stderr
+
+
 def test_bare_generate_text():
     r = run_cli("--format", "text")
     assert r.returncode == 0, r.stderr
