@@ -1,14 +1,14 @@
-<!doctype html>
-<html lang="zh">
-<head><meta charset="utf-8"><title>预览 - mathgen</title>
-<link rel="stylesheet" href="/static/style.css"></head>
-<body>
-  <h1>题目预览</h1>
-  <pre class="preview">{{ preview }}</pre>
-  <p>
-    <a class="btn" href="/download.pdf?{{ query }}">下载 PDF</a>
-    {% if sheets > 1 %}<a class="btn" href="/download.zip?{{ query }}">下载 ZIP（{{ sheets }} 份）</a>{% endif %}
-    <a class="btn" href="/">重新出题</a>
-  </p>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block title %}题目预览 - mathgen{% endblock %}
+
+{% block content %}
+<h1>题目预览</h1>
+<p class="summary">{{ summary }}</p>
+<section class="preview" aria-label="题目列表">{{ preview }}</section>
+<nav class="actions" aria-label="下载操作">
+  <a class="btn" href="/download.pdf?{{ query }}">下载 PDF</a>
+  {% if sheets > 1 %}<a class="btn" href="/download.zip?{{ query }}">下载 ZIP（{{ sheets }} 份）</a>{% endif %}
+  <a class="btn btn-secondary" href="/">重新出题</a>
+</nav>
+{% endblock %}

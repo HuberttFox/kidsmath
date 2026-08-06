@@ -80,3 +80,31 @@ def test_download_zip_generation_conflict_400_chinese():
         "result_range": "100-200", "seed": "1"})
     assert r.status_code == 400
     assert "结果范围" in r.text
+
+
+def test_error_backfills_submitted_values():
+    r = client.post("/generate", data={
+        "grade": "2", "count": "5", "topic": "vertical", "operators": "%"})
+    assert r.status_code == 200
+    html = r.text
+    assert "运算符" in html
+    assert 'value="5"' in html
+    assert 'value="2" selected' in html
+    assert 'value="vertical" selected' in html
+    assert 'value="%"' in html
+
+
+def test_preset_hints_embedded():
+    r = client.get("/")
+    assert r.status_code == 200
+    assert 'id="preset-hints"' in r.text
+    assert '"grades"' in r.text
+    assert '"topics"' in r.text
+
+
+def test_index_has_semantic_structure():
+    r = client.get("/")
+    assert '<fieldset>' in r.text
+    assert '<legend>' in r.text
+    assert 'name="viewport"' in r.text
+    assert 'for="grade"' in r.text and 'id="grade"' in r.text

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import io
+import json
 import sys
 import zipfile
 
@@ -11,7 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
-from mathgen.config import Config, ConfigError, resolve
+from mathgen.config import Config, ConfigError, PRESETS, TOPIC_DEFAULTS, resolve
 from mathgen.core.engine import GenerationError, generate
 from mathgen.output.pdf import render_pdf
 from mathgen.output.text import render_text
@@ -21,12 +22,46 @@ app = FastAPI(title="mathgen")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
 
-FORM_FIELDS = [
-    "grade", "topic", "operators", "count", "operand_count", "ranges",
-    "result_range", "carry", "borrow", "divisor_range", "remainder",
-    "table", "seed", "columns", "gap", "answer_lines", "answer_page",
-    "title", "header", "sheets",
+GRADE_OPTIONS = [("", "自定义")] + [(str(g), f"{g} 年级") for g in range(1, 7)]
+TOPIC_OPTIONS = [
+    ("arithmetic", "口算/四则"),
+    ("vertical", "竖式"),
+    ("word_problem", "应用题"),
 ]
+
+TOPIC_LABELS = dict(TOPIC_OPTIONS)
+
+
+def _preset_summary(d: dict) -> str:
+    parts = [f"运算符 {d['operators']}"]
+    if d.get("operand_ranges"):
+        parts.append("范围 " + "、".join(f"{lo}-{hi}" for lo, hi in d["operand_ranges"]))
+    for key, zh in (("carry", "进位"), ("borrow", "借位")):
+        if d.get(key) is not None:
+            parts.append(f"{zh} {'开' if d[key] else '关'}")
+    if d.get("parentheses"):
+        parts.append("带括号")
+    if d.get("answer_lines"):
+        parts.append(f"答题线 {d['answer_lines']} 行")
+    return "；".join(parts)
+
+
+_PRESETS_JSON = json.dumps({
+    "grades": {str(g): _preset_summary(d) for g, d in PRESETS.items()},
+    "topics": {
+        t: f"默认题间距 {d['gap']}pt" + (f"，答题线 {d['answer_lines']} 行" if d["answer_lines"] else "")
+        for t, d in TOPIC_DEFAULTS.items()},
+}, ensure_ascii=False)
+
+
+def _index_context(form: dict | None = None, error: str | None = None) -> dict:
+    return {
+        "form": form or {},
+        "error": error,
+        "presets_json": _PRESETS_JSON,
+        "grades": GRADE_OPTIONS,
+        "topics": TOPIC_OPTIONS,
+    }
 
 
 def _config_from_form(form: dict) -> Config:
@@ -120,7 +155,7 @@ def _as_query(cfg: Config) -> dict:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse(request, "index.html", {"error": None})
+    return templates.TemplateResponse(request, "index.html", _index_context())
 
 
 @app.post("/generate", response_class=HTMLResponse)
@@ -129,23 +164,29 @@ async def generate_page(request: Request):
     try:
         cfg = _config_from_form(form)
     except ConfigError as e:
-        return templates.TemplateResponse(request, "index.html", {"error": str(e)})
+        return templates.TemplateResponse(
+            request, "index.html", _index_context(form, str(e)))
     try:
         resolved = resolve(cfg)
     except ConfigError as e:
-        return templates.TemplateResponse(request, "index.html", {"error": str(e)})
+        return templates.TemplateResponse(
+            request, "index.html", _index_context(form, str(e)))
     if cfg.seed is None:
         cfg.seed = resolved.seed
         form["seed"] = str(resolved.seed)
     try:
         questions = generate(resolved)
     except GenerationError as e:
-        return templates.TemplateResponse(request, "index.html", {"error": str(e)})
+        return templates.TemplateResponse(
+            request, "index.html", _index_context(form, str(e)))
     preview = render_text(questions, resolved)
     query = "&".join(f"{k}={v}" for k, v in _as_query(cfg).items())
+    grade_label = f"{cfg.grade} 年级" if cfg.grade else "自定义"
+    topic_label = TOPIC_LABELS.get(cfg.topic, cfg.topic)
+    summary = f"{grade_label} · {topic_label} · {len(questions)} 题"
     return templates.TemplateResponse(request, "preview.html", {
         "preview": preview, "query": query,
-        "sheets": resolved.sheets})
+        "sheets": resolved.sheets, "summary": summary})
 
 
 def _download_params(form: dict) -> tuple[Config | None, str | None]:
