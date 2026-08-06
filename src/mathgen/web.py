@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
+from mathgen import __version__
 from mathgen.config import Config, ConfigError, PRESETS, resolve
 from mathgen.core.engine import GenerationError, generate
 from mathgen.i18n import UI, LANGS, error_text, t
@@ -296,6 +297,8 @@ async def generate_page(request: Request):
         "preview": preview, "query": query, "lang": lang, "ui_json": _UI_JSON,
         "sheets": resolved.sheets, "summary": summary, "summary_data": summary_data,
         "ncols": resolved.columns, "cfg_fields": cfg_fields,
+        "meta_count": len(questions), "meta_sheets": resolved.sheets,
+        "version": __version__,
         "cells": [(i, q) for i, q in enumerate(questions, 1)]})
 
 

@@ -2,36 +2,62 @@
 
 {% block title %}{{ t("preview.title", lang) }} - mathgen{% endblock %}
 
+{% block nav %}
+<a href="#preview" data-i18n="nav.preview">{{ t("nav.preview", lang) }}</a>
+<a href="#download" data-i18n="nav.download">{{ t("nav.download", lang) }}</a>
+{% endblock %}
+
 {% block content %}
-<h1 class="preview-title" data-i18n="preview.title">{{ t("preview.title", lang) }}</h1>
-<p class="summary" data-summary="{{ summary_data }}">{{ summary }}</p>
-<section class="sheet preview" id="sheet"
-         data-ncols="{{ ncols }}"
-         style="grid-template-columns: repeat({{ ncols }}, minmax(0, 1fr));"
-         aria-label="题目列表">
-  {% for i, q in cells %}<div class="cell">{{ i }}. {{ q.statement }}</div>{% endfor %}
+<section class="download" id="download">
+  <div class="download-icon">
+    <img src="/static/math-icon.svg" alt="" width="64" height="64">
+  </div>
+  <h1 class="preview-title" data-i18n="preview.cta">{{ t("preview.cta", lang) }}</h1>
+  <p class="download-subtitle" data-summary="{{ summary_data }}">{{ summary }}</p>
+  <div class="download-meta">
+    <span class="meta-badge">{{ t("meta.questions", lang, n=meta_count) }}</span>
+    <span class="meta-badge">{{ t("meta.sheets", lang, n=meta_sheets) }}</span>
+    <span class="meta-badge">{{ t("meta.columns", lang, n=ncols) }}</span>
+  </div>
+  <div class="actions download-actions">
+    <a class="btn btn-download" href="/download.pdf?{{ query }}">
+      <span data-i18n="btn.download">{{ t("btn.download", lang) }}</span>
+    </a>
+    {% if sheets > 1 %}<a class="btn btn-download-zip" href="/download.zip?{{ query }}">
+      <span data-i18n="btn.zip">{{ t("btn.zip", lang, n=sheets) }}</span>
+    </a>{% endif %}
+  </div>
+  <p class="download-version">mathgen v{{ version }}</p>
 </section>
-<div class="pager" id="pager" hidden>
-  <button type="button" class="btn btn-secondary" id="pagePrev" data-i18n="pager.prev">{{ t("pager.prev", lang) }}</button>
-  <span class="pager-page" id="pageLabel"></span>
-  <button type="button" class="btn btn-secondary" id="pageNext" data-i18n="pager.next">{{ t("pager.next", lang) }}</button>
-</div>
-<nav class="actions" aria-label="下载操作">
-  <a class="btn" href="/download.pdf?{{ query }}"><span data-i18n="btn.download">{{ t("btn.download", lang) }}</span></a>
-  {% if sheets > 1 %}<a class="btn" href="/download.zip?{{ query }}"><span data-i18n="btn.zip">{{ t("btn.zip", lang, n=sheets) }}</span></a>{% endif %}
-  <form method="post" action="/generate" class="inline-form">
-    {% for k, v in cfg_fields.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
-    <input type="hidden" name="lang" value="{{ lang }}">
-    <button type="submit" class="btn btn-secondary"><span data-i18n="btn.again">{{ t("btn.again", lang) }}</span></button>
-  </form>
-  <a class="btn btn-secondary" href="/?{{ query }}"><span data-i18n="btn.modify">{{ t("btn.modify", lang) }}</span></a>
-</nav>
+
+<section class="preview-wrap" id="preview">
+  <h2 class="preview-heading" data-i18n="preview.title">{{ t("preview.title", lang) }}</h2>
+  <div class="sheet preview"
+       data-ncols="{{ ncols }}"
+       style="grid-template-columns: repeat({{ ncols }}, minmax(0, 1fr));"
+       aria-label="题目列表">
+    {% for i, q in cells %}<div class="cell">{{ i }}. {{ q.statement }}</div>{% endfor %}
+  </div>
+  <div class="pager" id="pager" hidden>
+    <button type="button" class="btn btn-secondary" id="pagePrev" data-i18n="pager.prev">{{ t("pager.prev", lang) }}</button>
+    <span class="pager-page" id="pageLabel"></span>
+    <button type="button" class="btn btn-secondary" id="pageNext" data-i18n="pager.next">{{ t("pager.next", lang) }}</button>
+  </div>
+  <nav class="actions" aria-label="重新出题">
+    <form method="post" action="/generate" class="inline-form">
+      {% for k, v in cfg_fields.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+      <input type="hidden" name="lang" value="{{ lang }}">
+      <button type="submit" class="btn btn-secondary"><span data-i18n="btn.again">{{ t("btn.again", lang) }}</span></button>
+    </form>
+    <a class="btn btn-secondary" href="/?{{ query }}"><span data-i18n="btn.modify">{{ t("btn.modify", lang) }}</span></a>
+  </nav>
+</section>
 {% endblock %}
 
 {% block scripts %}
 <script>
   (function () {
-    var sheet = document.getElementById('sheet');
+    var sheet = document.querySelector('#preview .sheet');
     if (!sheet) return;
     var cells = Array.prototype.slice.call(sheet.querySelectorAll('.cell'));
     var ncols = parseInt(sheet.getAttribute('data-ncols'), 10) || 2;

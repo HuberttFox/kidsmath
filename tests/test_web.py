@@ -269,6 +269,33 @@ def test_weight_input_visible_css():
     assert "pointer-events: auto" in block
 
 
+def test_refactor_download_cta_section():
+    r = client.post("/generate", data={"grade": "2", "count": "5", "topic": "arithmetic"})
+    assert r.status_code == 200
+    html = r.text
+    assert 'class="download" id="download"' in html
+    assert 'class="download-icon"' in html
+    assert 'class="btn btn-download"' in html
+    assert 'class="meta-badge"' in html
+    assert 'class="download-version"' in html
+    assert 'mathgen v' in html
+    assert 'id="preview"' in html
+    assert 'href="#download"' in html and 'href="#preview"' in html
+
+
+def test_refactor_index_hero_nav_footer():
+    r = client.get("/")
+    html = r.text
+    assert 'class="hero-badge"' in html
+    assert 'id="form"' in html
+    assert 'href="#form"' in html
+    assert 'class="site-footer"' in html
+    assert 'class="legend-icon' in html
+    r2 = client.get("/static/math-icon.svg")
+    assert r2.status_code == 200
+    assert r2.text.startswith("<svg")
+
+
 def test_lang_swap_attributes_present():
     r = client.get("/")
     html = r.text

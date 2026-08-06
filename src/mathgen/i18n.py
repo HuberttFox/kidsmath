@@ -89,6 +89,15 @@ UI_ZH = {
     "topic_arithmetic_label": "口算/四则",
     "topic_vertical_label": "竖式",
     "topic_word_problem_label": "应用题",
+    "preview.cta": "准备好了吗？",
+    "nav.generate": "生成",
+    "nav.preview": "预览",
+    "nav.download": "下载",
+    "meta.questions": "{n} 题",
+    "meta.sheets": "{n} 份",
+    "meta.columns": "{n} 列",
+    "footer.made": "完全免费 · 开源 · 离线出题",
+    "footer.copyright": "© {year} mathgen",
 }
 
 UI_EN = {
@@ -177,6 +186,15 @@ UI_EN = {
     "topic_arithmetic_label": "Arithmetic",
     "topic_vertical_label": "Vertical",
     "topic_word_problem_label": "Word problems",
+    "preview.cta": "Ready to start?",
+    "nav.generate": "Generate",
+    "nav.preview": "Preview",
+    "nav.download": "Download",
+    "meta.questions": "{n} questions",
+    "meta.sheets": "{n} sheets",
+    "meta.columns": "{n} columns",
+    "footer.made": "Free · Open Source · Offline",
+    "footer.copyright": "© {year} mathgen",
 }
 
 UI = {"zh": UI_ZH, "en": UI_EN}
