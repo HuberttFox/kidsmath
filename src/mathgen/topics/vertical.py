@@ -24,7 +24,7 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
                             True if op == "+" else cfg.allow_negative)
             return a, b, (a + b if op == "+" else a - b)
 
-        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]))
+        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
         layout = {"kind": "vertical", "op": op, "numbers": [str(a), str(b)]}
         return Question("vertical", _stmt_add(op, a, b), str(result),
                         f"{a} {op} {b}", layout)
@@ -36,7 +36,7 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
             b = gen_operand(rng, lo, hi)
             return a, b, a * b
 
-        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]))
+        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
         layout = {"kind": "vertical", "op": "×", "numbers": [str(a), str(b)]}
         return Question("vertical", _stmt_add("×", a, b), str(a * b),
                         f"{a} × {b}", layout)
@@ -55,10 +55,11 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
         return divisor, quotient, remainder, dividend
 
     divisor, quotient, remainder, dividend = gen_result(
-        make, lambda t: lo0 <= t[3] <= hi0 and check_result(cfg)(t[1]))
+        make, lambda t: lo0 <= t[3] <= hi0 and check_result(cfg)(t[1]),
+        *cfg.result_range)
     layout = {"kind": "vertical", "op": "÷", "divisor": str(divisor),
               "dividend": str(dividend), "quotient": str(quotient),
               "remainder": str(remainder)}
-    answer = str(quotient) if remainder == 0 else f"{quotient} 余 {remainder}"
+    answer = str(quotient) if remainder == 0 else f"{quotient} {"R" if cfg.lang == "en" else "余"} {remainder}"
     stmt = f"{dividend} ÷ {divisor} = ____"
     return Question("vertical", stmt, answer, f"{dividend} ÷ {divisor}", layout)

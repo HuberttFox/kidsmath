@@ -31,7 +31,7 @@ def _gen_two(cfg: ResolvedConfig, rng: random.Random) -> Question:
                             True if op == "+" else cfg.allow_negative)
             return a, b, (a + b if op == "+" else a - b)
 
-        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]))
+        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
     elif op == "×":
         lo, hi = cfg.multiplication_table
 
@@ -40,7 +40,7 @@ def _gen_two(cfg: ResolvedConfig, rng: random.Random) -> Question:
             b = gen_operand(rng, lo, hi)
             return a, b, a * b
 
-        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]))
+        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
     else:  # ÷
         lo0, hi0 = cfg.operand_ranges[0]
         q_lo, q_hi = cfg.multiplication_table
@@ -57,12 +57,14 @@ def _gen_two(cfg: ResolvedConfig, rng: random.Random) -> Question:
 
         divisor, quotient, remainder, dividend = gen_result(
             make,
-            lambda t: lo0 <= t[3] <= hi0 and check_result(cfg)(t[1]))
+            lambda t: lo0 <= t[3] <= hi0 and check_result(cfg)(t[1]),
+            *cfg.result_range)
         # 偏离 brief：allow_remainder 时统一 "Q 余 R" 格式（含余 0），
         # 与测试 test_division_with_remainder 断言一致；否则仅输出商。
         if cfg.allow_remainder:
+            rword = "R" if cfg.lang == "en" else "余"
             return Question("arithmetic", f"{dividend} ÷ {divisor} = ____",
-                            f"{quotient} 余 {remainder}", f"{dividend} ÷ {divisor}", None)
+                            f"{quotient} {rword} {remainder}", f"{dividend} ÷ {divisor}", None)
         return Question("arithmetic", f"{dividend} ÷ {divisor} = ____",
                         str(quotient), f"{dividend} ÷ {divisor}", None)
     expr = f"{a} {op} {b}"
@@ -129,4 +131,4 @@ def _gen_multi(cfg: ResolvedConfig, rng: random.Random, n: int) -> Question:
             expr = f"({expr})" if rng.random() < 0.5 else expr
         statement = expr.replace("(", "( ").replace(")", " )") + " = ____"
         return Question("arithmetic", statement, str(result), expr, None)
-    raise GenerationError(f"无法生成 {n} 个运算数的整除混合题，建议减少 ÷ 运算符或调整范围。")
+    raise GenerationError("multi_no_solution", n=n)

@@ -10,24 +10,31 @@
 <input id="{{ name }}" name="{{ name }}" type="checkbox" value="1"{% if form.get(name) %} checked{% endif %}>
 {% endmacro %}
 
-{% block title %}生成练习卷 - mathgen{% endblock %}
+{% macro tip(key) %}
+<span class="tip" tabindex="0" data-tip="{{ t(key, lang) }}" aria-label="{{ t(key, lang) }}">ⓘ</span>
+{% endmacro %}
+
+{% block title %}{{ t("brand", lang) }} - {% if lang == "en" %}Generate worksheets{% else %}生成练习卷{% endif %}{% endblock %}
 
 {% block content %}
 <section class="hero">
-  <div class="hero-badge"><span>完全免费 · 开源 · 离线出题</span></div>
-  <h1 class="hero-title">给孩子出数学题</h1>
-  <p class="hero-tagline">选个年级，点一下，一张漂亮的练习卷就出来了</p>
+  <div class="hero-badge" data-i18n="hero.badge">{{ t("hero.badge", lang) }}</div>
+  <h1 class="hero-title" data-i18n="hero.title">{{ t("hero.title", lang) }}</h1>
+  <p class="hero-tagline" data-i18n="hero.tagline">{{ t("hero.tagline", lang) }}</p>
 </section>
 
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 
 <form method="post" action="/generate" class="sheet-form">
+  <input type="hidden" name="lang" value="{{ lang }}">
   <fieldset class="card card-mint">
-    <legend>🎯 基础设置</legend>
+    <legend>🎯 <span data-i18n="f.base">{{ t("f.base", lang) }}</span></legend>
     <div class="form-grid">
       <div class="field-group">
-        <label class="field-label" for="grade">年级</label>
-        <div class="grade-group" id="grade" role="radiogroup" aria-label="年级">
+        <label class="field-label" for="grade">
+          <span data-i18n="f.grade">{{ t("f.grade", lang) }}</span>{{ tip("tip.grade") }}
+        </label>
+        <div class="grade-group" id="grade" role="radiogroup" aria-label="{{ t('f.grade', lang) }}">
           {% for value, label in grades %}
           <label class="grade-btn">
             <input type="radio" name="grade" value="{{ value }}"{% if form.get("grade", "") == value %} checked{% endif %}>
@@ -37,31 +44,35 @@
         </div>
       </div>
       <div class="field-group">
-        <label class="field-label" for="topic">题型</label>
-        <div class="topic-group" id="topic" role="radiogroup" aria-label="题型">
+        <label class="field-label" for="topic">
+          <span data-i18n="f.topic">{{ t("f.topic", lang) }}</span>{{ tip("tip.topic") }}
+        </label>
+        <div class="topic-group" id="topic" role="radiogroup" aria-label="{{ t('f.topic', lang) }}">
           {% for value, label in topics %}
           <label class="topic-card">
             <input type="radio" name="topic" value="{{ value }}"{% if form.get("topic", "arithmetic") == value %} checked{% endif %}>
-            <span class="topic-icon">{{ {"arithmetic": "🧮", "vertical": "✍️", "word_problem": "📖"}[value] }}</span>
+            <span class="topic-icon">{{ topic_icons[value] }}</span>
             <span class="topic-label">{{ label }}</span>
           </label>
           {% endfor %}
         </div>
       </div>
       <label class="field-group" for="count">
-        <span class="field-label">题目数</span>
+        <span class="field-label" data-i18n="f.count">{{ t("f.count", lang) }}</span>
         {{ input("count", form, "20", "number", min="1") }}
       </label>
     </div>
   </fieldset>
 
   <details id="advanced">
-    <summary>🔧 高级参数</summary>
+    <summary>🔧 <span data-i18n="f.advanced">{{ t("f.advanced", lang) }}</span></summary>
     <fieldset class="card card-pink">
-      <legend>🔢 数值与运算</legend>
+      <legend>🔢 <span data-i18n="f.numeric">{{ t("f.numeric", lang) }}</span></legend>
       <div class="form-grid">
         <div class="field-group">
-          <span class="field-label">运算符</span>
+          <span class="field-label">
+            <span data-i18n="f.operators">{{ t("f.operators", lang) }}</span>{{ tip("tip.operators") }}
+          </span>
           <div class="op-checkboxes" id="operators">
             {% for op in ["加", "减", "乘", "除"] %}
             <label class="op-item">
@@ -70,55 +81,71 @@
             </label>
             {% endfor %}
           </div>
-          <small class="hint">不选则按年级预设；也可在命令行用 + - × ÷</small>
+          <small class="hint" data-i18n="hint.operators">{{ t("hint.operators", lang) }}</small>
         </div>
         <label class="field-group" for="operand_count">
-          <span class="field-label">运算数个数</span>
+          <span class="field-label">
+            <span data-i18n="f.operand_count">{{ t("f.operand_count", lang) }}</span>{{ tip("tip.operand_count") }}
+          </span>
           {{ input("operand_count", form, "2", "number", min="2", max="4") }}
         </label>
         <label class="field-group" for="ranges">
-          <span class="field-label">运算数范围</span>
+          <span class="field-label">
+            <span data-i18n="f.ranges">{{ t("f.ranges", lang) }}</span>{{ tip("tip.ranges") }}
+          </span>
           {{ input("ranges", form, placeholder="10-99,2-9") }}
-          <small class="hint">每个运算数一对 最小-最大，逗号分隔</small>
+          <small class="hint" data-i18n="hint.ranges">{{ t("hint.ranges", lang) }}</small>
         </label>
         <label class="field-group" for="result_range">
-          <span class="field-label">结果范围</span>
+          <span class="field-label">
+            <span data-i18n="f.result_range">{{ t("f.result_range", lang) }}</span>{{ tip("tip.result_range") }}
+          </span>
           {{ input("result_range", form, placeholder="0-100") }}
         </label>
         <label class="field-group" for="carry">
-          <span class="field-label">进位</span>
+          <span class="field-label">
+            <span data-i18n="f.carry">{{ t("f.carry", lang) }}</span>{{ tip("tip.carry") }}
+          </span>
           <select id="carry" name="carry">
-            <option value=""{% if form.get("carry", "") == "" %} selected{% endif %}>随机</option>
-            <option value="yes"{% if form.get("carry") == "yes" %} selected{% endif %}>要进位</option>
-            <option value="no"{% if form.get("carry") == "no" %} selected{% endif %}>不进位</option>
+            <option value=""{% if form.get("carry", "") == "" %} selected{% endif %} data-i18n="opt.any">{{ t("opt.any", lang) }}</option>
+            <option value="yes"{% if form.get("carry") == "yes" %} selected{% endif %} data-i18n="opt.carry_yes">{{ t("opt.carry_yes", lang) }}</option>
+            <option value="no"{% if form.get("carry") == "no" %} selected{% endif %} data-i18n="opt.carry_no">{{ t("opt.carry_no", lang) }}</option>
           </select>
         </label>
         <label class="field-group" for="borrow">
-          <span class="field-label">借位</span>
+          <span class="field-label">
+            <span data-i18n="f.borrow">{{ t("f.borrow", lang) }}</span>{{ tip("tip.borrow") }}
+          </span>
           <select id="borrow" name="borrow">
-            <option value=""{% if form.get("borrow", "") == "" %} selected{% endif %}>随机</option>
-            <option value="yes"{% if form.get("borrow") == "yes" %} selected{% endif %}>要借位</option>
-            <option value="no"{% if form.get("borrow") == "no" %} selected{% endif %}>不借位</option>
+            <option value=""{% if form.get("borrow", "") == "" %} selected{% endif %} data-i18n="opt.any">{{ t("opt.any", lang) }}</option>
+            <option value="yes"{% if form.get("borrow") == "yes" %} selected{% endif %} data-i18n="opt.borrow_yes">{{ t("opt.borrow_yes", lang) }}</option>
+            <option value="no"{% if form.get("borrow") == "no" %} selected{% endif %} data-i18n="opt.borrow_no">{{ t("opt.borrow_no", lang) }}</option>
           </select>
         </label>
         <label class="field-group" for="divisor_range">
-          <span class="field-label">除数范围</span>
+          <span class="field-label">
+            <span data-i18n="f.divisor_range">{{ t("f.divisor_range", lang) }}</span>{{ tip("tip.divisor_range") }}
+          </span>
           {{ input("divisor_range", form, placeholder="2-9") }}
         </label>
         <div class="field-group">
-          <label class="toggle-line" for="remainder">{{ checkbox("remainder", form) }}<span>允许余数</span></label>
+          <label class="toggle-line" for="remainder">{{ checkbox("remainder", form) }}<span data-i18n="f.remainder">{{ t("f.remainder", lang) }}</span>{{ tip("tip.remainder") }}</label>
         </div>
         <label class="field-group" for="table">
-          <span class="field-label">乘法表/商范围</span>
+          <span class="field-label">
+            <span data-i18n="f.table">{{ t("f.table", lang) }}</span>{{ tip("tip.table") }}
+          </span>
           {{ input("table", form, placeholder="1-9") }}
         </label>
       </div>
     </fieldset>
     <fieldset class="card card-yellow">
-      <legend>📄 卷面排版</legend>
+      <legend>📄 <span data-i18n="f.layout">{{ t("f.layout", lang) }}</span></legend>
       <div class="form-grid">
         <label class="field-group" for="columns">
-          <span class="field-label">分栏</span>
+          <span class="field-label">
+            <span data-i18n="f.columns">{{ t("f.columns", lang) }}</span>{{ tip("tip.columns") }}
+          </span>
           <select id="columns" name="columns">
             <option value="1"{% if form.get("columns", "2") == "1" %} selected{% endif %}>1</option>
             <option value="2"{% if form.get("columns", "2") == "2" %} selected{% endif %}>2</option>
@@ -126,35 +153,47 @@
           </select>
         </label>
         <label class="field-group" for="gap">
-          <span class="field-label">题间距 (pt)</span>
+          <span class="field-label">
+            <span data-i18n="f.gap">{{ t("f.gap", lang) }}</span>{{ tip("tip.gap") }}
+          </span>
           {{ input("gap", form, "16", "number", min="0") }}
         </label>
         <label class="field-group" for="answer_lines">
-          <span class="field-label">每题答题横线</span>
+          <span class="field-label">
+            <span data-i18n="f.answer_lines">{{ t("f.answer_lines", lang) }}</span>{{ tip("tip.answer_lines") }}
+          </span>
           {{ input("answer_lines", form, "0", "number", min="0") }}
         </label>
         <label class="field-group" for="answer_page">
-          <span class="field-label">答案页</span>
+          <span class="field-label">
+            <span data-i18n="f.answer_page">{{ t("f.answer_page", lang) }}</span>{{ tip("tip.answer_page") }}
+          </span>
           <select id="answer_page" name="answer_page">
-            <option value="on"{% if form.get("answer_page", "on") == "on" %} selected{% endif %}>要</option>
-            <option value="off"{% if form.get("answer_page", "on") == "off" %} selected{% endif %}>不要</option>
+            <option value="on"{% if form.get("answer_page", "on") == "on" %} selected{% endif %} data-i18n="opt.yes">{{ t("opt.yes", lang) }}</option>
+            <option value="off"{% if form.get("answer_page", "on") == "off" %} selected{% endif %} data-i18n="opt.no">{{ t("opt.no", lang) }}</option>
           </select>
         </label>
         <label class="field-group" for="title">
-          <span class="field-label">卷子标题</span>
+          <span class="field-label">
+            <span data-i18n="f.title">{{ t("f.title", lang) }}</span>{{ tip("tip.title") }}
+          </span>
           {{ input("title", form) }}
         </label>
         <label class="field-group" for="header">
-          <span class="field-label">页眉</span>
+          <span class="field-label">
+            <span data-i18n="f.header">{{ t("f.header", lang) }}</span>{{ tip("tip.header") }}
+          </span>
           {{ input("header", form) }}
         </label>
       </div>
     </fieldset>
     <fieldset class="card card-blue">
-      <legend>📚 批量</legend>
+      <legend>📚 <span data-i18n="f.batch">{{ t("f.batch", lang) }}</span></legend>
       <div class="form-grid">
         <label class="field-group" for="sheets">
-          <span class="field-label">卷子份数</span>
+          <span class="field-label">
+            <span data-i18n="f.sheets">{{ t("f.sheets", lang) }}</span>{{ tip("tip.sheets") }}
+          </span>
           {{ input("sheets", form, "1", "number", min="1") }}
         </label>
       </div>
@@ -163,7 +202,7 @@
 
   <p id="preset-hint" class="hint hint-box"></p>
   <div class="actions">
-    <button type="submit" class="btn btn-big">🎉 生成练习卷</button>
+    <button type="submit" class="btn btn-big" id="generateBtn" data-i18n="btn.generate">{{ t("btn.generate", lang) }}</button>
   </div>
 </form>
 {% endblock %}
@@ -175,30 +214,24 @@
     var data = JSON.parse(document.getElementById('preset-hints').textContent);
     var OP_MAP = {加: '+', 减: '-', 乘: '×', 除: '÷'};
     var hintEl = document.getElementById('preset-hint');
-    var topicEl = document.getElementById('topic');
     var customized = false;
+    var lang = document.documentElement.lang === 'en' ? 'en' : 'zh';
+    var ui = JSON.parse(document.getElementById('ui-json').textContent);
 
     function gradeValue() {
       var el = document.querySelector('input[name="grade"]:checked');
       return el ? el.value : '';
     }
-
     function setGrade(v) {
       var el = document.querySelector('input[name="grade"][value="' + v + '"]');
       if (el) el.checked = true;
     }
-
-    function topicValue() {
-      var el = document.querySelector('input[name="topic"]:checked');
-      return el ? el.value : 'arithmetic';
-    }
-
     function fmtRange(r) { return r[0] + '-' + r[1]; }
-
     function setVal(id, v) {
       var el = document.getElementById(id);
       if (el && v !== null && v !== undefined) el.value = v;
     }
+    function tr(key) { return (ui[lang] && ui[lang][key]) || (ui.zh && ui.zh[key]) || key; }
 
     function fillGrade(g) {
       var f = data.grades[g].fields;
@@ -219,25 +252,21 @@
     function updateHint() {
       var g = gradeValue();
       if (g && data.grades[g]) {
-        hintEl.textContent = g + ' 年级预设：' + data.grades[g].summary + '（改动下方参数将转为自定义）';
+        var summary = lang === 'en' ? data.grades[g].summary_en : data.grades[g].summary;
+        hintEl.textContent = g + ' ' + tr('preset.prefix') + summary + tr('preset.note');
       } else if (customized) {
-        hintEl.textContent = '自定义参数（已手动修改）';
+        hintEl.textContent = tr('preset.custom');
       } else {
-        hintEl.textContent = data.topics[topicValue()] || '';
+        hintEl.textContent = '';
       }
     }
 
     document.querySelectorAll('input[name="grade"]').forEach(function (el) {
       el.addEventListener('change', function () {
         customized = false;
-        if (gradeValue() && data.grades[gradeValue()]) {
-          fillGrade(gradeValue());
-        }
+        if (gradeValue() && data.grades[gradeValue()]) fillGrade(gradeValue());
         updateHint();
       });
-    });
-    document.querySelectorAll('input[name="topic"]').forEach(function (el) {
-      el.addEventListener('change', updateHint);
     });
     document.querySelectorAll('#advanced input, #advanced select').forEach(function (el) {
       el.addEventListener('change', function () {
@@ -248,6 +277,19 @@
         updateHint();
       });
     });
+    document.addEventListener('langchange', function (e) {
+      lang = e.detail.lang;
+      updateHint();
+    });
+
+    var genBtn = document.getElementById('generateBtn');
+    var formEl = genBtn && genBtn.closest('form');
+    if (formEl) {
+      formEl.addEventListener('submit', function () {
+        genBtn.disabled = true;
+        genBtn.textContent = tr('btn.generating');
+      });
+    }
     updateHint();
   })();
 </script>

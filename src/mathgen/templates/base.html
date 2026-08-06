@@ -1,8 +1,9 @@
 <!doctype html>
-<html lang="zh">
+<html lang="{{ lang or 'zh' }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
   <title>{% block title %}mathgen 数学出题{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧮</text></svg>">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -13,15 +14,18 @@
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="logo" href="/">
-        <span class="logo-emoji">🧮</span>
-        <span class="logo-text">mathgen</span>
-      </a>
+      <a class="logo" href="/"><span class="logo-emoji">🧮</span><span class="logo-text">mathgen</span></a>
+      <div class="header-controls">
+        <button class="pill-toggle" id="langToggle" type="button" aria-label="Language"><span id="langLabel"></span></button>
+        <button class="pill-toggle" id="themeToggle" type="button" aria-label="Theme"><span id="themeLabel"></span></button>
+      </div>
     </div>
   </header>
   <main>
     {% block content %}{% endblock %}
   </main>
+  {% if ui_json %}<script type="application/json" id="ui-json">{{ ui_json | safe }}</script>{% endif %}
+  <script src="/static/lang.js"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

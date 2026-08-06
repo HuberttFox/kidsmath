@@ -7,12 +7,18 @@ from typing import TypeVar
 
 from mathgen.config import ResolvedConfig
 from mathgen.core.question import Question
+from mathgen.i18n import error_text
 
 T = TypeVar("T")
 
 
 class GenerationError(RuntimeError):
-    """生成冲突，消息为中文。"""
+    """生成冲突。code+params 供多语言渲染，str() 输出中文。"""
+
+    def __init__(self, code: str, **params):
+        self.code = code
+        self.params = params
+        super().__init__(error_text(code, params, "zh"))
 
 
 def gen_operand(rng: random.Random, lo: int, hi: int) -> int:
@@ -29,7 +35,8 @@ def check_result(cfg: ResolvedConfig) -> Callable[[int], bool]:
     return ok
 
 
-def gen_result(make: Callable[[], T], check: Callable[[T], bool]) -> T:
+def gen_result(make: Callable[[], T], check: Callable[[T], bool],
+               lo: int, hi: int) -> T:
     """按 make() 生成候选，重试至多 1000 次直到 check 通过；失败抛 GenerationError。
 
     全题型共用：保证结果落在 result_range 且（默认）非负。
@@ -38,9 +45,7 @@ def gen_result(make: Callable[[], T], check: Callable[[T], bool]) -> T:
         result = make()
         if check(result):
             return result
-    raise GenerationError(
-        f"在运算数范围、结果范围约束下找不到题目。"
-        f"建议：扩大结果范围或调小数值范围。")
+    raise GenerationError("result_out_of_range", lo=lo, hi=hi)
 
 
 def has_carry(a: int, b: int) -> bool:
@@ -79,9 +84,7 @@ def gen_pair(rng: random.Random, ranges: list[tuple[int, int]],
         if borrow is not None and has_borrow(a, b) != borrow:
             continue
         return a, b
-    raise GenerationError(
-        f"在运算数范围 {ranges}、进位={carry}、借位={borrow} 约束下找不到题目。"
-        f"建议：扩大数值范围，或放宽进位/借位要求（设为 随机）。")
+    raise GenerationError("pair_no_solution", ranges=ranges, carry=carry, borrow=borrow)
 
 
 def _signature(q: Question) -> tuple:
@@ -114,9 +117,7 @@ def generate(cfg: ResolvedConfig) -> list[Question]:
     while len(questions) < cfg.count:
         guard += 1
         if guard > cfg.count * 200:
-            raise GenerationError(
-                f"生成 {cfg.count} 道不重复题目失败：参数过窄或可生成空间不足。"
-                f"建议：扩大数值范围、允许更多运算符，或关闭去重。")
+            raise GenerationError("dedupe_exhausted", count=cfg.count)
         q = factory(cfg, rng)
         if cfg.dedupe and _signature(q) in seen:
             continue

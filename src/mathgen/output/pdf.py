@@ -127,7 +127,7 @@ def render_pdf(questions: list[Question], cfg: ResolvedConfig) -> bytes:
     if cfg.answer_page:
         c.showPage()
         c.setFont(font, 16)
-        c.drawCentredString(width / 2, height - MARGIN, "参考答案")
+        c.drawCentredString(width / 2, height - MARGIN, "Answers" if cfg.lang == "en" else "参考答案")
         c.setFont(font, SIZE)
         y = height - MARGIN - 40
         for i, line in enumerate(answer_lines(questions), 1):

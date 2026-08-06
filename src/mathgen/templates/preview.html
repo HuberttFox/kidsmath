@@ -1,17 +1,67 @@
 {% extends "base.html" %}
 
-{% block title %}题目预览 - mathgen{% endblock %}
+{% block title %}{{ t("preview.title", lang) }} - mathgen{% endblock %}
 
 {% block content %}
-<h1 class="preview-title">🎉 题目预览</h1>
+<h1 class="preview-title" data-i18n="preview.title">{{ t("preview.title", lang) }}</h1>
 <p class="summary badge">{{ summary }}</p>
-<section class="sheet preview" style="grid-template-columns: repeat({{ ncols }}, minmax(0, 1fr));"
+<section class="sheet preview" id="sheet"
+         data-ncols="{{ ncols }}"
+         style="grid-template-columns: repeat({{ ncols }}, minmax(0, 1fr));"
          aria-label="题目列表">
   {% for i, q in cells %}<div class="cell">{{ i }}. {{ q.statement }}</div>{% endfor %}
 </section>
+<div class="pager" id="pager" hidden>
+  <button type="button" class="btn btn-secondary" id="pagePrev" data-i18n="pager.prev">{{ t("pager.prev", lang) }}</button>
+  <span class="pager-page" id="pageLabel"></span>
+  <button type="button" class="btn btn-secondary" id="pageNext" data-i18n="pager.next">{{ t("pager.next", lang) }}</button>
+</div>
 <nav class="actions" aria-label="下载操作">
-  <a class="btn" href="/download.pdf?{{ query }}">⬇️ 下载 PDF</a>
-  {% if sheets > 1 %}<a class="btn btn-peach" href="/download.zip?{{ query }}">🗜️ 下载 ZIP（{{ sheets }} 份）</a>{% endif %}
-  <a class="btn btn-secondary" href="/">🔄 重新出题</a>
+  <a class="btn" href="/download.pdf?{{ query }}">⬇️ <span data-i18n="btn.download">{{ t("btn.download", lang) }}</span></a>
+  {% if sheets > 1 %}<a class="btn btn-peach" href="/download.zip?{{ query }}">🗜️ <span data-i18n="btn.zip">{{ t("btn.zip", lang, n=sheets) }}</span></a>{% endif %}
+  <form method="post" action="/generate" class="inline-form">
+    {% for k, v in cfg_fields.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+    <input type="hidden" name="lang" value="{{ lang }}">
+    <button type="submit" class="btn btn-secondary">🔄 <span data-i18n="btn.again">{{ t("btn.again", lang) }}</span></button>
+  </form>
+  <a class="btn btn-secondary" href="/?{{ query }}">📝 <span data-i18n="btn.modify">{{ t("btn.modify", lang) }}</span></a>
 </nav>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  (function () {
+    var sheet = document.getElementById('sheet');
+    if (!sheet) return;
+    var cells = Array.prototype.slice.call(sheet.querySelectorAll('.cell'));
+    var ncols = parseInt(sheet.getAttribute('data-ncols'), 10) || 2;
+    var per = ncols * 6;
+    if (cells.length <= per) return;
+    var pager = document.getElementById('pager');
+    var prev = document.getElementById('pagePrev');
+    var next = document.getElementById('pageNext');
+    var label = document.getElementById('pageLabel');
+    var pages = Math.ceil(cells.length / per);
+    var cur = 0;
+    var ui = JSON.parse(document.getElementById('ui-json').textContent);
+    var lang = document.documentElement.lang === 'en' ? 'en' : 'zh';
+    function tr(key) { return (ui[lang] && ui[lang][key]) || (ui.zh && ui.zh[key]) || key; }
+    function render() {
+      cells.forEach(function (c, i) {
+        var show = i >= cur * per && i < (cur + 1) * per;
+        c.style.display = show ? '' : 'none';
+      });
+      label.textContent = tr('pager.page').replace('{cur}', String(cur + 1)).replace('{total}', String(pages));
+      prev.disabled = cur === 0;
+      next.disabled = cur === pages - 1;
+      sheet.classList.remove('page-fade');
+      void sheet.offsetWidth;
+      sheet.classList.add('page-fade');
+    }
+    prev.addEventListener('click', function () { if (cur > 0) { cur--; render(); } });
+    next.addEventListener('click', function () { if (cur < pages - 1) { cur++; render(); } });
+    pager.hidden = false;
+    render();
+  })();
+</script>
 {% endblock %}

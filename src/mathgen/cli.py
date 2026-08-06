@@ -43,6 +43,7 @@ def _parse_argv(argv: list[str] | None) -> argparse.Namespace:
     gen.add_argument("--title", default=None, help="卷子标题")
     gen.add_argument("--header", default=None, help="页眉")
     gen.add_argument("--sheets", type=int, default=None, help="生成几份不重复卷子")
+    gen.add_argument("--lang", choices=["zh", "en"], default=None, help="题目语言（zh/en）")
     gen.add_argument("--zip", action="store_true", help="多份时打包 zip")
     gen.add_argument("--format", choices=["text", "pdf"], default="pdf")
     gen.add_argument("-f", "--output", default=None, help="输出路径（多份时为前缀）")
@@ -61,7 +62,7 @@ def _parse_range(s: str) -> tuple[int, int]:
         lo, hi = s.split("-")
         return int(lo), int(hi)
     except ValueError:
-        raise ConfigError(f"范围格式应为 最小-最大，如 10-99（收到 {s!r}）。") from None
+        raise ConfigError("range_format", v=s) from None
 
 
 def _cfg_from_ns(ns: argparse.Namespace) -> Config:
@@ -81,6 +82,7 @@ def _cfg_from_ns(ns: argparse.Namespace) -> Config:
         "columns": ns.columns, "gap": ns.gap, "answer_lines": ns.answer_lines,
         "answer_page": False if ns.no_answer_page else None,
         "title": ns.title, "header": ns.header, "sheets": ns.sheets,
+        "lang": ns.lang,
     }
     if ns.ranges:
         overrides["operand_ranges"] = [_parse_range(s) for s in ns.ranges.split(",")]
@@ -94,7 +96,7 @@ def _cfg_from_ns(ns: argparse.Namespace) -> Config:
     try:
         return Config(**data)
     except TypeError as e:
-        raise ConfigError(f"配置项有误：未知的配置键或类型错误（{e}）。") from None
+        raise ConfigError("config_type_error", msg=str(e)) from None
 
 
 def _generate_sheet(cfg: Config, sheet_no: int) -> bytes:

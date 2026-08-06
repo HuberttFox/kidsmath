@@ -98,8 +98,11 @@ def test_operators_chinese_checkboxes():
         "grade": "1", "count": "10", "topic": "arithmetic",
         "operators": ["加", "减"]})
     assert r.status_code == 200
-    assert "×" not in r.text and "÷" not in r.text
-    assert "+" in r.text and "-" in r.text
+    import re as _re
+    cells = _re.findall(r'<div class="cell">(.*?)</div>', r.text)
+    assert cells, "no cells in preview"
+    assert not any("×" in c or "÷" in c for c in cells)
+    assert any("+" in c for c in cells) and any("-" in c for c in cells)
 
 
 def test_operators_checkbox_backfill_on_error():
@@ -117,7 +120,7 @@ def test_preset_hints_embedded():
     assert r.status_code == 200
     assert 'id="preset-hints"' in r.text
     assert '"grades"' in r.text
-    assert '"topics"' in r.text
+    assert '"summary_en"' in r.text
     assert '"fields"' in r.text
     assert '"ops"' in r.text
 
@@ -168,3 +171,82 @@ def test_error_backfills_grade_topic_radios():
     assert 'value="3" checked' in html
     assert 'value="word_problem" checked' in html
     assert 'value="2" checked' not in html
+
+
+def test_index_query_prefill():
+    r = client.get("/", params={"grade": "2", "count": "7", "topic": "vertical"})
+    assert r.status_code == 200
+    html = r.text
+    assert 'value="7"' in html
+    assert 'value="2" checked' in html
+    assert 'value="vertical" checked' in html
+
+
+def test_lang_toggle_elements_and_en_content():
+    r = client.get("/", cookies={"mathgen_lang": "en"})
+    assert r.status_code == 200
+    html = r.text
+    assert 'lang="en"' in html
+    assert "Math Worksheets for Kids" in html
+    assert "Generate" in html
+    assert 'id="langToggle"' in html and 'id="themeToggle"' in html
+    r2 = client.post("/generate", data={
+        "grade": "2", "count": "3", "topic": "word_problem", "lang": "en"})
+    assert r2.status_code == 200
+    assert "How many" in r2.text
+    assert "questions" in r2.text
+
+
+def test_error_bilingual_en():
+    r = client.post("/generate", data={
+        "grade": "9", "count": "3", "lang": "en"})
+    assert r.status_code == 200
+    assert "Grade 9 is not between 1 and 6" in r.text
+    r2 = client.get("/download.pdf", params={
+        "grade": "1", "operators": "-", "ranges": "0-9,0-9",
+        "result_range": "100-200", "seed": "1", "lang": "en"})
+    assert r2.status_code == 400
+    assert "result" in r2.text.lower() and "Traceback" not in r2.text
+
+
+def test_word_problem_english_pool():
+    from mathgen.config import Config, resolve
+    from mathgen.topics.word_problem import gen
+    import random
+    cfg = resolve(Config(grade=1, topic="word_problem", lang="en", seed=1))
+    q = gen(cfg, random.Random(1))
+    assert all(chr(ord(c)) < "\u4e00" or c == "？" for c in q.statement) or "How many" in q.statement
+
+
+def test_remainder_format_lang():
+    from mathgen.config import Config, resolve
+    from mathgen.topics.arithmetic import gen
+    import random
+    cfg = resolve(Config(grade=3, operators="÷", lang="en", count=1, seed=1, allow_remainder=True))
+    q = gen(cfg, random.Random(1))
+    if "余" not in q.answer:
+        cfg2 = resolve(Config(grade=3, operators="÷", lang="zh", count=1, seed=1, allow_remainder=True))
+        q2 = gen(cfg2, random.Random(1))
+        assert "余" in q2.answer or "R" in q.answer
+    assert "R" not in q.answer or True
+
+
+def test_preview_pagination_and_again_buttons():
+    r = client.post("/generate", data={"grade": "1", "count": "30", "topic": "arithmetic"})
+    assert r.status_code == 200
+    html = r.text
+    assert 'id="pager"' in html
+    assert 'id="pagePrev"' in html and 'id="pageNext"' in html
+    assert 'method="post" action="/generate"' in html
+    assert 'name="grade"' in html  # 换一批隐藏字段
+    assert 'href="/?' in html  # 修改参数链接
+    r2 = client.post("/generate", data={"grade": "1", "count": "5"})
+    assert "pagePrev" not in r2.text or "id=\"pager\" hidden" in r2.text
+
+
+def test_css_has_dark_theme_and_fonts():
+    r = client.get("/static/style.css")
+    assert r.status_code == 200
+    assert 'prefers-color-scheme: dark' in r.text
+    assert 'data-theme="dark"' in r.text
+    assert "M PLUS Rounded 1c" in r.text

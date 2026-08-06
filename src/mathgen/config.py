@@ -1,11 +1,18 @@
-"""参数模型、校验与年级预设。所有错误消息为中文。"""
+"""参数模型、校验与年级预设。错误消息为中文（web 层可按语言渲染英文）。"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from mathgen.i18n import error_text
+
 
 class ConfigError(ValueError):
-    """参数校验失败，消息为中文。"""
+    """参数校验失败。code+params 供多语言渲染，str() 输出中文。"""
+
+    def __init__(self, code: str, **params):
+        self.code = code
+        self.params = params
+        super().__init__(error_text(code, params, "zh"))
 
 
 TOPICS = ("arithmetic", "vertical", "word_problem")
@@ -122,6 +129,7 @@ class Config:
     header: str | None = None
     sheets: int | None = None
     grade: int | None = None
+    lang: str | None = None
 
 
 @dataclass
@@ -151,6 +159,7 @@ class ResolvedConfig:
     title: str
     header: str
     sheets: int
+    lang: str
 
 
 _OP_ALIASES = {"加": "+", "减": "-", "乘": "×", "除": "÷"}
@@ -166,19 +175,23 @@ def normalize_operators(ops: str) -> str:
     return "".join(out)
 
 
-def _check_range(name: str, r: tuple[int, int]) -> None:
+def _check_range(code: str, r: tuple[int, int]) -> None:
     lo, hi = r
     if lo < 0 or hi < lo:
-        raise ConfigError(f"{name}范围不合法：应为 (最小值, 最大值) 且最小值 ≥ 0，当前 {r}。建议调换大小或改为非负值。")
+        raise ConfigError(code, r=r)
 
 
 def resolve(cfg: Config) -> ResolvedConfig:
     """合并年级预设 + 题型默认 + 显式参数，校验后返回 ResolvedConfig。"""
     data: dict = vars(Config())
     data.pop("grade")
+    data.pop("lang")
+    data["lang"] = cfg.lang or "zh"
+    if data["lang"] not in ("zh", "en"):
+        raise ConfigError("invalid_lang", lang=data["lang"])
     if cfg.grade is not None:
         if cfg.grade not in PRESETS:
-            raise ConfigError(f"年级 {cfg.grade} 不在 1-6 之间。建议改为 1 到 6。")
+            raise ConfigError("invalid_grade", g=cfg.grade)
         data.update(PRESETS[cfg.grade])
     for key in ("operators", "operand_count", "parentheses", "allow_negative",
                 "allow_decimal", "allow_remainder", "dedupe", "answer_page", "sheets"):
@@ -195,7 +208,7 @@ def resolve(cfg: Config) -> ResolvedConfig:
             data[key] = default
 
     if cfg.topic not in TOPICS:
-        raise ConfigError(f"题型 {cfg.topic} 不支持，可选：{', '.join(TOPICS)}。")
+        raise ConfigError("invalid_topic", topic=cfg.topic, choices="、".join(TOPICS))
     data["topic"] = cfg.topic
 
     for key, fld in (("operand_ranges", None), ("result_range", None),
@@ -217,24 +230,23 @@ def resolve(cfg: Config) -> ResolvedConfig:
     # ---- 校验 ----
     data["operators"] = normalize_operators(data["operators"])
     if not data["operators"] or any(c not in OPERATORS for c in data["operators"]):
-        raise ConfigError(f"运算符 {data['operators']!r} 不合法，可选：加 减 乘 除 或 + - × ÷（如 \"加减\"）。")
+        raise ConfigError("invalid_operators", ops=data["operators"])
     if data["count"] <= 0:
-        raise ConfigError(f"题目数量必须 > 0，当前 {data['count']}。建议改为 1 或更大。")
+        raise ConfigError("count_positive", n=data["count"])
     if data["count"] > 500:
-        raise ConfigError(f"题目数量过大（{data['count']}），建议 ≤ 500。")
+        raise ConfigError("count_too_many", n=data["count"])
     if data["sheets"] <= 0:
-        raise ConfigError(f"卷子份数必须 > 0，当前 {data['sheets']}。")
+        raise ConfigError("sheets_positive", n=data["sheets"])
     if data["sheets"] > 100:
-        raise ConfigError(f"卷子份数过大（{data['sheets']}），建议 ≤ 100。")
+        raise ConfigError("sheets_too_many", n=data["sheets"])
     if data["columns"] not in (1, 2, 3):
-        raise ConfigError(f"分栏数 {data['columns']} 不支持，可选 1、2、3。")
+        raise ConfigError("invalid_columns", n=data["columns"])
     if data["gap"] < 0:
-        raise ConfigError(f"题间距不能为负，当前 {data['gap']}。")
+        raise ConfigError("gap_negative", n=data["gap"])
     if data["answer_lines"] < 0:
-        raise ConfigError(f"答题横线数不能为负，当前 {data['answer_lines']}。")
-    if data["operand_count"] < 2:
-        raise ConfigError(
-            f"运算数个数必须 ≥ 2，当前 {data['operand_count']}。建议改为 2 到 4。")
+        raise ConfigError("answer_lines_negative", n=data["answer_lines"])
+    if data["operand_count"] < 2 or data["operand_count"] > 4:
+        raise ConfigError("operand_count_range", n=data["operand_count"])
     ranges = data["operand_ranges"]
     if ranges is None:
         ranges = [(1, 20), (1, 20)]
@@ -242,37 +254,41 @@ def resolve(cfg: Config) -> ResolvedConfig:
         if cfg.operand_ranges is None:
             ranges = [ranges[0]] * data["operand_count"]
         else:
-            raise ConfigError(
-                f"运算数范围个数 {len(ranges)} 与运算数个数 {data['operand_count']} 不一致。"
-                f"建议：每个运算数提供一个 (min, max)，如 {(1, 9)} ×{data['operand_count']}。")
+            raise ConfigError("ranges_count_mismatch", got=len(ranges),
+                              want=data["operand_count"], example=(1, 9))
     for r in ranges:
-        _check_range("运算数", r)
+        _check_range("range_invalid_operand", r)
     data["operand_ranges"] = list(ranges)
 
     rr = data.get("result_range")
     if rr is None:
         rr = (0, max(hi for _, hi in ranges) * (2 if "×" in data["operators"] else 1) + 9)
-    _check_range("结果", rr)
+    _check_range("range_invalid_result", rr)
     data["result_range"] = rr
     if data["result_range"][0] < 0 and not data["allow_negative"]:
-        raise ConfigError("结果范围最小值为负，但 allow_negative=False。建议开启 allow_negative 或把结果最小值改为 0。")
+        raise ConfigError("result_negative")
 
     dr = data["divisor_range"]
-    _check_range("除数", dr)
+    _check_range("range_invalid_divisor", dr)
     if dr[0] < 1:
-        raise ConfigError("除数范围最小值必须 ≥ 1，除数不能为 0。建议改为 (1, 9)。")
+        raise ConfigError("divisor_min")
     data["divisor_range"] = dr
 
     mt = data["multiplication_table"]
-    _check_range("乘法表", mt)
+    _check_range("range_invalid_table", mt)
     data["multiplication_table"] = mt
 
     if data["seed"] is None:
         data["seed"] = random_seed()
     if data["title"] is None:
-        data["title"] = f"小学数学练习（{'一二三四五六'[cfg.grade - 1] if cfg.grade else ''}年级）"
+        if data["lang"] == "en":
+            data["title"] = f"Math Practice (Grade {cfg.grade})" if cfg.grade else "Math Practice"
+        else:
+            data["title"] = f"小学数学练习（{'一二三四五六'[cfg.grade - 1] if cfg.grade else ''}年级）"
     if data["header"] is None:
-        data["header"] = "姓名：__________  班级：__________  日期：__________"
+        data["header"] = ("Name: __________  Class: __________  Date: __________"
+                          if data["lang"] == "en" else
+                          "姓名：__________  班级：__________  日期：__________")
     return ResolvedConfig(**data)
 
 

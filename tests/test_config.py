@@ -65,6 +65,27 @@ def test_operators_unknown_chinese_still_errors():
         resolve(Config(operators="加法"))
 
 
+def test_lang_defaults_zh_title():
+    r = resolve(Config(grade=2))
+    assert r.lang == "zh"
+    assert "小学数学练习" in r.title
+    assert "姓名" in r.header
+
+
+def test_lang_en_title_and_header():
+    r = resolve(Config(grade=2, lang="en"))
+    assert r.lang == "en"
+    assert r.title == "Math Practice (Grade 2)"
+    assert "Name:" in r.header
+    r2 = resolve(Config(lang="en"))
+    assert r2.title == "Math Practice"
+
+
+def test_invalid_lang_raises():
+    with pytest.raises(ConfigError, match="语言"):
+        resolve(Config(lang="fr"))
+
+
 def test_explicit_false_overrides_preset_parentheses():
     r = resolve(Config(grade=5, parentheses=False))
     assert r.parentheses is False

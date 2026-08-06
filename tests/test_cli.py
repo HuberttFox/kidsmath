@@ -51,8 +51,8 @@ def test_config_unknown_key_returns_2_chinese_no_traceback():
         p = pathlib.Path(d) / "c.toml"
         p.write_text('operator = "+"\ncount = 4\n', encoding="utf-8")
         r = run_cli("-c", str(p), "--format", "text")
-    assert r.returncode == 2
-    assert "配置项有误" in r.stderr
+        assert r.returncode == 2
+        assert "配置文件有误" in r.stderr
     assert "Traceback" not in r.stderr
 
 

@@ -21,9 +21,23 @@ TEMPLATES = [
     ("果园里有{a}棵苹果树，又种了{b}棵，现在一共有多少棵？", "+"),
 ]
 
+TEMPLATES_EN = [
+    ("Tom has {a} apples. Lily gives him {b} more. How many apples does Tom have now?", "+"),
+    ("There are {a} students in the classroom. {b} students leave. How many are left?", "-"),
+    ("Ben buys {a} pencils. Each pencil costs {b} yuan. How much does he spend in total?", "×"),
+    ("There are {a} candies shared equally among {b} children. How many candies does each child get?", "÷"),
+    ("Ann has {a} flowers. Mary has {b} more flowers than Ann. How many flowers does Mary have?", "+"),
+    ("Sam has {a} balloons. {b} balloons fly away. How many balloons are left?", "-"),
+    ("A book has {a} pages. You read {b} pages each day. How many days will it take to finish?", "÷"),
+    ("One box of crayons has {a} crayons. How many crayons are in {b} boxes?", "×"),
+    ("Leo has {a} toys. He gives {b} toys to his brother. How many toys are left?", "-"),
+    ("There are {a} apple trees in the orchard. {b} more trees are planted. How many trees are there now?", "+"),
+]
+
 
 def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
-    template, op = rng.choice(TEMPLATES)
+    pool = TEMPLATES_EN if cfg.lang == "en" else TEMPLATES
+    template, op = rng.choice(pool)
     if op in "+-":
         def make():
             a, b = gen_pair(rng, cfg.operand_ranges,
@@ -32,7 +46,7 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
                             True if op == "+" else cfg.allow_negative)
             return a, b, (a + b if op == "+" else a - b)
 
-        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]))
+        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
     elif op == "×":
         lo, hi = cfg.multiplication_table
 
@@ -41,7 +55,7 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
             b = rng.randint(lo, hi)
             return a, b, a * b
 
-        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]))
+        a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
     else:
         lo, hi = cfg.multiplication_table
         d_lo, d_hi = cfg.divisor_range
@@ -51,7 +65,7 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
             quotient = rng.randint(lo, hi)
             return divisor, quotient, divisor * quotient
 
-        divisor, quotient, a = gen_result(make, lambda t: check_result(cfg)(t[1]))
+        divisor, quotient, a = gen_result(make, lambda t: check_result(cfg)(t[1]), *cfg.result_range)
         b = divisor
         result = quotient
     statement = template.format(a=a, b=b)

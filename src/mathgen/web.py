@@ -1,4 +1,4 @@
-"""FastAPI 网页入口：表单 → 预览 → PDF/zip 下载。"""
+"""FastAPI 网页入口：表单 → 预览 → PDF/zip 下载；中英双语 + 明暗主题。"""
 from __future__ import annotations
 
 import io
@@ -6,14 +6,15 @@ import json
 import sys
 import zipfile
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pathlib import Path
 
-from mathgen.config import Config, ConfigError, PRESETS, TOPIC_DEFAULTS, resolve
+from mathgen.config import Config, ConfigError, PRESETS, resolve
 from mathgen.core.engine import GenerationError, generate
+from mathgen.i18n import UI, LANGS, error_text, t
 from mathgen.output.pdf import render_pdf
 from mathgen.output.text import render_text
 
@@ -21,29 +22,54 @@ BASE = Path(__file__).resolve().parent
 app = FastAPI(title="mathgen")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 templates = Jinja2Templates(directory=BASE / "templates")
+templates.env.globals["t"] = t
 
-GRADE_OPTIONS = [("", "自定义")] + [(str(g), f"{g} 年级") for g in range(1, 7)]
 TOPIC_OPTIONS = [
-    ("arithmetic", "口算/四则"),
-    ("vertical", "竖式"),
-    ("word_problem", "应用题"),
+    ("arithmetic", "topic.arithmetic"),
+    ("vertical", "topic.vertical"),
+    ("word_problem", "topic.word_problem"),
 ]
 
-TOPIC_LABELS = dict(TOPIC_OPTIONS)
+_TOPIC_ICONS = {"arithmetic": "🧮", "vertical": "✍️", "word_problem": "📖"}
+_TOPIC_LABELS = dict(TOPIC_OPTIONS)
+_UI_JSON = json.dumps(UI, ensure_ascii=False)
 
 
-def _preset_summary(d: dict) -> str:
-    parts = [f"运算符 {d['operators']}"]
+def _lang(request: Request) -> str:
+    cookie = request.cookies.get("mathgen_lang")
+    if cookie in LANGS:
+        return cookie
+    accept = request.headers.get("accept-language", "")
+    if accept.lower().startswith("en"):
+        return "en"
+    return "zh"
+
+
+def _grade_options(lang: str) -> list[tuple[str, str]]:
+    return ([("", t("grade.custom", lang))]
+            + [(str(g), t("grade.x", lang, g=g)) for g in range(1, 7)])
+
+
+def _topic_options(lang: str) -> list[tuple[str, str]]:
+    return [(v, t(key, lang)) for v, key in TOPIC_OPTIONS]
+
+
+def _preset_summary(d: dict, lang: str) -> str:
+    parts = [f"{t('f.operators', lang)} {d['operators']}"]
     if d.get("operand_ranges"):
-        parts.append("范围 " + "、".join(f"{lo}-{hi}" for lo, hi in d["operand_ranges"]))
-    for key, zh in (("carry", "进位"), ("borrow", "借位")):
+        label = "Range" if lang == "en" else "范围"
+        parts.append(f"{label} " + "、".join(f"{lo}-{hi}" for lo, hi in d["operand_ranges"]))
+    for key, zh, en in (("carry", "进位", "Carry"), ("borrow", "借位", "Borrow")):
         if d.get(key) is not None:
-            parts.append(f"{zh} {'开' if d[key] else '关'}")
+            label = en if lang == "en" else zh
+            state = ("On" if d[key] else "Off") if lang == "en" else ("开" if d[key] else "关")
+            parts.append(f"{label} {state}")
     if d.get("parentheses"):
-        parts.append("带括号")
+        parts.append("()" if lang == "en" else "带括号")
     if d.get("answer_lines"):
-        parts.append(f"答题线 {d['answer_lines']} 行")
-    return "；".join(parts)
+        label = "lines" if lang == "en" else "答题线"
+        parts.append(f"{label} {d['answer_lines']}")
+    return "；".join(parts) if lang == "zh" else "; ".join(parts)
 
 
 def _preset_fields(d: dict) -> dict:
@@ -69,21 +95,24 @@ def _preset_fields(d: dict) -> dict:
 
 _PRESETS_JSON = json.dumps({
     "grades": {
-        str(g): {"summary": _preset_summary(d), "fields": _preset_fields(d)}
+        str(g): {"summary": _preset_summary(d, "zh"),
+                 "summary_en": _preset_summary(d, "en"),
+                 "fields": _preset_fields(d)}
         for g, d in PRESETS.items()},
-    "topics": {
-        t: f"默认题间距 {d['gap']}pt" + (f"，答题线 {d['answer_lines']} 行" if d["answer_lines"] else "")
-        for t, d in TOPIC_DEFAULTS.items()},
 }, ensure_ascii=False)
 
 
-def _index_context(form: dict | None = None, error: str | None = None) -> dict:
+def _index_context(form: dict | None = None, error: str | None = None,
+                   lang: str = "zh") -> dict:
     return {
         "form": form or {},
         "error": error,
+        "lang": lang,
         "presets_json": _PRESETS_JSON,
-        "grades": GRADE_OPTIONS,
-        "topics": TOPIC_OPTIONS,
+        "ui_json": _UI_JSON,
+        "grades": _grade_options(lang),
+        "topics": _topic_options(lang),
+        "topic_icons": _TOPIC_ICONS,
     }
 
 
@@ -128,6 +157,7 @@ def _config_from_form(form: dict) -> Config:
         title=form.get("title") or None,
         header=form.get("header") or None,
         sheets=i(form.get("sheets"), 1),
+        lang=form.get("lang") or None,
     )
 
 
@@ -173,12 +203,17 @@ def _as_query(cfg: Config) -> dict:
         q["header"] = cfg.header
     if cfg.sheets not in (None, 1):
         q["sheets"] = str(cfg.sheets)
+    if cfg.lang == "en":
+        q["lang"] = "en"
     return q
 
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    return templates.TemplateResponse(request, "index.html", _index_context())
+    lang = _lang(request)
+    form = {k: v for k, v in request.query_params.items()}
+    return templates.TemplateResponse(
+        request, "index.html", _index_context(form, None, lang))
 
 
 @app.get("/healthz")
@@ -191,16 +226,18 @@ async def generate_page(request: Request):
     fd = await request.form()
     form = dict(fd)
     form["operators"] = "".join(fd.getlist("operators"))
+    form.setdefault("lang", _lang(request))
+    lang = form["lang"] if form["lang"] in LANGS else _lang(request)
     try:
         cfg = _config_from_form(form)
     except ConfigError as e:
         return templates.TemplateResponse(
-            request, "index.html", _index_context(form, str(e)))
+            request, "index.html", _index_context(form, error_text(e.code, e.params, lang), lang))
     try:
         resolved = resolve(cfg)
     except ConfigError as e:
         return templates.TemplateResponse(
-            request, "index.html", _index_context(form, str(e)))
+            request, "index.html", _index_context(form, error_text(e.code, e.params, lang), lang))
     if cfg.seed is None:
         cfg.seed = resolved.seed
         form["seed"] = str(resolved.seed)
@@ -208,53 +245,58 @@ async def generate_page(request: Request):
         questions = generate(resolved)
     except GenerationError as e:
         return templates.TemplateResponse(
-            request, "index.html", _index_context(form, str(e)))
+            request, "index.html", _index_context(form, error_text(e.code, e.params, lang), lang))
     preview = render_text(questions, resolved)
     query = "&".join(f"{k}={v}" for k, v in _as_query(cfg).items())
-    grade_label = f"{cfg.grade} 年级" if cfg.grade else "自定义"
-    topic_label = TOPIC_LABELS.get(cfg.topic, cfg.topic)
-    summary = f"{grade_label} · {topic_label} · {len(questions)} 题"
+    grade_label = t("grade.x", lang, g=cfg.grade) if cfg.grade else t("grade.custom", lang)
+    topic_label = t(_TOPIC_LABELS.get(cfg.topic, cfg.topic), lang)
+    summary = t("preview.summary", lang, grade=grade_label, topic=topic_label,
+                count=len(questions))
+    cfg_fields = {k: v for k, v in _as_query(cfg).items() if k != "seed"}
     return templates.TemplateResponse(request, "preview.html", {
-        "preview": preview, "query": query,
+        "preview": preview, "query": query, "lang": lang, "ui_json": _UI_JSON,
         "sheets": resolved.sheets, "summary": summary,
-        "ncols": resolved.columns,
+        "ncols": resolved.columns, "cfg_fields": cfg_fields,
         "cells": [(i, q) for i, q in enumerate(questions, 1)]})
 
 
-def _download_params(form: dict) -> tuple[Config | None, str | None]:
+def _download_params(form: dict, lang: str) -> tuple[Config | None, str | None]:
     try:
         cfg = _config_from_form(form)
     except ConfigError as e:
-        return None, str(e)
+        return None, error_text(e.code, e.params, lang)
     try:
         resolve(cfg)
     except ConfigError as e:
-        return cfg, str(e)
+        return cfg, error_text(e.code, e.params, lang)
     if cfg.seed is None:
-        return cfg, "缺少 seed 参数，请先通过表单生成再下载。"
+        return cfg, error_text("seed_missing", None, lang)
     return cfg, None
 
 
 @app.get("/download.pdf")
 async def download_pdf(request: Request):
-    cfg, err = _download_params(dict(request.query_params))
+    cfg, err = _download_params(dict(request.query_params), _lang(request))
     if err:
         return Response(err, status_code=400, media_type="text/plain; charset=utf-8")
+    lang = cfg.lang if cfg and cfg.lang in LANGS else _lang(request)
     try:
         resolved = resolve(cfg)
         questions = generate(resolved)
         data = render_pdf(questions, resolved)
     except (GenerationError, ValueError) as e:
-        return Response(str(e), status_code=400, media_type="text/plain; charset=utf-8")
+        msg = error_text(e.code, e.params, lang) if isinstance(e, (ConfigError, GenerationError)) else str(e)
+        return Response(msg, status_code=400, media_type="text/plain; charset=utf-8")
     return Response(data, media_type="application/pdf",
                     headers={"Content-Disposition": "attachment; filename=math-sheet.pdf"})
 
 
 @app.get("/download.zip")
 async def download_zip(request: Request):
-    cfg, err = _download_params(dict(request.query_params))
+    cfg, err = _download_params(dict(request.query_params), _lang(request))
     if err:
         return Response(err, status_code=400, media_type="text/plain; charset=utf-8")
+    lang = cfg.lang if cfg and cfg.lang in LANGS else _lang(request)
     try:
         resolved = resolve(cfg)
         buf = io.BytesIO()
@@ -264,7 +306,8 @@ async def download_zip(request: Request):
                 z.writestr(f"sheet-{i:02d}.pdf", render_pdf(generate(resolved), resolved))
         data = buf.getvalue()
     except (GenerationError, ValueError) as e:
-        return Response(str(e), status_code=400, media_type="text/plain; charset=utf-8")
+        msg = error_text(e.code, e.params, lang) if isinstance(e, (ConfigError, GenerationError)) else str(e)
+        return Response(msg, status_code=400, media_type="text/plain; charset=utf-8")
     return Response(data, media_type="application/zip",
                     headers={"Content-Disposition": "attachment; filename=math-sheets.zip"})
 
