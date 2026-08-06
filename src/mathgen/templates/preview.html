@@ -40,9 +40,18 @@
     {% for i, q in cells %}<div class="cell">{% if show_numbers %}{{ i }}. {% endif %}{{ q.statement }}</div>{% endfor %}
   </div>
   <div class="pager" id="pager" hidden>
+    <label class="pager-per" for="perPage">
+      <span data-i18n="preview.per_page">{{ t("preview.per_page", lang) }}</span>
+      <select id="perPage">
+        <option value="6">6</option><option value="12" selected>12</option>
+        <option value="18">18</option><option value="24">24</option><option value="30">30</option>
+      </select>
+    </label>
     <button type="button" class="btn btn-secondary" id="pagePrev" data-i18n="pager.prev">{{ t("pager.prev", lang) }}</button>
     <span class="pager-page" id="pageLabel"></span>
     <button type="button" class="btn btn-secondary" id="pageNext" data-i18n="pager.next">{{ t("pager.next", lang) }}</button>
+    <input id="jumpInput" type="number" min="1" placeholder="{{ t('preview.jump_placeholder', lang) }}">
+    <button type="button" class="btn btn-secondary" id="jumpBtn" data-i18n="preview.jump">{{ t("preview.jump", lang) }}</button>
   </div>
   <nav class="actions" aria-label="重新出题">
     <form method="post" action="/generate" class="inline-form">
@@ -62,18 +71,20 @@
     if (!sheet) return;
     var cells = Array.prototype.slice.call(sheet.querySelectorAll('.cell'));
     var ncols = parseInt(sheet.getAttribute('data-ncols'), 10) || 2;
-    var per = ncols * 6;
-    if (cells.length <= per) return;
+    var perSelect = document.getElementById('perPage');
+    function perPage() { return parseInt(perSelect.value, 10) || (ncols * 6); }
+    if (cells.length <= perPage()) return;
     var pager = document.getElementById('pager');
     var prev = document.getElementById('pagePrev');
     var next = document.getElementById('pageNext');
     var label = document.getElementById('pageLabel');
-    var pages = Math.ceil(cells.length / per);
+    var pages = Math.ceil(cells.length / perPage());
     var cur = 0;
     var ui = JSON.parse(document.getElementById('ui-json').textContent);
     var lang = document.documentElement.lang === 'en' ? 'en' : 'zh';
     function tr(key) { return (ui[lang] && ui[lang][key]) || (ui.zh && ui.zh[key]) || key; }
     function render() {
+      var per = perPage();
       cells.forEach(function (c, i) {
         var show = i >= cur * per && i < (cur + 1) * per;
         c.style.display = show ? '' : 'none';
@@ -85,8 +96,20 @@
       void sheet.offsetWidth;
       sheet.classList.add('page-fade');
     }
+    function recompute() {
+      pages = Math.max(1, Math.ceil(cells.length / perPage()));
+      if (cur > pages - 1) cur = pages - 1;
+      render();
+    }
+    perSelect.addEventListener('change', recompute);
     prev.addEventListener('click', function () { if (cur > 0) { cur--; render(); } });
     next.addEventListener('click', function () { if (cur < pages - 1) { cur++; render(); } });
+    document.getElementById('jumpBtn').addEventListener('click', function () {
+      var n = parseInt(document.getElementById('jumpInput').value, 10);
+      if (!n) return;
+      cur = Math.min(Math.max(n - 1, 0), pages - 1);
+      render();
+    });
     document.addEventListener('langchange', function () { render(); });
     pager.hidden = false;
     render();

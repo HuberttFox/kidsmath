@@ -606,6 +606,12 @@ details#advanced[open] > summary { margin-bottom: .9em; }
 
 .pager { display: flex; align-items: center; justify-content: center; gap: 1em; margin: 1em 0; }
 .pager-page { font-weight: 700; color: var(--text-soft); }
+.pager-per { display: inline-flex; align-items: center; gap: .4em; font-weight: 700; color: var(--text-soft); }
+.pager-per select, #jumpInput {
+  padding: .4em .6em; border: 1.5px solid var(--input-border);
+  border-radius: var(--radius-sm); background: var(--input-bg);
+  font: inherit; color: var(--text); width: 72px;
+}
 
 /* ---- 页脚 ---- */
 .site-footer {

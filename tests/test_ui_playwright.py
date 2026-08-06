@@ -121,3 +121,22 @@ def test_generate_preview_and_download_flow(page):
     path = dl.value.path()
     with open(path, "rb") as f:
         assert f.read(4) == b"%PDF"
+
+
+def test_preview_per_page_and_jump(page):
+    page.goto(BASE + "/")
+    page.locator('label.grade-btn:has-text("2 年级")').click()
+    page.locator('#count').fill("30")
+    page.locator('button[type="submit"]').click()
+    expect(page.locator('#pager')).to_be_visible()
+    visible = page.locator('.cell:visible')
+    expect(visible).to_have_count(12)  # 默认 2 列 × 6 行
+    page.locator('#perPage').select_option("6")
+    expect(visible).to_have_count(6)
+    expect(page.locator('#pageLabel')).to_contain_text("5")  # 30/6=5 页
+    page.locator('#jumpInput').fill("3")
+    page.locator('#jumpBtn').click()
+    expect(page.locator('#pageLabel')).to_contain_text("3")
+    page.locator('#jumpInput').fill("99")
+    page.locator('#jumpBtn').click()
+    expect(page.locator('#pageLabel')).to_contain_text("5")  # 越界钳制
