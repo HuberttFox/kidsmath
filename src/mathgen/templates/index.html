@@ -41,8 +41,15 @@
       <legend>数值与运算</legend>
       <div class="form-grid">
         <label for="operators">运算符
-          {{ input("operators", form, "+-") }}
-          <small class="hint">可用字符 + − × ÷，如 +−×</small>
+          <div class="op-checkboxes" id="operators">
+            {% for op in ["加", "减", "乘", "除"] %}
+            <label class="op-item">
+              <input type="checkbox" name="operators" value="{{ op }}"{% if op in form.get("operators", "") %} checked{% endif %}>
+              <span>{{ op }}</span>
+            </label>
+            {% endfor %}
+          </div>
+          <small class="hint">不选则按年级预设；也可在命令行用 + - × ÷</small>
         </label>
         <label for="operand_count">运算数个数 {{ input("operand_count", form, "2", "number", min="2", max="4") }}</label>
         <label for="ranges">运算数范围

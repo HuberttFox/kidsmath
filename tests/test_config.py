@@ -48,6 +48,23 @@ def test_all_grades_resolve():
         assert r.operators, f"grade {g} empty operators"
 
 
+def test_operators_chinese_aliases_normalized():
+    r = resolve(Config(operators="加减乘除"))
+    assert r.operators == "+-×÷"
+    r2 = resolve(Config(operators="加乘加除"))
+    assert r2.operators == "+×÷"
+
+
+def test_operators_mixed_chinese_and_symbols():
+    r = resolve(Config(operators="加减×"))
+    assert r.operators == "+-×"
+
+
+def test_operators_unknown_chinese_still_errors():
+    with pytest.raises(ConfigError, match="运算符"):
+        resolve(Config(operators="加法"))
+
+
 def test_explicit_false_overrides_preset_parentheses():
     r = resolve(Config(grade=5, parentheses=False))
     assert r.parentheses is False

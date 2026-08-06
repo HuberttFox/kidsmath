@@ -91,7 +91,25 @@ def test_error_backfills_submitted_values():
     assert 'value="5"' in html
     assert 'value="2" selected' in html
     assert 'value="vertical" selected' in html
-    assert 'value="%"' in html
+
+
+def test_operators_chinese_checkboxes():
+    r = client.post("/generate", data={
+        "grade": "1", "count": "10", "topic": "arithmetic",
+        "operators": ["加", "减"]})
+    assert r.status_code == 200
+    assert "×" not in r.text and "÷" not in r.text
+    assert "+" in r.text and "-" in r.text
+
+
+def test_operators_checkbox_backfill_on_error():
+    r = client.post("/generate", data={
+        "grade": "9", "operators": ["加", "乘"]})
+    assert r.status_code == 200
+    html = r.text
+    assert 'value="加" checked' in html
+    assert 'value="乘" checked' in html
+    assert 'value="减" checked' not in html
 
 
 def test_preset_hints_embedded():

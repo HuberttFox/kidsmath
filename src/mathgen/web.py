@@ -160,7 +160,9 @@ async def index(request: Request):
 
 @app.post("/generate", response_class=HTMLResponse)
 async def generate_page(request: Request):
-    form = dict(await request.form())
+    fd = await request.form()
+    form = dict(fd)
+    form["operators"] = "".join(fd.getlist("operators"))
     try:
         cfg = _config_from_form(form)
     except ConfigError as e:

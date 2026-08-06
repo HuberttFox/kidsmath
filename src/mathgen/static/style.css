@@ -45,6 +45,10 @@ summary { cursor: pointer; font-weight: 600; color: var(--primary-dark); }
 .form-grid input:focus, .form-grid select:focus { outline: 2px solid var(--primary); outline-offset: 1px; }
 .form-grid label:has(input[type="checkbox"]) { flex-direction: row; align-items: center; }
 
+.op-checkboxes { display: flex; gap: 1em; flex-wrap: wrap; padding: .2em 0; }
+.op-checkboxes .op-item { display: inline-flex; align-items: center; gap: .3em; flex-direction: row; }
+.op-item input { accent-color: var(--primary); }
+
 .hint { color: #666; font-size: .78rem; }
 #preset-hint { min-height: 1.2em; }
 

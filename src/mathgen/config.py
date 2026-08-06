@@ -153,6 +153,19 @@ class ResolvedConfig:
     sheets: int
 
 
+_OP_ALIASES = {"加": "+", "减": "-", "乘": "×", "除": "÷"}
+
+
+def normalize_operators(ops: str) -> str:
+    """把汉字运算符（加减乘除）归一为 +-×÷，去重且保持顺序。"""
+    out: list[str] = []
+    for c in ops:
+        c = _OP_ALIASES.get(c, c)
+        if c not in out:
+            out.append(c)
+    return "".join(out)
+
+
 def _check_range(name: str, r: tuple[int, int]) -> None:
     lo, hi = r
     if lo < 0 or hi < lo:
@@ -202,8 +215,9 @@ def resolve(cfg: Config) -> ResolvedConfig:
         data["multiplication_table"] = (1, 9)
 
     # ---- 校验 ----
+    data["operators"] = normalize_operators(data["operators"])
     if not data["operators"] or any(c not in OPERATORS for c in data["operators"]):
-        raise ConfigError(f"运算符 {data['operators']!r} 不合法，可选字符：+ − × ÷（如 \"+−×\"）。")
+        raise ConfigError(f"运算符 {data['operators']!r} 不合法，可选：加 减 乘 除 或 + - × ÷（如 \"加减\"）。")
     if data["count"] <= 0:
         raise ConfigError(f"题目数量必须 > 0，当前 {data['count']}。建议改为 1 或更大。")
     if data["count"] > 500:
