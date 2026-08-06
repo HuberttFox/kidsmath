@@ -131,6 +131,8 @@ class Config:
     grade: int | None = None
     lang: str | None = None
     op_weights: dict[str, int] | None = None
+    show_numbers: bool | None = None
+    number_direction: str | None = None
 
 
 @dataclass
@@ -162,6 +164,9 @@ class ResolvedConfig:
     sheets: int
     lang: str
     op_weights: dict[str, int]
+    show_numbers: bool
+    number_direction: str
+    explicit_ranges: bool
 
 
 _OP_ALIASES = {"加": "+", "减": "-", "乘": "×", "除": "÷"}
@@ -196,7 +201,8 @@ def resolve(cfg: Config) -> ResolvedConfig:
             raise ConfigError("invalid_grade", g=cfg.grade)
         data.update(PRESETS[cfg.grade])
     for key in ("operators", "operand_count", "parentheses", "allow_negative",
-                "allow_decimal", "allow_remainder", "dedupe", "answer_page", "sheets"):
+                "allow_decimal", "allow_remainder", "dedupe", "answer_page", "sheets",
+                "show_numbers", "number_direction"):
         value = getattr(cfg, key)
         if value is not None:
             data[key] = value
@@ -205,7 +211,8 @@ def resolve(cfg: Config) -> ResolvedConfig:
                          ("allow_negative", False), ("allow_decimal", False),
                          ("allow_remainder", False), ("dedupe", True),
                          ("answer_page", True), ("operand_count", 2),
-                         ("sheets", 1)):
+                         ("sheets", 1), ("show_numbers", True),
+                         ("number_direction", "row")):
         if data.get(key) is None:
             data[key] = default
 
@@ -228,6 +235,7 @@ def resolve(cfg: Config) -> ResolvedConfig:
         data["divisor_range"] = (1, 9)
     if data["multiplication_table"] is None:
         data["multiplication_table"] = (1, 9)
+    data["explicit_ranges"] = cfg.operand_ranges is not None
 
     # ---- 校验 ----
     data["operators"] = normalize_operators(data["operators"])
@@ -255,6 +263,8 @@ def resolve(cfg: Config) -> ResolvedConfig:
         raise ConfigError("gap_negative", n=data["gap"])
     if data["answer_lines"] < 0:
         raise ConfigError("answer_lines_negative", n=data["answer_lines"])
+    if data["number_direction"] not in ("row", "column"):
+        raise ConfigError("invalid_number_direction", v=data["number_direction"])
     if data["operand_count"] < 2 or data["operand_count"] > 4:
         raise ConfigError("operand_count_range", n=data["operand_count"])
     ranges = data["operand_ranges"]

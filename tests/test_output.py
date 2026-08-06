@@ -46,3 +46,22 @@ def test_group_rows_single_column():
 def test_group_rows_exact_and_empty():
     assert group_rows([1, 2, 3, 4], 2) == [[1, 2], [3, 4]]
     assert group_rows([], 3) == []
+
+
+def test_arrange_column_direction():
+    from mathgen.output.text import arrange
+    qs = list("ABCDEFG")
+    rows = arrange(qs, 2, "column")
+    assert rows == [["A", "E"], ["B", "F"], ["C", "G"], ["D", None]]
+    rows2 = arrange(qs, 1, "column")
+    assert rows2 == [["A"], ["B"], ["C"], ["D"], ["E"], ["F"], ["G"]]
+    assert arrange(qs, 2, "row") == [["A", "B"], ["C", "D"], ["E", "F"], ["G"]]
+
+
+def test_render_text_without_numbers():
+    from mathgen.core.question import Question
+    cfg = resolve(Config(grade=1, count=2, seed=1, show_numbers=False))
+    qs = [Question("arithmetic", "3 + 5 = ____", "8", "3 + 5", None)] * 2
+    out = render_text(qs, cfg)
+    assert "1." not in out
+    assert "3 + 5 = ____" in out

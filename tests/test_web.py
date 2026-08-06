@@ -144,9 +144,16 @@ def test_index_has_semantic_structure():
 
 def test_index_round_font_and_hero():
     r = client.get("/")
-    assert "fonts.googleapis.com" in r.text
-    assert "M+PLUS+Rounded+1c" in r.text
+    assert "fonts.googleapis.com" not in r.text  # 已本地托管，无外链
     assert 'class="hero"' in r.text
+    css = client.get("/static/style.css").text
+    assert "@font-face" in css
+    assert "Yozai" in css
+    assert "woff2" in css
+    for w in ("400", "700"):
+        f = client.get(f"/static/fonts/yozai-{w}.woff2")
+        assert f.status_code == 200
+        assert f.content[:4] == b"wOF2"
 
 
 def test_healthz_endpoint():
@@ -294,6 +301,33 @@ def test_refactor_index_hero_nav_footer():
     r2 = client.get("/static/math-icon.svg")
     assert r2.status_code == 200
     assert r2.text.startswith("<svg")
+
+
+def test_numbering_options_roundtrip():
+    r = client.post("/generate", data={
+        "grade": "1", "count": "8", "topic": "arithmetic",
+        "show_numbers": "0", "number_direction": "column"})
+    assert r.status_code == 200
+    html = r.text
+    m = re.search(r'href="(/download\.pdf\?[^"]+)"', html)
+    href = unescape(m.group(1))
+    assert "show_numbers=0" in href
+    assert "number_direction=column" in href
+    assert 'data-direction="column"' in html
+    assert client.get(href).status_code == 200
+    # 默认不勾选时不含显式 0（保持默认开）
+    r2 = client.post("/generate", data={"grade": "1", "count": "3"})
+    m2 = re.search(r'href="(/download\.pdf\?[^"]+)"', r2.text)
+    href2 = unescape(m2.group(1))
+    assert "show_numbers=0" not in href2
+
+
+def test_index_has_numbering_form_controls():
+    r = client.get("/")
+    html = r.text
+    assert 'name="show_numbers"' in html
+    assert 'name="number_direction"' in html
+    assert 'value="column"' in html
 
 
 def test_lang_swap_attributes_present():

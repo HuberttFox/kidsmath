@@ -40,6 +40,9 @@ def _parse_argv(argv: list[str] | None) -> argparse.Namespace:
     gen.add_argument("--gap", type=int, default=None, help="题间距 pt")
     gen.add_argument("--answer-lines", type=int, default=None, help="每题答题横线数")
     gen.add_argument("--no-answer-page", action="store_true", help="不要答案页")
+    gen.add_argument("--no-numbers", action="store_true", help="不显示题号")
+    gen.add_argument("--number-direction", choices=["row", "column"], default=None,
+                     help="编号方向：row 横向（默认）/ column 竖向")
     gen.add_argument("--title", default=None, help="卷子标题")
     gen.add_argument("--header", default=None, help="页眉")
     gen.add_argument("--sheets", type=int, default=None, help="生成几份不重复卷子")
@@ -100,6 +103,8 @@ def _cfg_from_ns(ns: argparse.Namespace) -> Config:
         "dedupe": None if ns.no_dedupe is False else False if ns.no_dedupe else None,
         "columns": ns.columns, "gap": ns.gap, "answer_lines": ns.answer_lines,
         "answer_page": False if ns.no_answer_page else None,
+        "show_numbers": False if ns.no_numbers else None,
+        "number_direction": ns.number_direction,
         "title": ns.title, "header": ns.header, "sheets": ns.sheets,
         "lang": ns.lang, "parentheses": ns.parentheses,
         "op_weights": _parse_op_weights(ns.op_weights) if ns.op_weights else None,

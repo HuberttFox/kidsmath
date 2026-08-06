@@ -137,6 +137,44 @@ def test_multi_respects_table_and_divisor_range():
                     assert 2 <= nums[j + 1] <= 9, q.expression
 
 
+def test_two_digit_times_one_digit_explicit_ranges():
+    cfg = resolve(Config(grade=2, operators="×", count=20, seed=7,
+                         operand_ranges=[(10, 99), (2, 9)]))
+    assert cfg.explicit_ranges
+    for q in generate(cfg):
+        a, b = map(int, q.expression.replace("×", " ").split())
+        assert 10 <= a <= 99 and 2 <= b <= 9, q.expression
+    cfg2 = resolve(Config(grade=2, operators="×", count=20, seed=8,
+                          operand_ranges=[(2, 9), (10, 99)]))
+    for q in generate(cfg2):
+        a, b = map(int, q.expression.replace("×", " ").split())
+        assert 2 <= a <= 9 and 10 <= b <= 99, q.expression
+
+
+def test_division_dividend_divisor_positions():
+    cfg = resolve(Config(grade=3, operators="÷", count=20, seed=11,
+                         operand_ranges=[(10, 99), (2, 9)],
+                         multiplication_table=(2, 9)))
+    for q in generate(cfg):
+        a, b = map(int, q.expression.replace("÷", " ").split())
+        assert 10 <= a <= 99 and 2 <= b <= 9, q.expression
+    cfg2 = resolve(Config(grade=3, operators="÷", count=20, seed=12,
+                          operand_ranges=[(100, 999), (10, 99)],
+                          multiplication_table=(2, 9)))
+    for q in generate(cfg2):
+        a, b = map(int, q.expression.replace("÷", " ").split())
+        assert 100 <= a <= 999 and 10 <= b <= 99, q.expression
+
+
+def test_preset_multiplication_still_table():
+    cfg = resolve(Config(grade=2, operators="×", count=20, seed=13))
+    assert not cfg.explicit_ranges
+    for q in generate(cfg):
+        a, b = map(int, q.expression.replace("×", " ").split())
+        lo, hi = cfg.multiplication_table
+        assert lo <= a <= hi and lo <= b <= hi
+
+
 def test_multi_result_within_range():
     cfg = resolve(Config(grade=5, count=30, seed=5))
     lo, hi = cfg.result_range

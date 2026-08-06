@@ -11,7 +11,7 @@ from mathgen.config import ResolvedConfig
 from mathgen.core.question import Question
 from mathgen.output.answer import answer_lines
 from mathgen.output.fonts import register_fonts
-from mathgen.output.text import group_rows
+from mathgen.output.text import arrange
 
 MARGIN = 18 * mm
 LINE_GAP = 16
@@ -65,10 +65,13 @@ def _answer_area(cfg: ResolvedConfig) -> float:
 def _draw_item(c, x, top, row_h, idx, q, cfg, font, size, col_w) -> None:
     if q.layout and q.layout.get("kind") == "vertical":
         c.setFont(font, size)
-        c.drawString(x, top - 2, f"{idx}.")
-        _draw_vertical(c, x + GUTTER, top - 2, q.layout, font, size)
+        if cfg.show_numbers:
+            c.drawString(x, top - 2, f"{idx}.")
+            _draw_vertical(c, x + GUTTER, top - 2, q.layout, font, size)
+        else:
+            _draw_vertical(c, x, top - 2, q.layout, font, size)
     else:
-        text = f"{idx}. {q.statement}"
+        text = f"{idx}. {q.statement}" if cfg.show_numbers else q.statement
         fs = size
         if c.stringWidth(text, font, size) > col_w - GUTTER:
             fs = 12
@@ -112,16 +115,20 @@ def render_pdf(questions: list[Question], cfg: ResolvedConfig) -> bytes:
         top = height - MARGIN - 40
         draw_header()
 
-    rows = group_rows(questions, ncols)
-    idx = 1
+    rows = arrange(questions, ncols, cfg.number_direction)
+    numbers = {id(q): i for i, q in enumerate(questions, 1)}
     for row in rows:
-        row_h = max(_item_base(q, SIZE) for q in row) + _answer_area(cfg)
+        items = [q for q in row if q is not None]
+        if not items:
+            continue
+        row_h = max(_item_base(q, SIZE) for q in items) + _answer_area(cfg)
         if top - row_h < MARGIN:
             ensure_space(row_h)
         for j, q in enumerate(row):
+            if q is None:
+                continue
             x = MARGIN + j * col_w
-            _draw_item(c, x, top, row_h, idx, q, cfg, font, SIZE, col_w)
-            idx += 1
+            _draw_item(c, x, top, row_h, numbers[id(q)], q, cfg, font, SIZE, col_w)
         top -= row_h + cfg.gap
 
     if cfg.answer_page:

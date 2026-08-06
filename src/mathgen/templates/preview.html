@@ -34,9 +34,10 @@
   <h2 class="preview-heading" data-i18n="preview.title">{{ t("preview.title", lang) }}</h2>
   <div class="sheet preview"
        data-ncols="{{ ncols }}"
+       data-direction="{{ number_direction }}"
        style="grid-template-columns: repeat({{ ncols }}, minmax(0, 1fr));"
        aria-label="题目列表">
-    {% for i, q in cells %}<div class="cell">{{ i }}. {{ q.statement }}</div>{% endfor %}
+    {% for i, q in cells %}<div class="cell">{% if show_numbers %}{{ i }}. {% endif %}{{ q.statement }}</div>{% endfor %}
   </div>
   <div class="pager" id="pager" hidden>
     <button type="button" class="btn btn-secondary" id="pagePrev" data-i18n="pager.prev">{{ t("pager.prev", lang) }}</button>

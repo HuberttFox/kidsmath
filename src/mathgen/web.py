@@ -17,7 +17,7 @@ from mathgen.config import Config, ConfigError, PRESETS, resolve
 from mathgen.core.engine import GenerationError, generate
 from mathgen.i18n import UI, LANGS, error_text, t
 from mathgen.output.pdf import render_pdf
-from mathgen.output.text import render_text
+from mathgen.output.text import arrange, render_text
 
 BASE = Path(__file__).resolve().parent
 app = FastAPI(title="mathgen")
@@ -165,6 +165,8 @@ def _config_from_form(form: dict) -> Config:
         lang=form.get("lang") or None,
         parentheses=form.get("parentheses") == "1",
         op_weights=_parse_op_weights(form),
+        show_numbers=form.get("show_numbers") != "0",
+        number_direction=form.get("number_direction") or None,
     )
 
 
@@ -234,6 +236,10 @@ def _as_query(cfg: Config) -> dict:
         q["parentheses"] = "1" if cfg.parentheses else "0"
     if cfg.op_weights:
         q["op_weights"] = ",".join(f"{k}={v}" for k, v in cfg.op_weights.items())
+    if cfg.show_numbers is False:
+        q["show_numbers"] = "0"
+    if cfg.number_direction == "column":
+        q["number_direction"] = "column"
     if cfg.title:
         q["title"] = cfg.title
     if cfg.header:
@@ -293,13 +299,21 @@ async def generate_page(request: Request):
         "grade": cfg.grade or "", "topic": cfg.topic, "count": len(questions)},
         ensure_ascii=False)
     cfg_fields = {k: v for k, v in _as_query(cfg).items() if k != "seed"}
+    numbers = {id(q): i for i, q in enumerate(questions, 1)}
+    cells = []
+    for row in arrange(questions, resolved.columns, resolved.number_direction):
+        for q in row:
+            if q is not None:
+                cells.append((numbers[id(q)], q))
     return templates.TemplateResponse(request, "preview.html", {
         "preview": preview, "query": query, "lang": lang, "ui_json": _UI_JSON,
         "sheets": resolved.sheets, "summary": summary, "summary_data": summary_data,
         "ncols": resolved.columns, "cfg_fields": cfg_fields,
         "meta_count": len(questions), "meta_sheets": resolved.sheets,
         "version": __version__,
-        "cells": [(i, q) for i, q in enumerate(questions, 1)]})
+        "show_numbers": resolved.show_numbers,
+        "number_direction": resolved.number_direction,
+        "cells": cells})
 
 
 def _download_params(form: dict, lang: str) -> tuple[Config | None, str | None]:

@@ -185,6 +185,22 @@
             <option value="off"{% if form.get("answer_page", "on") == "off" %} selected{% endif %} data-i18n="opt.no">{{ t("opt.no", lang) }}</option>
           </select>
         </label>
+        <div class="field-group">
+          <input type="hidden" name="show_numbers" value="0">
+          <label class="toggle-line" for="show_numbers">
+            <input id="show_numbers" type="checkbox" name="show_numbers" value="1"{% if form.get("show_numbers", "1") != "0" %} checked{% endif %}>
+            <span data-i18n="f.show_numbers">{{ t("f.show_numbers", lang) }}</span>{{ tip("tip.show_numbers") }}
+          </label>
+        </div>
+        <label class="field-group" for="number_direction">
+          <span class="field-label">
+            <span data-i18n="f.number_direction">{{ t("f.number_direction", lang) }}</span>{{ tip("tip.number_direction") }}
+          </span>
+          <select id="number_direction" name="number_direction">
+            <option value="row"{% if form.get("number_direction", "row") == "row" %} selected{% endif %} data-i18n="opt.row">{{ t("opt.row", lang) }}</option>
+            <option value="column"{% if form.get("number_direction", "row") == "column" %} selected{% endif %} data-i18n="opt.column">{{ t("opt.column", lang) }}</option>
+          </select>
+        </label>
         <label class="field-group" for="title">
           <span class="field-label">
             <span data-i18n="f.title">{{ t("f.title", lang) }}</span>{{ tip("tip.title") }}

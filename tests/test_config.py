@@ -111,6 +111,15 @@ def test_pick_op_respects_weights():
     assert seen2 == {"+", "×"}
 
 
+def test_numbering_options_defaults_and_validation():
+    r = resolve(Config(grade=2))
+    assert r.show_numbers is True and r.number_direction == "row"
+    r2 = resolve(Config(grade=2, show_numbers=False, number_direction="column"))
+    assert r2.show_numbers is False and r2.number_direction == "column"
+    with pytest.raises(ConfigError, match="编号方向"):
+        resolve(Config(number_direction="diag"))
+
+
 def test_explicit_false_overrides_preset_parentheses():
     r = resolve(Config(grade=5, parentheses=False))
     assert r.parentheses is False

@@ -33,18 +33,30 @@ def _gen_two(cfg: ResolvedConfig, rng: random.Random) -> Question:
 
         a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
     elif op == "×":
-        lo, hi = cfg.multiplication_table
+        if cfg.explicit_ranges:
+            lo0, hi0 = cfg.operand_ranges[0]
+            lo1, hi1 = cfg.operand_ranges[1]
 
-        def make():
-            a = gen_operand(rng, lo, hi)
-            b = gen_operand(rng, lo, hi)
-            return a, b, a * b
+            def make():
+                a = gen_operand(rng, lo0, hi0)
+                b = gen_operand(rng, lo1, hi1)
+                return a, b, a * b
+        else:
+            lo, hi = cfg.multiplication_table
+
+            def make():
+                a = gen_operand(rng, lo, hi)
+                b = gen_operand(rng, lo, hi)
+                return a, b, a * b
 
         a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
     else:  # ÷
         lo0, hi0 = cfg.operand_ranges[0]
         q_lo, q_hi = cfg.multiplication_table
-        d_lo, d_hi = cfg.divisor_range
+        if cfg.explicit_ranges:
+            d_lo, d_hi = cfg.operand_ranges[1]
+        else:
+            d_lo, d_hi = cfg.divisor_range
 
         def make():
             divisor = gen_operand(rng, d_lo, d_hi)
@@ -132,10 +144,10 @@ def _gen_multi(cfg: ResolvedConfig, rng: random.Random, n: int) -> Question:
         operands = [gen_operand(rng, *cfg.operand_ranges[0])]
         for i in range(1, n):
             prev = ops[i - 1]
-            if prev == "×":
+            if prev == "×" and not cfg.explicit_ranges:
                 lo, hi = cfg.multiplication_table
                 operands.append(gen_operand(rng, lo, hi))
-            elif prev == "÷":
+            elif prev == "÷" and not cfg.explicit_ranges:
                 lo, hi = cfg.divisor_range
                 operands.append(gen_operand(rng, lo, hi))
             else:

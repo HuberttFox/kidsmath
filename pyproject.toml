@@ -12,8 +12,9 @@ dependencies = [
     "fastapi>=0.110",
     "uvicorn>=0.29",
     "jinja2>=3.1",
-    "fonttools>=4.50",
+    "fonttools[woff2]>=4.50",
     "python-multipart>=0.0.9",
+    "brotli>=1.2.0",
 ]
 
 [project.optional-dependencies]
