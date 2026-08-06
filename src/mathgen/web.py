@@ -31,13 +31,22 @@ FORM_FIELDS = [
 
 def _config_from_form(form: dict) -> Config:
     def i(v, default=None):
-        return int(v) if v not in (None, "") else default
+        if v in (None, ""):
+            return default
+        try:
+            return int(v)
+        except ValueError:
+            raise ConfigError(f"参数格式不正确：{v!r} 应为整数。") from None
 
     def rng(v):
         if v in (None, ""):
             return None
-        lo, hi = v.split("-")
-        return (int(lo), int(hi))
+        parts = v.split("-")
+        try:
+            lo, hi = int(parts[0]), int(parts[1])
+        except (ValueError, IndexError):
+            raise ConfigError(f"参数格式不正确：{v!r} 应为“最小值-最大值”。") from None
+        return (lo, hi)
 
     return Config(
         grade=i(form.get("grade")),
@@ -72,9 +81,9 @@ def _as_query(cfg: Config) -> dict:
         q["topic"] = cfg.topic
     if cfg.operators:
         q["operators"] = cfg.operators
-    if cfg.count != 20:
+    if cfg.count not in (None, 20):
         q["count"] = str(cfg.count)
-    if cfg.operand_count != 2:
+    if cfg.operand_count not in (None, 2):
         q["operand_count"] = str(cfg.operand_count)
     if cfg.operand_ranges:
         q["ranges"] = ",".join(f"{lo}-{hi}" for lo, hi in cfg.operand_ranges)
@@ -92,7 +101,7 @@ def _as_query(cfg: Config) -> dict:
         q["table"] = f"{cfg.multiplication_table[0]}-{cfg.multiplication_table[1]}"
     if cfg.seed is not None:
         q["seed"] = str(cfg.seed)
-    if cfg.columns != 2:
+    if cfg.columns not in (None, 2):
         q["columns"] = str(cfg.columns)
     if cfg.gap is not None:
         q["gap"] = str(cfg.gap)
@@ -104,7 +113,7 @@ def _as_query(cfg: Config) -> dict:
         q["title"] = cfg.title
     if cfg.header:
         q["header"] = cfg.header
-    if cfg.sheets != 1:
+    if cfg.sheets not in (None, 1):
         q["sheets"] = str(cfg.sheets)
     return q
 
@@ -117,7 +126,10 @@ async def index(request: Request):
 @app.post("/generate", response_class=HTMLResponse)
 async def generate_page(request: Request):
     form = dict(await request.form())
-    cfg = _config_from_form(form)
+    try:
+        cfg = _config_from_form(form)
+    except ConfigError as e:
+        return templates.TemplateResponse(request, "index.html", {"error": str(e)})
     try:
         resolved = resolve(cfg)
     except ConfigError as e:
@@ -136,8 +148,11 @@ async def generate_page(request: Request):
         "sheets": resolved.sheets})
 
 
-def _download_params(form: dict) -> tuple[Config, str | None]:
-    cfg = _config_from_form(form)
+def _download_params(form: dict) -> tuple[Config | None, str | None]:
+    try:
+        cfg = _config_from_form(form)
+    except ConfigError as e:
+        return None, str(e)
     try:
         resolve(cfg)
     except ConfigError as e:
