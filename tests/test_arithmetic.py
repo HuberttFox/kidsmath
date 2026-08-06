@@ -71,3 +71,22 @@ def test_parentheses():
             saw_paren = True
             assert _eval(q.expression) == int(q.answer)
     assert saw_paren
+
+
+def test_multi_result_within_range():
+    cfg = resolve(Config(grade=5, count=30, seed=5))
+    lo, hi = cfg.result_range
+    for _ in range(30):
+        q = gen(cfg, random.Random(42))
+        result = _eval(q.expression)
+        assert lo <= result <= hi, q.expression
+        assert result >= 0, q.expression
+
+
+def test_two_operand_mul_within_range():
+    cfg = resolve(Config(grade=3, operators="×", count=30, seed=3))
+    lo, hi = cfg.result_range
+    for _ in range(30):
+        q = gen(cfg, random.Random(42))
+        result = _eval(q.expression)
+        assert lo <= result <= hi, q.expression

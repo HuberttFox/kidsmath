@@ -40,9 +40,17 @@ def _gen_two(cfg: ResolvedConfig, rng: random.Random) -> Question:
                 f"建议：扩大结果范围或放宽进位/借位要求。")
     elif op == "×":
         lo, hi = cfg.multiplication_table
-        a = gen_operand(rng, lo, hi)
-        b = gen_operand(rng, lo, hi)
-        result = a * b
+        r_lo, r_hi = cfg.result_range
+        for _ in range(1000):
+            a = gen_operand(rng, lo, hi)
+            b = gen_operand(rng, lo, hi)
+            result = a * b
+            if r_lo <= result <= r_hi:
+                break
+        else:
+            raise RuntimeError(
+                f"在乘法表范围 {cfg.multiplication_table}、结果范围 {cfg.result_range} 下找不到题目。"
+                f"建议：扩大结果范围或调小乘法表。")
     else:  # ÷
         lo0, hi0 = cfg.operand_ranges[0]
         q_lo, q_hi = cfg.multiplication_table
@@ -121,6 +129,9 @@ def _gen_multi(cfg: ResolvedConfig, rng: random.Random, n: int) -> Question:
         tokens.append(str(operands[-1]))
         result = _eval_precedence(tokens)
         if result is None:
+            continue
+        r_lo, r_hi = cfg.result_range
+        if not (r_lo <= result <= r_hi) or (result < 0 and not cfg.allow_negative):
             continue
         expr = " ".join(tokens)
         if cfg.parentheses and n > 2:
