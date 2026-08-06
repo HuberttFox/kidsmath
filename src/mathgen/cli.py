@@ -15,14 +15,14 @@ from mathgen.output.text import render_text
 def _parse_argv(argv: list[str] | None) -> argparse.Namespace:
     if argv is None:
         argv = list(sys.argv[1:])
-    if argv and argv[0] not in ("generate", "serve"):
+    if not argv or argv[0] not in ("generate", "serve"):
         argv = ["generate", *argv]
     p = argparse.ArgumentParser(
         prog="mathgen", description="小学数学练习题生成：口算/竖式/应用题，PDF + 答案页。")
     sub = p.add_subparsers(dest="sub")
     gen = sub.add_parser("generate", help="生成卷子（默认）")
     gen.add_argument("-g", "--grade", type=int, default=None, help="年级 1-6，一键预设")
-    gen.add_argument("-t", "--topic", default="arithmetic",
+    gen.add_argument("-t", "--topic", default=None,
                      choices=["arithmetic", "vertical", "word_problem"], help="题型")
     gen.add_argument("-o", "--operators", default=None, help="运算符，如 +-×÷")
     gen.add_argument("-n", "--count", type=int, default=None, help="题目数")
@@ -118,14 +118,22 @@ def main(argv: list[str] | None = None) -> int:
             Path(path).write_bytes(data)
             print(f"已生成：{path}")
             return 0
-        import io
-        import zipfile
-        zpath = out + ".zip"
-        with zipfile.ZipFile(zpath, "w") as z:
-            for i in range(1, sheets + 1):
-                data = _generate_sheet(cfg, i)
-                z.writestr(f"sheet-{i:02d}.pdf", data)
-        print(f"已生成 {sheets} 份卷子：{zpath}")
+        if ns.zip:
+            import zipfile
+            zpath = out + ".zip"
+            with zipfile.ZipFile(zpath, "w") as z:
+                for i in range(1, sheets + 1):
+                    data = _generate_sheet(cfg, i)
+                    z.writestr(f"sheet-{i:02d}.pdf", data)
+            print(f"已生成 {sheets} 份卷子：{zpath}")
+            return 0
+        base = out[:-4] if out.endswith(".pdf") else out
+        paths = []
+        for i in range(1, sheets + 1):
+            path = f"{base}-{i:02d}.pdf"
+            Path(path).write_bytes(_generate_sheet(cfg, i))
+            paths.append(path)
+        print(f"已生成 {sheets} 份卷子：{' '.join(paths)}")
         return 0
     except ConfigError as e:
         print(f"参数错误：{e}", file=sys.stderr)

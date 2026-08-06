@@ -34,3 +34,59 @@ def test_config_file_toml():
         r = run_cli("-c", str(p), "--format", "text")
     assert r.returncode == 0, r.stderr
     assert "1." in r.stdout
+
+
+def test_bare_generate_text():
+    r = run_cli("--format", "text")
+    assert r.returncode == 0, r.stderr
+    assert "1." in r.stdout
+
+
+def test_toml_topic_not_clobbered_by_flag_default():
+    import tempfile
+    import pathlib
+    from mathgen.cli import _cfg_from_ns, _parse_argv
+    with tempfile.TemporaryDirectory() as d:
+        p = pathlib.Path(d) / "c.toml"
+        p.write_text('topic = "vertical"\ncount = 4\n', encoding="utf-8")
+        cfg = _cfg_from_ns(_parse_argv(["-c", str(p)]))
+    assert cfg.topic == "vertical"
+
+
+def test_topic_flag_beats_toml():
+    import tempfile
+    import pathlib
+    from mathgen.cli import _cfg_from_ns, _parse_argv
+    with tempfile.TemporaryDirectory() as d:
+        p = pathlib.Path(d) / "c.toml"
+        p.write_text('topic = "vertical"\ncount = 4\n', encoding="utf-8")
+        cfg = _cfg_from_ns(_parse_argv(["-c", str(p), "-t", "arithmetic"]))
+    assert cfg.topic == "arithmetic"
+
+
+def test_sheets_without_zip_writes_individual_pdfs():
+    import pathlib
+    import tempfile
+    with tempfile.TemporaryDirectory() as d:
+        d = pathlib.Path(d)
+        prefix = str(d / "sheet")
+        r = run_cli("--sheets", "2", "--format", "pdf", "-f", prefix)
+        assert r.returncode == 0, r.stderr
+        assert (d / "sheet-01.pdf").exists()
+        assert (d / "sheet-02.pdf").exists()
+        assert not (d / "sheet.zip").exists()
+
+
+def test_sheets_with_zip_writes_single_zip():
+    import pathlib
+    import tempfile
+    import zipfile
+    with tempfile.TemporaryDirectory() as d:
+        d = pathlib.Path(d)
+        prefix = str(d / "sheet")
+        r = run_cli("--sheets", "2", "--zip", "--format", "pdf", "-f", prefix)
+        assert r.returncode == 0, r.stderr
+        z = d / "sheet.zip"
+        assert z.exists()
+        with zipfile.ZipFile(z) as zf:
+            assert sorted(zf.namelist()) == ["sheet-01.pdf", "sheet-02.pdf"]

@@ -196,6 +196,10 @@ def resolve(cfg: Config) -> ResolvedConfig:
     data["columns"] = cfg.columns
     data["gap"] = cfg.gap if cfg.gap is not None else TOPIC_DEFAULTS[cfg.topic]["gap"]
     data["answer_lines"] = cfg.answer_lines if cfg.answer_lines is not None else TOPIC_DEFAULTS[cfg.topic]["answer_lines"]
+    if data["divisor_range"] is None:
+        data["divisor_range"] = (1, 9)
+    if data["multiplication_table"] is None:
+        data["multiplication_table"] = (1, 9)
 
     # ---- 校验 ----
     if not data["operators"] or any(c not in OPERATORS for c in data["operators"]):

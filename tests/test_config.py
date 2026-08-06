@@ -74,3 +74,9 @@ def test_explicit_operand_count_overrides_grade5_preset():
 
 def test_explicit_sheets_overrides_preset_default():
     assert resolve(Config(grade=2, sheets=3)).sheets == 3
+
+
+def test_bare_resolve_no_grade_no_crash():
+    r = resolve(Config())
+    assert r.divisor_range == (1, 9)
+    assert r.multiplication_table == (1, 9)
