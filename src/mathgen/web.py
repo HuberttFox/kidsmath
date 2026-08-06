@@ -130,8 +130,7 @@ PLACEHOLDER_PAGES = {
 
 
 def _placeholder_context(lang: str, title_key: str, cards) -> dict:
-    cards_i18n = [(icon, t(t_key, lang), t(d_key, lang),
-                   link and t("coming_soon", lang) or None)
+    cards_i18n = [(icon, t(t_key, lang), t(d_key, lang), link)
                   for icon, t_key, d_key, link in cards]
     return {
         "lang": lang, "ui_json": _UI_JSON, "title": t(title_key, lang),

@@ -467,3 +467,7 @@ def test_placeholder_pages():
         assert "coming-soon" in r.text, path
     r = client.get("/")
     assert 'href="/user"' in r.text  # header 用户入口
+    assert 'href="/member/timer"' in client.get("/member").text
+    assert 'href="/user/history"' in client.get("/user").text
+    assert 'href="即将上线"' not in client.get("/member").text
+    assert 'href="Coming soon"' not in client.get("/member").text
