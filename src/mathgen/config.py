@@ -100,7 +100,7 @@ class Config:
 
     topic: str = "arithmetic"
     operators: str | None = None
-    operand_count: int = 2
+    operand_count: int | None = None
     parentheses: bool | None = None
     operand_ranges: list[tuple[int, int]] | None = None
     result_range: tuple[int, int] | None = None
@@ -120,7 +120,7 @@ class Config:
     answer_page: bool | None = None
     title: str | None = None
     header: str | None = None
-    sheets: int = 1
+    sheets: int | None = None
     grade: int | None = None
 
 
@@ -176,7 +176,8 @@ def resolve(cfg: Config) -> ResolvedConfig:
     for key, default in (("operators", "+-"), ("parentheses", False),
                          ("allow_negative", False), ("allow_decimal", False),
                          ("allow_remainder", False), ("dedupe", True),
-                         ("answer_page", True)):
+                         ("answer_page", True), ("operand_count", 2),
+                         ("sheets", 1)):
         if data.get(key) is None:
             data[key] = default
 

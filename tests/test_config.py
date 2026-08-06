@@ -56,3 +56,21 @@ def test_explicit_answer_page_false_overrides_preset():
 def test_zero_operand_count_raises_chinese_error():
     with pytest.raises(ConfigError, match="运算数个数"):
         resolve(Config(operand_count=0))
+
+
+def test_grade5_preset_operand_count_kept():
+    r = resolve(Config(grade=5))
+    assert r.operand_count == 3
+    assert len(r.operand_ranges) == 3
+
+
+def test_grade6_preset_operand_count_kept():
+    assert resolve(Config(grade=6)).operand_count == 4
+
+
+def test_explicit_operand_count_overrides_grade5_preset():
+    assert resolve(Config(grade=5, operand_count=2)).operand_count == 2
+
+
+def test_explicit_sheets_overrides_preset_default():
+    assert resolve(Config(grade=2, sheets=3)).sheets == 3
