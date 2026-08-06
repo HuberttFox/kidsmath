@@ -1,13 +1,5 @@
 {% extends "base.html" %}
 
-{% macro select(name, options, form, default="") %}
-<select id="{{ name }}" name="{{ name }}">
-  {% for value, label in options %}
-  <option value="{{ value }}"{% if form.get(name, default) == value %} selected{% endif %}>{{ label }}</option>
-  {% endfor %}
-</select>
-{% endmacro %}
-
 {% macro input(name, form, default="", type="text", placeholder="", min="", max="") %}
 <input id="{{ name }}" name="{{ name }}" type="{{ type }}" value="{{ form.get(name, default) }}"
   {% if placeholder %}placeholder="{{ placeholder }}"{% endif %}
@@ -21,26 +13,55 @@
 {% block title %}生成练习卷 - mathgen{% endblock %}
 
 {% block content %}
-<h1>小学数学练习题生成</h1>
+<section class="hero">
+  <div class="hero-badge"><span>完全免费 · 开源 · 离线出题</span></div>
+  <h1 class="hero-title">给孩子出数学题</h1>
+  <p class="hero-tagline">选个年级，点一下，一张漂亮的练习卷就出来了</p>
+</section>
 
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
 
-<form method="post" action="/generate">
-  <fieldset>
-    <legend>基础设置</legend>
+<form method="post" action="/generate" class="sheet-form">
+  <fieldset class="card card-mint">
+    <legend>🎯 基础设置</legend>
     <div class="form-grid">
-      <label for="grade">年级 {{ select("grade", grades, form) }}</label>
-      <label for="topic">题型 {{ select("topic", topics, form) }}</label>
-      <label for="count">题目数 {{ input("count", form, "20", "number", min="1") }}</label>
+      <div class="field-group">
+        <label class="field-label" for="grade">年级</label>
+        <div class="grade-group" id="grade" role="radiogroup" aria-label="年级">
+          {% for value, label in grades %}
+          <label class="grade-btn">
+            <input type="radio" name="grade" value="{{ value }}"{% if form.get("grade", "") == value %} checked{% endif %}>
+            <span>{{ label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label" for="topic">题型</label>
+        <div class="topic-group" id="topic" role="radiogroup" aria-label="题型">
+          {% for value, label in topics %}
+          <label class="topic-card">
+            <input type="radio" name="topic" value="{{ value }}"{% if form.get("topic", "arithmetic") == value %} checked{% endif %}>
+            <span class="topic-icon">{{ {"arithmetic": "🧮", "vertical": "✍️", "word_problem": "📖"}[value] }}</span>
+            <span class="topic-label">{{ label }}</span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+      <label class="field-group" for="count">
+        <span class="field-label">题目数</span>
+        {{ input("count", form, "20", "number", min="1") }}
+      </label>
     </div>
   </fieldset>
 
   <details id="advanced">
-    <summary>高级参数</summary>
-    <fieldset>
-      <legend>数值与运算</legend>
+    <summary>🔧 高级参数</summary>
+    <fieldset class="card card-pink">
+      <legend>🔢 数值与运算</legend>
       <div class="form-grid">
-        <label for="operators">运算符
+        <div class="field-group">
+          <span class="field-label">运算符</span>
           <div class="op-checkboxes" id="operators">
             {% for op in ["加", "减", "乘", "除"] %}
             <label class="op-item">
@@ -50,41 +71,100 @@
             {% endfor %}
           </div>
           <small class="hint">不选则按年级预设；也可在命令行用 + - × ÷</small>
+        </div>
+        <label class="field-group" for="operand_count">
+          <span class="field-label">运算数个数</span>
+          {{ input("operand_count", form, "2", "number", min="2", max="4") }}
         </label>
-        <label for="operand_count">运算数个数 {{ input("operand_count", form, "2", "number", min="2", max="4") }}</label>
-        <label for="ranges">运算数范围
+        <label class="field-group" for="ranges">
+          <span class="field-label">运算数范围</span>
           {{ input("ranges", form, placeholder="10-99,2-9") }}
           <small class="hint">每个运算数一对 最小-最大，逗号分隔</small>
         </label>
-        <label for="result_range">结果范围 {{ input("result_range", form, placeholder="0-100") }}</label>
-        <label for="carry">进位 {{ select("carry", [("", "随机"), ("yes", "要进位"), ("no", "不进位")], form) }}</label>
-        <label for="borrow">借位 {{ select("borrow", [("", "随机"), ("yes", "要借位"), ("no", "不借位")], form) }}</label>
-        <label for="divisor_range">除数范围 {{ input("divisor_range", form, placeholder="2-9") }}</label>
-        <label for="remainder">{{ checkbox("remainder", form) }} 允许余数</label>
-        <label for="table">乘法表/商范围 {{ input("table", form, placeholder="1-9") }}</label>
+        <label class="field-group" for="result_range">
+          <span class="field-label">结果范围</span>
+          {{ input("result_range", form, placeholder="0-100") }}
+        </label>
+        <label class="field-group" for="carry">
+          <span class="field-label">进位</span>
+          <select id="carry" name="carry">
+            <option value=""{% if form.get("carry", "") == "" %} selected{% endif %}>随机</option>
+            <option value="yes"{% if form.get("carry") == "yes" %} selected{% endif %}>要进位</option>
+            <option value="no"{% if form.get("carry") == "no" %} selected{% endif %}>不进位</option>
+          </select>
+        </label>
+        <label class="field-group" for="borrow">
+          <span class="field-label">借位</span>
+          <select id="borrow" name="borrow">
+            <option value=""{% if form.get("borrow", "") == "" %} selected{% endif %}>随机</option>
+            <option value="yes"{% if form.get("borrow") == "yes" %} selected{% endif %}>要借位</option>
+            <option value="no"{% if form.get("borrow") == "no" %} selected{% endif %}>不借位</option>
+          </select>
+        </label>
+        <label class="field-group" for="divisor_range">
+          <span class="field-label">除数范围</span>
+          {{ input("divisor_range", form, placeholder="2-9") }}
+        </label>
+        <div class="field-group">
+          <label class="toggle-line" for="remainder">{{ checkbox("remainder", form) }}<span>允许余数</span></label>
+        </div>
+        <label class="field-group" for="table">
+          <span class="field-label">乘法表/商范围</span>
+          {{ input("table", form, placeholder="1-9") }}
+        </label>
       </div>
     </fieldset>
-    <fieldset>
-      <legend>卷面排版</legend>
+    <fieldset class="card card-yellow">
+      <legend>📄 卷面排版</legend>
       <div class="form-grid">
-        <label for="columns">分栏 {{ select("columns", [("1", "1"), ("2", "2"), ("3", "3")], form, "2") }}</label>
-        <label for="gap">题间距 (pt) {{ input("gap", form, "16", "number", min="0") }}</label>
-        <label for="answer_lines">每题答题横线 {{ input("answer_lines", form, "0", "number", min="0") }}</label>
-        <label for="answer_page">答案页 {{ select("answer_page", [("on", "要"), ("off", "不要")], form, "on") }}</label>
-        <label for="title">卷子标题 {{ input("title", form) }}</label>
-        <label for="header">页眉 {{ input("header", form) }}</label>
+        <label class="field-group" for="columns">
+          <span class="field-label">分栏</span>
+          <select id="columns" name="columns">
+            <option value="1"{% if form.get("columns", "2") == "1" %} selected{% endif %}>1</option>
+            <option value="2"{% if form.get("columns", "2") == "2" %} selected{% endif %}>2</option>
+            <option value="3"{% if form.get("columns", "2") == "3" %} selected{% endif %}>3</option>
+          </select>
+        </label>
+        <label class="field-group" for="gap">
+          <span class="field-label">题间距 (pt)</span>
+          {{ input("gap", form, "16", "number", min="0") }}
+        </label>
+        <label class="field-group" for="answer_lines">
+          <span class="field-label">每题答题横线</span>
+          {{ input("answer_lines", form, "0", "number", min="0") }}
+        </label>
+        <label class="field-group" for="answer_page">
+          <span class="field-label">答案页</span>
+          <select id="answer_page" name="answer_page">
+            <option value="on"{% if form.get("answer_page", "on") == "on" %} selected{% endif %}>要</option>
+            <option value="off"{% if form.get("answer_page", "on") == "off" %} selected{% endif %}>不要</option>
+          </select>
+        </label>
+        <label class="field-group" for="title">
+          <span class="field-label">卷子标题</span>
+          {{ input("title", form) }}
+        </label>
+        <label class="field-group" for="header">
+          <span class="field-label">页眉</span>
+          {{ input("header", form) }}
+        </label>
       </div>
     </fieldset>
-    <fieldset>
-      <legend>批量</legend>
+    <fieldset class="card card-blue">
+      <legend>📚 批量</legend>
       <div class="form-grid">
-        <label for="sheets">卷子份数 {{ input("sheets", form, "1", "number", min="1") }}</label>
+        <label class="field-group" for="sheets">
+          <span class="field-label">卷子份数</span>
+          {{ input("sheets", form, "1", "number", min="1") }}
+        </label>
       </div>
     </fieldset>
   </details>
 
-  <p id="preset-hint" class="hint"></p>
-  <div class="actions"><button type="submit">生成</button></div>
+  <p id="preset-hint" class="hint hint-box"></p>
+  <div class="actions">
+    <button type="submit" class="btn btn-big">🎉 生成练习卷</button>
+  </div>
 </form>
 {% endblock %}
 
@@ -95,10 +175,30 @@
     var data = JSON.parse(document.getElementById('preset-hints').textContent);
     var OP_MAP = {加: '+', 减: '-', 乘: '×', 除: '÷'};
     var hintEl = document.getElementById('preset-hint');
-    var gradeEl = document.getElementById('grade');
     var topicEl = document.getElementById('topic');
+    var customized = false;
+
+    function gradeValue() {
+      var el = document.querySelector('input[name="grade"]:checked');
+      return el ? el.value : '';
+    }
+
+    function setGrade(v) {
+      var el = document.querySelector('input[name="grade"][value="' + v + '"]');
+      if (el) el.checked = true;
+    }
+
+    function topicValue() {
+      var el = document.querySelector('input[name="topic"]:checked');
+      return el ? el.value : 'arithmetic';
+    }
 
     function fmtRange(r) { return r[0] + '-' + r[1]; }
+
+    function setVal(id, v) {
+      var el = document.getElementById(id);
+      if (el && v !== null && v !== undefined) el.value = v;
+    }
 
     function fillGrade(g) {
       var f = data.grades[g].fields;
@@ -116,39 +216,34 @@
       setVal('answer_lines', f.lines);
     }
 
-    function setVal(id, v) {
-      var el = document.getElementById(id);
-      if (el && v !== null && v !== undefined) el.value = v;
-    }
-
     function updateHint() {
-      if (gradeEl.value && data.grades[gradeEl.value]) {
-        hintEl.textContent = gradeEl.value + ' 年级预设：' + data.grades[gradeEl.value].summary + '（改动下方参数将转为自定义）';
+      var g = gradeValue();
+      if (g && data.grades[g]) {
+        hintEl.textContent = g + ' 年级预设：' + data.grades[g].summary + '（改动下方参数将转为自定义）';
+      } else if (customized) {
+        hintEl.textContent = '自定义参数（已手动修改）';
       } else {
-        hintEl.textContent = hintsForCustom();
+        hintEl.textContent = data.topics[topicValue()] || '';
       }
     }
 
-    function hintsForCustom() {
-      return gradeEl.value === '' && (customized)
-        ? '自定义参数（已手动修改）'
-        : (data.topics[topicEl.value] || '');
-    }
-
-    var customized = false;
-    gradeEl.addEventListener('change', function () {
-      customized = false;
-      if (gradeEl.value && data.grades[gradeEl.value]) {
-        fillGrade(gradeEl.value);
-      }
-      updateHint();
+    document.querySelectorAll('input[name="grade"]').forEach(function (el) {
+      el.addEventListener('change', function () {
+        customized = false;
+        if (gradeValue() && data.grades[gradeValue()]) {
+          fillGrade(gradeValue());
+        }
+        updateHint();
+      });
     });
-    topicEl.addEventListener('change', updateHint);
+    document.querySelectorAll('input[name="topic"]').forEach(function (el) {
+      el.addEventListener('change', updateHint);
+    });
     document.querySelectorAll('#advanced input, #advanced select').forEach(function (el) {
       el.addEventListener('change', function () {
-        if (gradeEl.value !== '') {
+        if (gradeValue() !== '') {
           customized = true;
-          gradeEl.value = '';
+          setGrade('');
         }
         updateHint();
       });

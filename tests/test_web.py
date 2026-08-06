@@ -89,8 +89,8 @@ def test_error_backfills_submitted_values():
     html = r.text
     assert "运算符" in html
     assert 'value="5"' in html
-    assert 'value="2" selected' in html
-    assert 'value="vertical" selected' in html
+    assert 'value="2" checked' in html
+    assert 'value="vertical" checked' in html
 
 
 def test_operators_chinese_checkboxes():
@@ -133,7 +133,32 @@ def test_preview_shows_columns_grid():
 
 def test_index_has_semantic_structure():
     r = client.get("/")
-    assert '<fieldset>' in r.text
+    assert '<fieldset' in r.text
     assert '<legend>' in r.text
     assert 'name="viewport"' in r.text
     assert 'for="grade"' in r.text and 'id="grade"' in r.text
+
+
+def test_index_round_font_and_hero():
+    r = client.get("/")
+    assert "fonts.googleapis.com" in r.text
+    assert "M+PLUS+Rounded+1c" in r.text
+    assert 'class="hero"' in r.text
+
+
+def test_index_grade_and_topic_radio_groups():
+    r = client.get("/")
+    html = r.text
+    assert 'type="radio" name="grade"' in html
+    assert 'type="radio" name="topic"' in html
+    assert 'class="topic-card' in html
+    assert 'class="grade-btn' in html
+
+
+def test_error_backfills_grade_topic_radios():
+    r = client.post("/generate", data={"grade": "3", "topic": "word_problem", "count": "x"})
+    assert r.status_code == 200
+    html = r.text
+    assert 'value="3" checked' in html
+    assert 'value="word_problem" checked' in html
+    assert 'value="2" checked' not in html
