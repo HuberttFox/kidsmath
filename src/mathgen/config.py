@@ -192,8 +192,8 @@ def resolve(cfg: Config) -> ResolvedConfig:
         v = getattr(cfg, key)
         if v is not None:
             data[key] = v
-    data["count"] = cfg.count
-    data["columns"] = cfg.columns
+    data["count"] = cfg.count if cfg.count is not None else data["count"]
+    data["columns"] = cfg.columns if cfg.columns is not None else data["columns"]
     data["gap"] = cfg.gap if cfg.gap is not None else TOPIC_DEFAULTS[cfg.topic]["gap"]
     data["answer_lines"] = cfg.answer_lines if cfg.answer_lines is not None else TOPIC_DEFAULTS[cfg.topic]["answer_lines"]
     if data["divisor_range"] is None:

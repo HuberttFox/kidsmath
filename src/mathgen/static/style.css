@@ -1,0 +1,7 @@
+body { font-family: "Noto Sans SC", "Microsoft YaHei", sans-serif; max-width: 720px; margin: 2em auto; padding: 0 1em; }
+h1 { color: #2c5f8a; }
+label { display: block; margin: .6em 0; }
+details { border: 1px solid #ccc; padding: .8em; margin: 1em 0; border-radius: 6px; }
+button, .btn { background: #2c5f8a; color: #fff; border: none; padding: .6em 1.4em; border-radius: 6px; text-decoration: none; cursor: pointer; }
+.error { color: #b00020; background: #ffe9ec; padding: .6em; border-radius: 6px; }
+.preview { background: #f6f8fa; padding: 1em; border-radius: 6px; white-space: pre-wrap; }

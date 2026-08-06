@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <title>mathgen 数学出题</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <h1>小学数学出题工具</h1>
+  {% if error %}<p class="error">{{ error }}</p>{% endif %}
+  <form method="post" action="/generate">
+    <label>年级 <select name="grade">
+      <option value="">自定义</option>
+      {% for g in range(1, 7) %}<option value="{{ g }}">{{ g }} 年级</option>{% endfor %}
+    </select></label>
+    <label>题型 <select name="topic">
+      <option value="arithmetic">口算/四则</option>
+      <option value="vertical">竖式</option>
+      <option value="word_problem">应用题</option>
+    </select></label>
+    <label>题目数 <input name="count" type="number" value="20" min="1"></label>
+    <details>
+      <summary>高级参数</summary>
+      <label>运算符 <input name="operators" value="+-"></label>
+      <label>运算数个数 <input name="operand_count" type="number" value="2" min="2" max="4"></label>
+      <label>运算数范围 <input name="ranges" placeholder="10-99,2-9"></label>
+      <label>结果范围 <input name="result_range" placeholder="0-100"></label>
+      <label>进位 <select name="carry"><option value="">随机</option><option value="yes">要进位</option><option value="no">不进位</option></select></label>
+      <label>借位 <select name="borrow"><option value="">随机</option><option value="yes">要借位</option><option value="no">不借位</option></select></label>
+      <label>除数范围 <input name="divisor_range" placeholder="2-9"></label>
+      <label>允许余数 <input name="remainder" type="checkbox" value="1"></label>
+      <label>乘法表/商范围 <input name="table" placeholder="1-9"></label>
+      <label>分栏 <select name="columns"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select></label>
+      <label>题间距(pt) <input name="gap" type="number" value="16" min="0"></label>
+      <label>每题答题横线 <input name="answer_lines" type="number" value="0" min="0"></label>
+      <label>答案页 <select name="answer_page"><option value="on">要</option><option value="off">不要</option></select></label>
+      <label>卷子标题 <input name="title"></label>
+      <label>页眉 <input name="header"></label>
+      <label>份数 <input name="sheets" type="number" value="1" min="1"></label>
+    </details>
+    <button type="submit">生成</button>
+  </form>
+</body>
+</html>
