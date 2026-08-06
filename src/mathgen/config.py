@@ -130,6 +130,7 @@ class Config:
     sheets: int | None = None
     grade: int | None = None
     lang: str | None = None
+    op_weights: dict[str, int] | None = None
 
 
 @dataclass
@@ -160,6 +161,7 @@ class ResolvedConfig:
     header: str
     sheets: int
     lang: str
+    op_weights: dict[str, int]
 
 
 _OP_ALIASES = {"加": "+", "减": "-", "乘": "×", "除": "÷"}
@@ -214,7 +216,7 @@ def resolve(cfg: Config) -> ResolvedConfig:
     for key, fld in (("operand_ranges", None), ("result_range", None),
                      ("carry", None), ("borrow", None), ("divisor_range", None),
                      ("multiplication_table", None), ("seed", None),
-                     ("title", None), ("header", None)):
+                     ("title", None), ("header", None), ("op_weights", None)):
         v = getattr(cfg, key)
         if v is not None:
             data[key] = v
@@ -231,6 +233,14 @@ def resolve(cfg: Config) -> ResolvedConfig:
     data["operators"] = normalize_operators(data["operators"])
     if not data["operators"] or any(c not in OPERATORS for c in data["operators"]):
         raise ConfigError("invalid_operators", ops=data["operators"])
+    weights = data.get("op_weights") or {}
+    data["op_weights"] = {
+        normalize_operators(k): v for k, v in weights.items()}
+    for k, v in data["op_weights"].items():
+        if k not in data["operators"]:
+            raise ConfigError("invalid_op_weight", op=k, ops=data["operators"])
+        if v < 0:
+            raise ConfigError("negative_op_weight", op=k, v=v)
     if data["count"] <= 0:
         raise ConfigError("count_positive", n=data["count"])
     if data["count"] > 500:

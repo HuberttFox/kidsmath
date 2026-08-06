@@ -44,6 +44,9 @@ def _parse_argv(argv: list[str] | None) -> argparse.Namespace:
     gen.add_argument("--header", default=None, help="页眉")
     gen.add_argument("--sheets", type=int, default=None, help="生成几份不重复卷子")
     gen.add_argument("--lang", choices=["zh", "en"], default=None, help="题目语言（zh/en）")
+    gen.add_argument("--op-weights", default=None, help="运算符权重，如 +=5,-=3,×=2（0=排除）")
+    gen.add_argument("--parentheses", action="store_true", default=None, help="混合运算带括号")
+    gen.add_argument("--no-parentheses", action="store_false", dest="parentheses", help="不带括号")
     gen.add_argument("--zip", action="store_true", help="多份时打包 zip")
     gen.add_argument("--format", choices=["text", "pdf"], default="pdf")
     gen.add_argument("-f", "--output", default=None, help="输出路径（多份时为前缀）")
@@ -65,6 +68,22 @@ def _parse_range(s: str) -> tuple[int, int]:
         raise ConfigError("range_format", v=s) from None
 
 
+def _parse_op_weights(s: str) -> dict[str, int]:
+    weights: dict[str, int] = {}
+    for part in s.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        if "=" not in part:
+            raise ConfigError("weight_format", v=part)
+        op, _, val = part.partition("=")
+        try:
+            weights[op.strip()] = int(val)
+        except ValueError:
+            raise ConfigError("weight_format", v=part) from None
+    return weights
+
+
 def _cfg_from_ns(ns: argparse.Namespace) -> Config:
     data: dict = {}
     if ns.config:
@@ -82,7 +101,8 @@ def _cfg_from_ns(ns: argparse.Namespace) -> Config:
         "columns": ns.columns, "gap": ns.gap, "answer_lines": ns.answer_lines,
         "answer_page": False if ns.no_answer_page else None,
         "title": ns.title, "header": ns.header, "sheets": ns.sheets,
-        "lang": ns.lang,
+        "lang": ns.lang, "parentheses": ns.parentheses,
+        "op_weights": _parse_op_weights(ns.op_weights) if ns.op_weights else None,
     }
     if ns.ranges:
         overrides["operand_ranges"] = [_parse_range(s) for s in ns.ranges.split(",")]

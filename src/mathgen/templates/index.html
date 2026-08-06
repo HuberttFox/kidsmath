@@ -11,7 +11,7 @@
 {% endmacro %}
 
 {% macro tip(key) %}
-<span class="tip" tabindex="0" data-tip="{{ t(key, lang) }}" aria-label="{{ t(key, lang) }}">ⓘ</span>
+<span class="tip" tabindex="0" data-tip="{{ t(key, lang) }}" data-i18n-tip="{{ key }}" aria-label="{{ t(key, lang) }}">ⓘ</span>
 {% endmacro %}
 
 {% block title %}{{ t("brand", lang) }} - {% if lang == "en" %}Generate worksheets{% else %}生成练习卷{% endif %}{% endblock %}
@@ -38,7 +38,8 @@
           {% for value, label in grades %}
           <label class="grade-btn">
             <input type="radio" name="grade" value="{{ value }}"{% if form.get("grade", "") == value %} checked{% endif %}>
-            <span>{{ label }}</span>
+            {% if value %}<span data-i18n="grade.x" data-i18n-params='{"g": "{{ value }}"}'>{{ label }}</span>
+            {% else %}<span data-i18n="grade.custom">{{ label }}</span>{% endif %}
           </label>
           {% endfor %}
         </div>
@@ -52,7 +53,7 @@
           <label class="topic-card">
             <input type="radio" name="topic" value="{{ value }}"{% if form.get("topic", "arithmetic") == value %} checked{% endif %}>
             <span class="topic-icon">{{ topic_icons[value] }}</span>
-            <span class="topic-label">{{ label }}</span>
+            <span class="topic-label" data-i18n="{{ topic_keys[value] }}">{{ label }}</span>
           </label>
           {% endfor %}
         </div>
@@ -71,13 +72,15 @@
       <div class="form-grid">
         <div class="field-group">
           <span class="field-label">
-            <span data-i18n="f.operators">{{ t("f.operators", lang) }}</span>{{ tip("tip.operators") }}
+            <span data-i18n="f.operators">{{ t("f.operators", lang) }}</span>{{ tip("tip.operators") }}{{ tip("tip.weights") }}
           </span>
           <div class="op-checkboxes" id="operators">
             {% for op in ["加", "减", "乘", "除"] %}
             <label class="op-item">
               <input type="checkbox" name="operators" value="{{ op }}"{% if op in form.get("operators", "") %} checked{% endif %}>
               <span>{{ op }}</span>
+              <input class="weight-input" type="number" name="w_{{ op }}" min="0"
+                     value="{{ form.get('w_' + op, '') }}" aria-label="{{ op }}">
             </label>
             {% endfor %}
           </div>
@@ -89,6 +92,11 @@
           </span>
           {{ input("operand_count", form, "2", "number", min="2", max="4") }}
         </label>
+        <div class="field-group">
+          <label class="toggle-line" for="parentheses">{{ checkbox("parentheses", form) }}
+            <span data-i18n="f.parentheses">{{ t("f.parentheses", lang) }}</span>{{ tip("tip.parentheses") }}
+          </label>
+        </div>
         <label class="field-group" for="ranges">
           <span class="field-label">
             <span data-i18n="f.ranges">{{ t("f.ranges", lang) }}</span>{{ tip("tip.ranges") }}
@@ -238,6 +246,12 @@
       document.querySelectorAll('input[name="operators"]').forEach(function (cb) {
         cb.checked = f.ops.indexOf(OP_MAP[cb.value]) !== -1;
       });
+      ['加', '减', '乘', '除'].forEach(function (op) {
+        var el = document.querySelector('input[name="w_' + op + '"]');
+        if (el) el.value = '';
+      });
+      var paren = document.getElementById('parentheses');
+      if (paren) paren.checked = !!f.parens;
       setVal('operand_count', f.n);
       setVal('ranges', f.ranges ? f.ranges.map(fmtRange).join(',') : '');
       setVal('result_range', f.rr ? fmtRange(f.rr) : '');

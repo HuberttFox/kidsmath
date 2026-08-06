@@ -86,6 +86,31 @@ def test_invalid_lang_raises():
         resolve(Config(lang="fr"))
 
 
+def test_op_weights_validated_and_filtered():
+    r = resolve(Config(grade=2, operators="+-×", op_weights={"+": 5, "-": 0, "×": 2}))
+    assert r.op_weights == {"+": 5, "-": 0, "×": 2}
+    with pytest.raises(ConfigError, match="权重"):
+        resolve(Config(grade=2, operators="+-", op_weights={"÷": 5}))
+    with pytest.raises(ConfigError, match="权重"):
+        resolve(Config(grade=2, op_weights={"+": -1}))
+
+
+def test_op_weights_chinese_keys_normalized():
+    r = resolve(Config(operators="加减乘", op_weights={"加": 5, "乘": 1}))
+    assert r.op_weights == {"+": 5, "×": 1}
+
+
+def test_pick_op_respects_weights():
+    from mathgen.core.engine import pick_op
+    import random
+    cfg = resolve(Config(grade=2, operators="+×", op_weights={"+": 1, "×": 0}))
+    seen = {pick_op(random.Random(i), cfg) for i in range(50)}
+    assert seen == {"+"}
+    cfg2 = resolve(Config(grade=2, operators="+×"))
+    seen2 = {pick_op(random.Random(i), cfg2) for i in range(50)}
+    assert seen2 == {"+", "×"}
+
+
 def test_explicit_false_overrides_preset_parentheses():
     r = resolve(Config(grade=5, parentheses=False))
     assert r.parentheses is False

@@ -5,12 +5,12 @@ import random
 
 from mathgen.config import ResolvedConfig
 from mathgen.core.engine import (GenerationError, check_result, gen_operand,
-                                 gen_pair, gen_result)
+                                 gen_pair, gen_result, pick_op)
 from mathgen.core.question import Question
 
 
-def _pick_ops(rng: random.Random, ops: str, n: int) -> list[str]:
-    return [rng.choice(list(ops)) for _ in range(n)]
+def _pick_ops(rng: random.Random, cfg, n: int) -> list[str]:
+    return [pick_op(rng, cfg) for _ in range(n)]
 
 
 def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
@@ -21,7 +21,7 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
 
 
 def _gen_two(cfg: ResolvedConfig, rng: random.Random) -> Question:
-    op = rng.choice(list(cfg.operators))
+    op = pick_op(rng, cfg)
     if op in "+-":
         # 偏离 brief：+ 恒传 allow_negative=True。0–9 范围无序进位对仅 25 个 < 引擎 30 题去重需求，
         # 引擎 _signature 对 + 保留顺序（a<b 与 a>b 视为不同题），需有序对 55 个才能凑够。
@@ -112,7 +112,7 @@ def _eval_precedence(tokens: list[str]) -> int | None:
 
 def _gen_multi(cfg: ResolvedConfig, rng: random.Random, n: int) -> Question:
     for _ in range(1000):
-        ops = _pick_ops(rng, cfg.operators, n - 1)
+        ops = _pick_ops(rng, cfg, n - 1)
         operands = [gen_operand(rng, *cfg.operand_ranges[i]) for i in range(n)]
         if not cfg.allow_negative and len(ops) == 1 and ops[0] == "-" and operands[0] < operands[1]:
             operands[0], operands[1] = operands[1], operands[0]

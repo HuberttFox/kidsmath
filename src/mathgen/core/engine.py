@@ -25,6 +25,15 @@ def gen_operand(rng: random.Random, lo: int, hi: int) -> int:
     return rng.randint(lo, hi)
 
 
+def pick_op(rng: random.Random, cfg: ResolvedConfig) -> str:
+    """按 cfg.op_weights 加权抽取运算符；无权重时均匀随机。"""
+    ops = list(cfg.operators)
+    if cfg.op_weights:
+        weights = [cfg.op_weights.get(op, 1) for op in ops]
+        return rng.choices(ops, weights=weights, k=1)[0]
+    return rng.choice(ops)
+
+
 def check_result(cfg: ResolvedConfig) -> Callable[[int], bool]:
     """结果范围谓词：lo ≤ r ≤ hi 且 r ≥ 0（或 cfg.allow_negative）。"""
     lo, hi = cfg.result_range

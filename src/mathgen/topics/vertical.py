@@ -4,7 +4,7 @@ from __future__ import annotations
 import random
 
 from mathgen.config import ResolvedConfig
-from mathgen.core.engine import check_result, gen_operand, gen_pair, gen_result
+from mathgen.core.engine import check_result, gen_operand, gen_pair, gen_result, pick_op
 from mathgen.core.question import Question
 
 
@@ -14,7 +14,7 @@ def _stmt_add(op: str, a: int, b: int) -> str:
 
 
 def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
-    op = rng.choice(list(cfg.operators))
+    op = pick_op(rng, cfg)
     if op in "+-":
         # 偏离 brief：+ 恒传 allow_negative=True，与 arithmetic.py 一致。
         def make():

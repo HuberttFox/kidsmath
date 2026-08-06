@@ -31,8 +31,10 @@ TOPIC_OPTIONS = [
 ]
 
 _TOPIC_ICONS = {"arithmetic": "🧮", "vertical": "✍️", "word_problem": "📖"}
+_TOPIC_KEYS = dict(TOPIC_OPTIONS)
 _TOPIC_LABELS = dict(TOPIC_OPTIONS)
 _UI_JSON = json.dumps(UI, ensure_ascii=False)
+_OP_CHARS = {"加": "+", "减": "-", "乘": "×", "除": "÷"}
 
 
 def _lang(request: Request) -> str:
@@ -90,6 +92,7 @@ def _preset_fields(d: dict) -> dict:
         "table": p(d.get("multiplication_table")),
         "gap": d.get("gap"),
         "lines": d.get("answer_lines", 0),
+        "parens": bool(d.get("parentheses")),
     }
 
 
@@ -113,6 +116,7 @@ def _index_context(form: dict | None = None, error: str | None = None,
         "grades": _grade_options(lang),
         "topics": _topic_options(lang),
         "topic_icons": _TOPIC_ICONS,
+        "topic_keys": _TOPIC_KEYS,
     }
 
 
@@ -158,7 +162,35 @@ def _config_from_form(form: dict) -> Config:
         header=form.get("header") or None,
         sheets=i(form.get("sheets"), 1),
         lang=form.get("lang") or None,
+        parentheses=form.get("parentheses") == "1",
+        op_weights=_parse_op_weights(form),
     )
+
+
+def _parse_op_weights(form: dict) -> dict[str, int] | None:
+    raw = form.get("op_weights")
+    if raw:
+        weights: dict[str, int] = {}
+        for part in raw.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            op, _, val = part.partition("=")
+            try:
+                weights[op.strip()] = int(val)
+            except ValueError:
+                raise ConfigError("weight_format", v=part) from None
+        return weights or None
+    weights = {}
+    for zh, op in _OP_CHARS.items():
+        v = form.get(f"w_{zh}")
+        if v in (None, ""):
+            continue
+        try:
+            weights[op] = int(v)
+        except ValueError:
+            raise ConfigError("int_format", v=v) from None
+    return weights or None
 
 
 def _as_query(cfg: Config) -> dict:
@@ -197,6 +229,10 @@ def _as_query(cfg: Config) -> dict:
         q["answer_lines"] = str(cfg.answer_lines)
     if not cfg.answer_page:
         q["answer_page"] = "off"
+    if cfg.parentheses is not None:
+        q["parentheses"] = "1" if cfg.parentheses else "0"
+    if cfg.op_weights:
+        q["op_weights"] = ",".join(f"{k}={v}" for k, v in cfg.op_weights.items())
     if cfg.title:
         q["title"] = cfg.title
     if cfg.header:
@@ -252,10 +288,13 @@ async def generate_page(request: Request):
     topic_label = t(_TOPIC_LABELS.get(cfg.topic, cfg.topic), lang)
     summary = t("preview.summary", lang, grade=grade_label, topic=topic_label,
                 count=len(questions))
+    summary_data = json.dumps({
+        "grade": cfg.grade or "", "topic": cfg.topic, "count": len(questions)},
+        ensure_ascii=False)
     cfg_fields = {k: v for k, v in _as_query(cfg).items() if k != "seed"}
     return templates.TemplateResponse(request, "preview.html", {
         "preview": preview, "query": query, "lang": lang, "ui_json": _UI_JSON,
-        "sheets": resolved.sheets, "summary": summary,
+        "sheets": resolved.sheets, "summary": summary, "summary_data": summary_data,
         "ncols": resolved.columns, "cfg_fields": cfg_fields,
         "cells": [(i, q) for i, q in enumerate(questions, 1)]})
 

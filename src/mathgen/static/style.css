@@ -380,6 +380,20 @@ details#advanced[open] > summary { margin-bottom: 1em; }
 .op-checkboxes { display: flex; gap: .5em; flex-wrap: wrap; }
 .op-item { position: relative; cursor: pointer; display: inline-flex; align-items: center; }
 .op-item input { position: absolute; opacity: 0; pointer-events: none; }
+.op-item .weight-input {
+  position: static;
+  width: 3.2em;
+  padding: .25em .4em;
+  border: 2px solid var(--input-border);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  font: inherit;
+  font-size: .82rem;
+  text-align: center;
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+.op-item .weight-input:focus { outline: none; border-color: var(--green); }
 .op-item span {
   background: var(--card-bg);
   border-radius: var(--radius-xl);
@@ -489,7 +503,11 @@ details#advanced[open] > summary { margin-bottom: 1em; }
   overflow-wrap: anywhere;
   min-width: 0;
 }
-.page-fade { opacity: 0; }
+.page-fade { animation: pageFade .3s ease; }
+@keyframes pageFade {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 .pager { display: flex; align-items: center; justify-content: center; gap: 1em; margin: 1em 0; }
 .pager-page { font-weight: 700; color: var(--text-soft); }

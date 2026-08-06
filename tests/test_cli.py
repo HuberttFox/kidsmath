@@ -36,6 +36,15 @@ def test_config_file_toml():
     assert "1." in r.stdout
 
 
+def test_op_weights_and_parentheses_flags():
+    r = run_cli("--grade", "2", "--op-weights", "+=5,-=3", "--parentheses",
+                "--count", "4", "--format", "text")
+    assert r.returncode == 0, r.stderr
+    r2 = run_cli("--grade", "2", "--op-weights", "bad", "--format", "text")
+    assert r2.returncode == 2
+    assert "权重" in r2.stderr
+
+
 def test_generation_conflict_returns_1_chinese_no_traceback():
     r = run_cli("--operators", "-", "--ranges", "0-9,0-9",
                 "--result-range", "100-200", "--format", "text")

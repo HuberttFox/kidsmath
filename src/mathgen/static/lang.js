@@ -27,10 +27,35 @@
     return table[key] || (UI.zh && UI.zh[key]) || key;
   }
 
+  function fmt(tmpl, params) {
+    if (!params) return tmpl;
+    Object.keys(params).forEach(function (k) {
+      tmpl = tmpl.split('{' + k + '}').join(String(params[k]));
+    });
+    return tmpl;
+  }
+
   function applyLang(lang) {
     document.documentElement.lang = lang;
     document.querySelectorAll('[data-i18n]').forEach(function (el) {
-      el.textContent = tr(el.getAttribute('data-i18n'), lang);
+      var text = tr(el.getAttribute('data-i18n'), lang);
+      var params = el.getAttribute('data-i18n-params');
+      if (params) {
+        try { text = fmt(text, JSON.parse(params)); } catch (e) { /* keep raw */ }
+      }
+      el.textContent = text;
+    });
+    document.querySelectorAll('[data-i18n-tip]').forEach(function (el) {
+      el.setAttribute('data-tip', tr(el.getAttribute('data-i18n-tip'), lang));
+    });
+    document.querySelectorAll('[data-summary]').forEach(function (el) {
+      var d = {};
+      try { d = JSON.parse(el.getAttribute('data-summary')); } catch (e) { return; }
+      var g = d.grade ? tr('grade.x', lang).split('{g}').join(String(d.grade)) : tr('grade.custom', lang);
+      var topic = tr('topic.' + d.topic, lang) || d.topic;
+      el.textContent = fmt(tr('preview.summary', lang), {
+        grade: g, topic: topic, count: String(d.count)
+      });
     });
     var label = document.getElementById('langLabel');
     if (label) label.textContent = lang === 'zh' ? 'EN' : '中';

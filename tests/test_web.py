@@ -250,3 +250,55 @@ def test_css_has_dark_theme_and_fonts():
     assert 'prefers-color-scheme: dark' in r.text
     assert 'data-theme="dark"' in r.text
     assert "M PLUS Rounded 1c" in r.text
+
+
+def test_page_fade_animation_fixes_invisible_preview():
+    r = client.get("/static/style.css")
+    assert "@keyframes pageFade" in r.text
+    assert ".page-fade { animation: pageFade" in r.text
+    assert ".page-fade { opacity: 0; }" not in r.text
+
+
+def test_lang_swap_attributes_present():
+    r = client.get("/")
+    html = r.text
+    assert 'data-i18n="grade.x"' in html and 'data-i18n-params' in html
+    assert 'data-i18n="grade.custom"' in html
+    assert 'data-i18n="topic.arithmetic"' in html
+    assert 'data-i18n-tip="tip.grade"' in html
+    r2 = client.post("/generate", data={"grade": "2", "count": "5"})
+    assert 'data-summary=' in r2.text
+
+
+def test_weights_and_parentheses_roundtrip():
+    r = client.post("/generate", data={
+        "grade": "1", "count": "6", "topic": "arithmetic",
+        "operators": ["加", "乘"], "w_加": "7", "w_乘": "1", "parentheses": "1"})
+    assert r.status_code == 200
+    html = r.text
+    m = re.search(r'href="(/download\.pdf\?[^"]+)"', html)
+    href = unescape(m.group(1))
+    assert "parentheses=1" in href
+    assert "+=7" in href or "+%3D7" in href
+    link = client.get(href)
+    assert link.status_code == 200
+    assert link.content[:4] == b"%PDF"
+
+
+def test_weights_backfill_on_error():
+    r = client.post("/generate", data={
+        "grade": "1", "count": "x", "w_加": "7", "w_乘": "1"})
+    assert r.status_code == 200
+    html = r.text
+    assert 'name="w_加"' in html
+    assert 'value="7"' in html
+    assert 'name="w_乘"' in html and 'value="1"' in html
+
+
+def test_grade5_parentheses_off_roundtrip():
+    r = client.post("/generate", data={"grade": "5", "count": "4", "parentheses": ""})
+    assert r.status_code == 200
+    m = re.search(r'href="(/download\.pdf\?[^"]+)"', r.text)
+    href = unescape(m.group(1))
+    assert "parentheses=0" in href
+    assert client.get(href).status_code == 200
