@@ -357,6 +357,9 @@ details#advanced[open] > summary { margin-bottom: .9em; }
 .op-item input:focus-visible + span { box-shadow: 0 0 0 3px rgba(95, 174, 130, .35); }
 .op-item:active > span { transform: scale(.97); }
 .op-item .weight-input {
+  position: static;
+  opacity: 1;
+  pointer-events: auto;
   width: 3.2em;
   padding: .45em .4em;
   border: 1.5px solid var(--input-border);

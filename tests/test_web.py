@@ -259,6 +259,16 @@ def test_page_fade_animation_fixes_invisible_preview():
     assert ".page-fade { opacity: 0; }" not in r.text
 
 
+def test_weight_input_visible_css():
+    r = client.get("/static/style.css")
+    css = r.text
+    assert ".op-item .weight-input {" in css
+    block = css.split(".op-item .weight-input {")[1].split("}")[0]
+    assert "position: static" in block
+    assert "opacity: 1" in block
+    assert "pointer-events: auto" in block
+
+
 def test_lang_swap_attributes_present():
     r = client.get("/")
     html = r.text

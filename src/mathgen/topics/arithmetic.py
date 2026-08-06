@@ -79,12 +79,28 @@ def _eval_precedence(tokens: list[str]) -> int | None:
     """
     pos = 0
 
-    def factor() -> int | None:
+    def atom() -> int | None:
+        """一个因子：数字或括号组（不吞后续 ×÷ 链）。"""
         nonlocal pos
+        if tokens[pos] == "(":
+            pos += 1
+            v = term()
+            if v is None or tokens[pos] != ")":
+                return None
+            pos += 1
+            return v
         v = int(tokens[pos]); pos += 1
+        return v
+
+    def factor() -> int | None:
+        """×÷ 链（左结合），链上的每个因子可为数字或括号组。"""
+        nonlocal pos
+        v = atom()
         while pos < len(tokens) and tokens[pos] in "×÷":
             op = tokens[pos]; pos += 1
-            b = int(tokens[pos]); pos += 1
+            b = atom()
+            if v is None or b is None:
+                return None
             if op == "÷":
                 if b == 0 or v % b != 0:
                     return None
@@ -113,22 +129,79 @@ def _eval_precedence(tokens: list[str]) -> int | None:
 def _gen_multi(cfg: ResolvedConfig, rng: random.Random, n: int) -> Question:
     for _ in range(1000):
         ops = _pick_ops(rng, cfg, n - 1)
-        operands = [gen_operand(rng, *cfg.operand_ranges[i]) for i in range(n)]
+        operands = [gen_operand(rng, *cfg.operand_ranges[0])]
+        for i in range(1, n):
+            prev = ops[i - 1]
+            if prev == "×":
+                lo, hi = cfg.multiplication_table
+                operands.append(gen_operand(rng, lo, hi))
+            elif prev == "÷":
+                lo, hi = cfg.divisor_range
+                operands.append(gen_operand(rng, lo, hi))
+            else:
+                operands.append(gen_operand(rng, *cfg.operand_ranges[i]))
         if not cfg.allow_negative and len(ops) == 1 and ops[0] == "-" and operands[0] < operands[1]:
             operands[0], operands[1] = operands[1], operands[0]
+        groups = _paren_groups(ops) if cfg.parentheses and n >= 3 else None
+        if groups:
+            for s, e in groups:
+                for idx in range(s, e + 2):
+                    lo, hi = cfg.operand_ranges[min(idx, n - 1)]
+                    lo = max(2, lo)
+                    hi = max(lo, min(hi, 30))
+                    operands[idx] = gen_operand(rng, lo, hi)
         tokens = []
         for i, op in enumerate(ops):
             tokens.append(str(operands[i]))
             tokens.append(op)
         tokens.append(str(operands[-1]))
+        if groups:
+            if len(groups) == 2 and all(s == e for s, e in groups) and len(ops) == 3:
+                tokens = _wrap_two(tokens)
+            else:
+                tokens = _wrap_one(tokens, groups[0][0], groups[0][1])
         result = _eval_precedence(tokens)
         if result is None:
             continue
         if not check_result(cfg)(result):
             continue
         expr = " ".join(tokens)
-        if cfg.parentheses and n > 2:
-            expr = f"({expr})" if rng.random() < 0.5 else expr
         statement = expr.replace("(", "( ").replace(")", " )") + " = ____"
         return Question("arithmetic", statement, str(result), expr, None)
     raise GenerationError("multi_no_solution", n=n)
+
+
+def _paren_groups(ops: list[str]) -> list[tuple[int, int]] | None:
+    """找可加括号的 +- 连续片段（邻接 ×÷ 才改变运算顺序）。
+
+    返回片段列表（运算符下标区间）；无可包片段返回 None。
+    """
+    def low(op: str) -> bool:
+        return op in "+-"
+
+    n = len(ops)
+    runs: list[tuple[int, int]] = []
+    i = 0
+    while i < n:
+        if not low(ops[i]):
+            i += 1
+            continue
+        j = i
+        while j < n and low(ops[j]):
+            j += 1
+        has_high_neighbor = (i > 0 and not low(ops[i - 1])) or (j < n and not low(ops[j]))
+        if has_high_neighbor:
+            runs.append((i, j - 1))
+        i = j
+    return runs or None
+
+
+def _wrap_one(tokens: list[str], s: int, e: int) -> list[str]:
+    """包住 ops[s..e] 的 +- 片段（连同两侧运算数），如 a × ( b + c )。"""
+    return tokens[:2 * s] + ["("] + tokens[2 * s:2 * e + 3] + [")"] + tokens[2 * e + 3:]
+
+
+def _wrap_two(tokens: list[str]) -> list[str]:
+    """双包：模式 [+-, ×÷, +-] → ( a + b ) × ( c + d )。"""
+    return (["("] + tokens[:3] + [")"] + tokens[3:4]
+            + ["("] + tokens[4:7] + [")"] + tokens[7:])

@@ -106,7 +106,7 @@ def _signature(q: Question) -> tuple:
     Task 4 引入括号后（grade 5/6），括号会挂在数字 token 上（"(3"）导致 int() 崩溃；
     签名剥掉括号但保留 parens 标记，避免 "(1+2)×3" 与 "1+2×3" 误判为同题。
     """
-    parts = q.expression.replace("(", "").replace(")", "").split(" ")
+    parts = [p for p in q.expression.replace("(", "").replace(")", "").split(" ") if p]
     ops = parts[1::2]
     nums = [int(parts[i]) for i in range(0, len(parts), 2)]
     if all(op == "×" for op in ops):

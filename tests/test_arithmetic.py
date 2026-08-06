@@ -1,7 +1,9 @@
 import random
+import re
 
 from mathgen.config import Config, resolve
-from mathgen.topics.arithmetic import gen
+from mathgen.topics.arithmetic import _eval_precedence, gen
+from mathgen.core.engine import generate
 
 
 def _eval(expr: str) -> int:
@@ -71,6 +73,68 @@ def test_parentheses():
             saw_paren = True
             assert _eval(q.expression) == int(q.answer)
     assert saw_paren
+
+
+PAREN_3 = re.compile(r"^\d+ [×÷] \(\s?\d+ [+-] \d+\s?\)$|^\(\s?\d+ [+-] \d+\s?\) [×÷] \d+$")
+
+
+def test_parentheses_only_meaningful_forms():
+    cfg = resolve(Config(grade=5, count=30, seed=6))
+    qs = generate(cfg)
+    for q in qs:
+        if "(" in q.expression:
+            assert PAREN_3.match(q.expression), q.expression
+            assert _eval_precedence(q.expression.split(" ")) == int(q.answer)
+
+
+def test_parentheses_four_operands_and_double_wrap():
+    cfg = resolve(Config(grade=6, count=30, seed=6))
+    qs = generate(cfg)
+    saw_double = False
+    for q in qs:
+        if "(" in q.expression:
+            toks = q.expression.split(" ")
+            assert toks.count("(") in (1, 2), q.expression
+            assert _eval_precedence(toks) == int(q.answer)
+            saw_double = saw_double or toks.count("(") == 2
+    assert saw_double
+
+
+def test_parentheses_same_precedence_none():
+    qs = generate(resolve(Config(grade=5, operators="×÷", count=6, seed=3)))
+    assert all("(" not in q.expression for q in qs)
+    qs2 = generate(resolve(Config(grade=5, operators="+-", count=6, seed=4)))
+    assert all("(" not in q.expression for q in qs2)
+
+
+def test_parentheses_two_operands_none():
+    qs = generate(resolve(Config(grade=5, operators="+-×", operand_count=2, count=8, seed=5)))
+    assert all("(" not in q.expression for q in qs)
+
+
+def test_eval_precedence_left_assoc_and_parens():
+    assert _eval_precedence("24 ÷ 6 ÷ 2".split(" ")) == 2
+    assert _eval_precedence("10 ÷ 18 ÷ 9".split(" ")) is None
+    assert _eval_precedence("22 × ( 2 + 3 )".split(" ")) == 110
+    assert _eval_precedence("( 10 + 5 ) ÷ 3".split(" ")) == 5
+    assert _eval_precedence("( 2 + 3 ) × ( 4 + 5 )".split(" ")) == 45
+
+
+def test_multi_respects_table_and_divisor_range():
+    for cfg in (
+        resolve(Config(grade=3, operators="+-×÷", operand_count=3, count=20, seed=9,
+                       operand_ranges=[(10, 999), (10, 999), (10, 999)],
+                       multiplication_table=(2, 9), divisor_range=(2, 9))),
+        resolve(Config(grade=3, operators="+-×÷", operand_count=3, count=20, seed=10,
+                       multiplication_table=(2, 9), divisor_range=(2, 9))),
+    ):
+        for q in generate(cfg):
+            toks = [t for t in q.expression.replace("(", "").replace(")", "").split(" ") if t]
+            ops = toks[1::2]
+            nums = [int(toks[i]) for i in range(0, len(toks), 2)]
+            for j, op in enumerate(ops):
+                if op in "×÷":
+                    assert 2 <= nums[j + 1] <= 9, q.expression
 
 
 def test_multi_result_within_range():
