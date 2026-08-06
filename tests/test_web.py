@@ -411,3 +411,15 @@ def test_paren_weight_roundtrip():
     r2 = client.post("/generate", data={"grade": "1", "count": "4"})
     m2 = re.search(r'href="(/download\.pdf\?[^"]+)"', r2.text)
     assert "paren_weight" not in unescape(m2.group(1))
+
+
+def test_section_icons_exist_and_used():
+    for name in ("settings", "calculator", "layout", "batch"):
+        r = client.get(f"/static/icons/{name}.svg")
+        assert r.status_code == 200, name
+        assert r.text.startswith("<svg")
+    r2 = client.get("/")
+    assert "/static/icons/settings.svg" in r2.text
+    assert "/static/icons/calculator.svg" in r2.text
+    assert "/static/icons/layout.svg" in r2.text
+    assert "/static/icons/batch.svg" in r2.text
