@@ -44,6 +44,15 @@ docker compose restart mathgen   # 重启
 docker compose down              # 停止（容器删除，无数据落盘）
 ```
 
+## PWA 安装
+
+- 浏览器「安装应用」仅在 **https** 或 **localhost** 下可用；局域网用 `http://<IP>:8080` 访问时不显示安装入口，属浏览器限制，功能不受影响。
+- nginx/caddy 反代时确认静态资源响应头：
+  - `Content-Type: application/manifest+json` 用于 `/static/manifest.webmanifest`（缺失时部分浏览器仍可解析，但建议配全）；
+  - `Cache-Control: no-cache` 或短 TTL 用于 `/static/sw.js`，避免旧 SW 长期驻留；
+  - 其余静态资源（HTML/CSS/JS）建议 `Cache-Control: max-age=31536000, immutable` + SW 内部版本化刷新。
+- Service worker 离线缓存 app shell；`/product` 页面**不缓存**，离线时不可用（有意为之，详见 spec）。
+
 ## 说明
 
 - 无用户系统、无题库存储，纯出题工具；数据不落盘。

@@ -21,6 +21,7 @@ uv sync
 ```bash
 mathgen generate --grade 2 --count 50 -o 二年级练习.pdf
 mathgen generate --grade 3 --topic vertical --count 20 --sheets 5 --zip
+mathgen generate --grade 4 --parentheses --paren-weight 8 -o 带括号练习.pdf
 mathgen generate -c examples/grade2.toml --format text
 mathgen serve --host 0.0.0.0 --port 8080
 ```
@@ -29,13 +30,19 @@ mathgen serve --host 0.0.0.0 --port 8080
 
 运行 `mathgen serve` 后浏览器打开 http://127.0.0.1:8080 ：选年级/参数 → 生成 → 预览 → 下载 PDF；多份下载 zip。
 
+其他页面：
+- `/product` — 产品介绍页（功能亮点、三步流程、会员功能预告）。
+- `/user`、`/user/history`、`/user/saved`、`/member`、`/member/timer`、`/member/pomodoro`、`/member/errors`、`/member/review` — 用户/会员功能占位页，**即将上线**（先占路由，展示后续功能入口）。
+
 ## 参数
 
 年级预设一键套用，显式参数覆盖。常用：`--operators`（+-×÷ 组合）、`--ranges`（每个运算数范围，逗号分隔）、`--carry/--borrow`（yes/no/any）、`--remainder`、`--table`（乘法表/商范围）、`--divisor-range`、`--gap`（题间距，写步骤留空）、`--answer-lines`（每题答题横线）、`--seed`（复现）、`--sheets`（多份不重复卷子）。
 
+括号权重 `--paren-weight`（1-10，默认 5）：配合 `--parentheses` 使用，控制括号题出现比重；权重越大括号题越多。
+
 网页界面字体使用悠哉圆体（Yozai，SIL OFL 1.1，见 `src/mathgen/static/fonts/OFL-yozai.txt`），本地托管离线可用。
 
-PWA：`/static/manifest.webmanifest` + `/static/sw.js`（app shell 缓存，`/product` 不缓存）。
+PWA：`/static/manifest.webmanifest` + `/static/sw.js`。浏览器地址栏/菜单选「安装应用」即可像 App 一样使用（需要 https 或 localhost，详见 `docs/deploy.md`）；app shell 离线缓存，`/product` 不缓存。
 
 TODO：生成 192/512 PNG 安装图标（当前 manifest 仅 SVG 图标，iOS 主屏图标体验受限）。
 
