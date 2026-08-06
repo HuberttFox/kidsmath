@@ -62,13 +62,16 @@ def _signature(q: Question) -> tuple:
     对 brief 的偏离：+ 不排序。原因：0–9 范围内无序进位对仅 25 个 < 30，
     brief 自身 test_carry_flag_respected 要求 30 道不重复进位题，必须保留顺序。
     数字位数增大（多位数范围）后可恢复 + 的交换律归一。
+
+    Task 4 引入括号后（grade 5/6），括号会挂在数字 token 上（"(3"）导致 int() 崩溃；
+    签名剥掉括号但保留 parens 标记，避免 "(1+2)×3" 与 "1+2×3" 误判为同题。
     """
-    parts = q.expression.split(" ")
+    parts = q.expression.replace("(", "").replace(")", "").split(" ")
     ops = parts[1::2]
     nums = [int(parts[i]) for i in range(0, len(parts), 2)]
     if all(op == "×" for op in ops):
-        return tuple(ops), tuple(sorted(nums))
-    return tuple(ops), tuple(nums)
+        return tuple(ops), tuple(sorted(nums)), "(" in q.expression
+    return tuple(ops), tuple(nums), "(" in q.expression
 
 
 def generate(cfg: ResolvedConfig) -> list[Question]:
