@@ -5,7 +5,10 @@
 {% block content %}
 <h1>题目预览</h1>
 <p class="summary">{{ summary }}</p>
-<section class="preview" aria-label="题目列表">{{ preview }}</section>
+<section class="sheet preview" style="grid-template-columns: repeat({{ ncols }}, minmax(0, 1fr));"
+         aria-label="题目列表">
+  {% for i, q in cells %}<div class="cell">{{ i }}. {{ q.statement }}</div>{% endfor %}
+</section>
 <nav class="actions" aria-label="下载操作">
   <a class="btn" href="/download.pdf?{{ query }}">下载 PDF</a>
   {% if sheets > 1 %}<a class="btn" href="/download.zip?{{ query }}">下载 ZIP（{{ sheets }} 份）</a>{% endif %}

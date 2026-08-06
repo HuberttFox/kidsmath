@@ -1,4 +1,4 @@
-"""reportlab A4 卷子渲染：标题/页眉/分栏/间距/答题线/答案页/竖式。"""
+"""reportlab A4 卷子渲染：行式分栏布局/标题/页眉/间距/答题线/答案页/竖式。"""
 from __future__ import annotations
 
 from io import BytesIO
@@ -11,33 +11,74 @@ from mathgen.config import ResolvedConfig
 from mathgen.core.question import Question
 from mathgen.output.answer import answer_lines
 from mathgen.output.fonts import register_fonts
+from mathgen.output.text import group_rows
 
 MARGIN = 18 * mm
 LINE_GAP = 16
+GUTTER = 26  # 编号与竖式题内容之间的固定间距 (pt)，保证列内数字对齐
+SIZE = 13
 
 
 def _draw_vertical(c, x, y, layout, font, size) -> float:
-    """绘制竖式，返回占用高度。"""
+    """绘制竖式（数字右对齐、符号贴数字块、除法按教材格式），返回占用高度。"""
     if layout["op"] == "÷":
         divisor = layout["divisor"]
         dividend = layout["dividend"]
+        quotient = layout["quotient"]
         w_d = c.stringWidth(dividend, font, size)
-        top = y
-        c.drawString(x, top - size, quotient := layout["quotient"])
-        c.line(x, top - 1.5 * size, x + w_d + 2 * size, top - 1.5 * size)
-        c.drawString(x + 1.6 * size, top - 1.5 * size - size, divisor)
-        c.rect(x + 1.2 * size, top - 3.5 * size, w_d + 0.8 * size, 2.2 * size)
-        c.drawString(x + 1.6 * size, top - 2.9 * size, dividend)
+        bracket_x = x + 0.9 * size  # 除数占位
+        bar_y = y - 1.5 * size
+        # 商：右对齐到被除数右端，位于横线上方
+        c.drawRightString(bracket_x + w_d, y - size, quotient)
+        # 横线（厂字上横）
+        c.line(bracket_x, bar_y, bracket_x + w_d, bar_y)
+        # 除数：右对齐到括号竖线左缘
+        c.drawRightString(bracket_x - 0.25 * size, bar_y - size, divisor)
+        # 括号竖线
+        c.line(bracket_x, bar_y, bracket_x, bar_y - 2 * size)
+        # 被除数：括号内右对齐
+        c.drawRightString(bracket_x + w_d, bar_y - 0.75 * size, dividend)
         return 4 * size + LINE_GAP
     numbers = layout["numbers"]
     op = layout["op"]
     width = max(c.stringWidth(n, font, size) for n in numbers)
+    w_first = c.stringWidth(numbers[0], font, size)
     line_y = y - (len(numbers) + 0.5) * size
-    c.drawString(x, y - size, op)
+    # 符号右缘贴首个数字左缘
+    c.drawRightString(x + width - w_first - 0.4 * size, y - size, op)
     for i, n in enumerate(numbers):
         c.drawRightString(x + width, y - (i + 1) * size, n)
-    c.line(x, line_y, x + width, line_y)
+    c.line(x + width - w_first, line_y, x + width, line_y)
     return y - line_y + LINE_GAP
+
+
+def _item_base(q: Question, size: int) -> float:
+    if q.layout and q.layout.get("kind") == "vertical":
+        return 4 * size + LINE_GAP
+    return 22
+
+
+def _answer_area(cfg: ResolvedConfig) -> float:
+    return 14 * cfg.answer_lines + 6 if cfg.answer_lines > 0 else 0
+
+
+def _draw_item(c, x, top, row_h, idx, q, cfg, font, size, col_w) -> None:
+    if q.layout and q.layout.get("kind") == "vertical":
+        c.setFont(font, size)
+        c.drawString(x, top - 2, f"{idx}.")
+        _draw_vertical(c, x + GUTTER, top - 2, q.layout, font, size)
+    else:
+        text = f"{idx}. {q.statement}"
+        fs = size
+        if c.stringWidth(text, font, size) > col_w - GUTTER:
+            fs = 12
+        c.setFont(font, fs)
+        c.drawString(x, top - 4, text)
+        c.setFont(font, size)
+    if cfg.answer_lines > 0:
+        for i in range(cfg.answer_lines):
+            line_y = top - row_h + 8 + i * 14
+            c.line(x, line_y, x + col_w - 8, line_y)
 
 
 def render_pdf(questions: list[Question], cfg: ResolvedConfig) -> bytes:
@@ -57,63 +98,42 @@ def render_pdf(questions: list[Question], cfg: ResolvedConfig) -> bytes:
     top = height - MARGIN - 40
     ncols = cfg.columns
     col_w = (width - 2 * MARGIN) / ncols
-
-    page = 1
-    c.setFont(font, 13)
+    c.setFont(font, SIZE)
 
     def ensure_space(needed: float) -> None:
         nonlocal top
         if top - needed < MARGIN:
             c.showPage()
             nonlocal_page()
-            c.setFont(font, 13)
+            c.setFont(font, SIZE)
 
     def nonlocal_page() -> None:
-        nonlocal page, top
-        page += 1
+        nonlocal top
         top = height - MARGIN - 40
         draw_header()
 
-    for idx, q in enumerate(questions, 1):
-        col = (idx - 1) % ncols
-        x = MARGIN + col * col_w
-        if q.layout and q.layout.get("kind") == "vertical":
-            if top - 60 < MARGIN:
-                ensure_space(60)
-            c.setFont(font, 13)
-            c.drawString(x, top - 2, f"{idx}.")
-            _draw_vertical(c, x + 20, top - 2, q.layout, font, 13)
-            top -= 60
-        else:
-            text = f"{idx}. {q.statement}"
-            if c.stringWidth(text, font, 13) > col_w:
-                c.setFont(font, 12)
-            if top - 22 < MARGIN:
-                ensure_space(22)
-            c.drawString(x, top - 4, text)
-            c.setFont(font, 13)
-            top -= 22
-        if cfg.answer_lines > 0:
-            for i in range(cfg.answer_lines):
-                line_y = top - 6 - i * 14
-                if line_y < MARGIN:
-                    ensure_space(60)
-                    c.setFont(font, 13)
-                    line_y = top - 6
-                c.line(x, line_y, x + col_w - 8, line_y)
-            top -= 14 * cfg.answer_lines + 6
-        top -= cfg.gap
+    rows = group_rows(questions, ncols)
+    idx = 1
+    for row in rows:
+        row_h = max(_item_base(q, SIZE) for q in row) + _answer_area(cfg)
+        if top - row_h < MARGIN:
+            ensure_space(row_h)
+        for j, q in enumerate(row):
+            x = MARGIN + j * col_w
+            _draw_item(c, x, top, row_h, idx, q, cfg, font, SIZE, col_w)
+            idx += 1
+        top -= row_h + cfg.gap
 
     if cfg.answer_page:
         c.showPage()
         c.setFont(font, 16)
         c.drawCentredString(width / 2, height - MARGIN, "参考答案")
-        c.setFont(font, 13)
+        c.setFont(font, SIZE)
         y = height - MARGIN - 40
         for i, line in enumerate(answer_lines(questions), 1):
             if y < MARGIN:
                 c.showPage()
-                c.setFont(font, 13)
+                c.setFont(font, SIZE)
                 y = height - MARGIN
             c.drawString(MARGIN, y, f"{i}. {line}")
             y -= 22

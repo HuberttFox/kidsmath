@@ -118,6 +118,17 @@ def test_preset_hints_embedded():
     assert 'id="preset-hints"' in r.text
     assert '"grades"' in r.text
     assert '"topics"' in r.text
+    assert '"fields"' in r.text
+    assert '"ops"' in r.text
+
+
+def test_preview_shows_columns_grid():
+    r = client.post("/generate", data={"grade": "2", "count": "5", "topic": "arithmetic"})
+    assert r.status_code == 200
+    html = r.text
+    assert 'class="sheet' in html
+    assert 'grid-template-columns: repeat(2' in html
+    assert html.count('class="cell"') == 5
 
 
 def test_index_has_semantic_structure():

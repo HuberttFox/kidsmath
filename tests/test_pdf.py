@@ -47,3 +47,10 @@ def test_gap_and_answer_lines_render():
     cfg = resolve(Config(grade=1, topic="arithmetic", count=6, seed=2, gap=40, answer_lines=3))
     data = render_pdf(generate(cfg), cfg)
     assert data[:4] == b"%PDF"
+
+
+def test_multi_page_mixed_row_layout():
+    cfg = resolve(Config(grade=5, topic="vertical", count=40, seed=3, answer_lines=2))
+    data = render_pdf(generate(cfg), cfg)
+    assert data[:4] == b"%PDF"
+    assert data.rstrip().endswith(b"%%EOF")

@@ -46,8 +46,31 @@ def _preset_summary(d: dict) -> str:
     return "；".join(parts)
 
 
+def _preset_fields(d: dict) -> dict:
+    def r(v):
+        return [list(x) for x in v] if v else None
+
+    def p(v):
+        return list(v) if v else None
+
+    return {
+        "ops": d["operators"],
+        "n": d.get("operand_count", 2),
+        "ranges": r(d.get("operand_ranges")),
+        "rr": p(d.get("result_range")),
+        "carry": d.get("carry"),
+        "borrow": d.get("borrow"),
+        "dr": p(d.get("divisor_range")),
+        "table": p(d.get("multiplication_table")),
+        "gap": d.get("gap"),
+        "lines": d.get("answer_lines", 0),
+    }
+
+
 _PRESETS_JSON = json.dumps({
-    "grades": {str(g): _preset_summary(d) for g, d in PRESETS.items()},
+    "grades": {
+        str(g): {"summary": _preset_summary(d), "fields": _preset_fields(d)}
+        for g, d in PRESETS.items()},
     "topics": {
         t: f"默认题间距 {d['gap']}pt" + (f"，答题线 {d['answer_lines']} 行" if d["answer_lines"] else "")
         for t, d in TOPIC_DEFAULTS.items()},
@@ -188,7 +211,9 @@ async def generate_page(request: Request):
     summary = f"{grade_label} · {topic_label} · {len(questions)} 题"
     return templates.TemplateResponse(request, "preview.html", {
         "preview": preview, "query": query,
-        "sheets": resolved.sheets, "summary": summary})
+        "sheets": resolved.sheets, "summary": summary,
+        "ncols": resolved.columns,
+        "cells": [(i, q) for i, q in enumerate(questions, 1)]})
 
 
 def _download_params(form: dict) -> tuple[Config | None, str | None]:

@@ -35,7 +35,7 @@
     </div>
   </fieldset>
 
-  <details>
+  <details id="advanced">
     <summary>高级参数</summary>
     <fieldset>
       <legend>数值与运算</legend>
@@ -92,19 +92,67 @@
 <script type="application/json" id="preset-hints">{{ presets_json | safe }}</script>
 <script>
   (function () {
-    var hints = JSON.parse(document.getElementById('preset-hints').textContent);
+    var data = JSON.parse(document.getElementById('preset-hints').textContent);
+    var OP_MAP = {加: '+', 减: '-', 乘: '×', 除: '÷'};
     var hintEl = document.getElementById('preset-hint');
     var gradeEl = document.getElementById('grade');
     var topicEl = document.getElementById('topic');
+
+    function fmtRange(r) { return r[0] + '-' + r[1]; }
+
+    function fillGrade(g) {
+      var f = data.grades[g].fields;
+      document.querySelectorAll('input[name="operators"]').forEach(function (cb) {
+        cb.checked = f.ops.indexOf(OP_MAP[cb.value]) !== -1;
+      });
+      setVal('operand_count', f.n);
+      setVal('ranges', f.ranges ? f.ranges.map(fmtRange).join(',') : '');
+      setVal('result_range', f.rr ? fmtRange(f.rr) : '');
+      setVal('carry', f.carry === null ? '' : f.carry ? 'yes' : 'no');
+      setVal('borrow', f.borrow === null ? '' : f.borrow ? 'yes' : 'no');
+      setVal('divisor_range', f.dr ? fmtRange(f.dr) : '');
+      setVal('table', f.table ? fmtRange(f.table) : '');
+      setVal('gap', f.gap);
+      setVal('answer_lines', f.lines);
+    }
+
+    function setVal(id, v) {
+      var el = document.getElementById(id);
+      if (el && v !== null && v !== undefined) el.value = v;
+    }
+
     function updateHint() {
-      if (gradeEl.value && hints.grades[gradeEl.value]) {
-        hintEl.textContent = gradeEl.value + ' 年级预设：' + hints.grades[gradeEl.value] + '（可被下方参数覆盖）';
+      if (gradeEl.value && data.grades[gradeEl.value]) {
+        hintEl.textContent = gradeEl.value + ' 年级预设：' + data.grades[gradeEl.value].summary + '（改动下方参数将转为自定义）';
       } else {
-        hintEl.textContent = hints.topics[topicEl.value] || '';
+        hintEl.textContent = hintsForCustom();
       }
     }
-    gradeEl.addEventListener('change', updateHint);
+
+    function hintsForCustom() {
+      return gradeEl.value === '' && (customized)
+        ? '自定义参数（已手动修改）'
+        : (data.topics[topicEl.value] || '');
+    }
+
+    var customized = false;
+    gradeEl.addEventListener('change', function () {
+      customized = false;
+      if (gradeEl.value && data.grades[gradeEl.value]) {
+        fillGrade(gradeEl.value);
+      }
+      updateHint();
+    });
     topicEl.addEventListener('change', updateHint);
+    document.querySelectorAll('#advanced input, #advanced select').forEach(function (el) {
+      el.addEventListener('change', function () {
+        if (gradeEl.value !== '') {
+          customized = true;
+          gradeEl.value = '';
+        }
+        updateHint();
+      });
+    });
     updateHint();
   })();
 </script>

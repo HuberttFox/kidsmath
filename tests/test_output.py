@@ -1,7 +1,7 @@
 from mathgen.config import Config, resolve
 from mathgen.core.engine import generate
 from mathgen.output.answer import answer_lines
-from mathgen.output.text import render_text
+from mathgen.output.text import group_rows, render_text
 
 
 def test_render_text_numbered():
@@ -30,3 +30,19 @@ def test_answer_lines_remainder():
     q = gen(cfg, random.Random(1))
     if "余" in q.answer:
         assert answer_lines([q])[0] == f"{q.expression} = {q.answer}"
+
+
+def test_group_rows_two_columns():
+    qs = [1, 2, 3, 4, 5]
+    rows = group_rows(qs, 2)
+    assert rows == [[1, 2], [3, 4], [5]]
+
+
+def test_group_rows_single_column():
+    qs = [1, 2, 3]
+    assert group_rows(qs, 1) == [[1], [2], [3]]
+
+
+def test_group_rows_exact_and_empty():
+    assert group_rows([1, 2, 3, 4], 2) == [[1, 2], [3, 4]]
+    assert group_rows([], 3) == []

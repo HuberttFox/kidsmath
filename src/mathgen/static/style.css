@@ -81,9 +81,10 @@ button:hover, .btn:hover { background: var(--primary-dark); }
   border: 1px solid var(--border);
   padding: 1em 1.2em;
   border-radius: 8px;
-  white-space: pre-wrap;
-  overflow-x: auto;
 }
+.sheet { display: grid; column-gap: 1.4em; row-gap: .7em; }
+.cell { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.cell pre, .cell p { margin: 0; }
 
 @media (max-width: 560px) {
   .form-grid { grid-template-columns: 1fr; }
