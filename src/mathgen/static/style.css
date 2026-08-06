@@ -27,6 +27,7 @@
   --mint-soft: #d4f5e9;
   --yellow: #ffeaa7;
   --yellow-soft: #fdf3c5;
+  --peach: #ffdab9;
   --blue: #a2d2ff;
   --blue-soft: #d0e8ff;
   --lavender-soft: #e9e2fa;
@@ -622,6 +623,27 @@ details#advanced[open] > summary { margin-bottom: .9em; }
 }
 .footer-copy { font-weight: 700; font-size: .92rem; color: var(--text-soft); }
 .footer-made { font-size: .85rem; color: var(--text-mute); margin-top: .2em; }
+
+/* ---- 产品页 ---- */
+.landing-hero { text-align: center; padding: 3em var(--gap) 2em; position: relative; overflow: hidden; }
+.landing-hero::before { content: ''; position: absolute; top: -120px; left: 50%;
+  transform: translateX(-50%); width: 480px; height: 480px; border-radius: 50%;
+  background: radial-gradient(circle, var(--mint-soft) 0%, transparent 65%); opacity: .5; pointer-events: none; }
+.landing-section { max-width: var(--container-max); margin: 0 auto; padding: 1.6em var(--gap); }
+.landing-section h2 { text-align: center; font-size: 1.4rem; margin-bottom: 1em; color: var(--text); }
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1em; }
+.feature-card { background: var(--card-bg); border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.2em 1.1em; text-align: center; box-shadow: var(--shadow-sm); }
+.feature-card h3 { font-size: 1.02rem; margin-bottom: .4em; }
+.feature-card p { font-size: .88rem; color: var(--text-soft); }
+.steps { display: flex; gap: 1.2em; justify-content: center; flex-wrap: wrap; }
+.step { flex: 1; min-width: 180px; text-align: center; }
+.step-number { width: 48px; height: 48px; margin: 0 auto .6em; border-radius: 50%;
+  background: linear-gradient(135deg, var(--yellow) 0%, var(--peach) 100%);
+  display: flex; align-items: center; justify-content: center; font-weight: 800; box-shadow: var(--shadow-sm); }
+.member-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1em; }
+.coming-soon { display: inline-block; margin-top: .5em; padding: .2em .8em; border-radius: 999px;
+  background: var(--yellow-soft); border: 1.5px solid var(--yellow); font-size: .78rem; font-weight: 700; color: var(--text-soft); }
 
 /* ---- 动效降级 ---- */
 @media (prefers-reduced-motion: reduce) {

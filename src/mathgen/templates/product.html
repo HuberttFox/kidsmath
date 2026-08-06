@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("brand", lang) }} - {{ t("product.title", lang) }}{% endblock %}
+
+{% block nav %}
+<a href="/" data-i18n="nav.generate">{{ t("nav.generate", lang) }}</a>
+{% endblock %}
+
+{% block content %}
+<section class="landing-hero">
+  <div class="hero-badge" data-i18n="product.hero_badge">{{ t("product.hero_badge", lang) }}</div>
+  <h1 class="hero-title" data-i18n="product.hero_title">{{ t("product.hero_title", lang) }}</h1>
+  <p class="hero-tagline" data-i18n="product.hero_tagline">{{ t("product.hero_tagline", lang) }}</p>
+  <a class="btn btn-big" href="/" data-i18n="product.cta">{{ t("product.cta", lang) }}</a>
+</section>
+
+<section class="landing-section">
+  <div class="features-grid">
+    <div class="feature-card">
+      <h3 data-i18n="product.f1_title">{{ t("product.f1_title", lang) }}</h3>
+      <p data-i18n="product.f1_desc">{{ t("product.f1_desc", lang) }}</p>
+    </div>
+    <div class="feature-card">
+      <h3 data-i18n="product.f2_title">{{ t("product.f2_title", lang) }}</h3>
+      <p data-i18n="product.f2_desc">{{ t("product.f2_desc", lang) }}</p>
+    </div>
+    <div class="feature-card">
+      <h3 data-i18n="product.f3_title">{{ t("product.f3_title", lang) }}</h3>
+      <p data-i18n="product.f3_desc">{{ t("product.f3_desc", lang) }}</p>
+    </div>
+    <div class="feature-card">
+      <h3 data-i18n="product.f4_title">{{ t("product.f4_title", lang) }}</h3>
+      <p data-i18n="product.f4_desc">{{ t("product.f4_desc", lang) }}</p>
+    </div>
+    <div class="feature-card">
+      <h3 data-i18n="product.f5_title">{{ t("product.f5_title", lang) }}</h3>
+      <p data-i18n="product.f5_desc">{{ t("product.f5_desc", lang) }}</p>
+    </div>
+    <div class="feature-card">
+      <h3 data-i18n="product.f6_title">{{ t("product.f6_title", lang) }}</h3>
+      <p data-i18n="product.f6_desc">{{ t("product.f6_desc", lang) }}</p>
+    </div>
+  </div>
+</section>
+
+<section class="landing-section">
+  <div class="steps">
+    <div class="step">
+      <div class="step-number" aria-hidden="true">1</div>
+      <h3 data-i18n="product.step1_t">{{ t("product.step1_t", lang) }}</h3>
+      <p data-i18n="product.step1_d">{{ t("product.step1_d", lang) }}</p>
+    </div>
+    <div class="step">
+      <div class="step-number" aria-hidden="true">2</div>
+      <h3 data-i18n="product.step2_t">{{ t("product.step2_t", lang) }}</h3>
+      <p data-i18n="product.step2_d">{{ t("product.step2_d", lang) }}</p>
+    </div>
+    <div class="step">
+      <div class="step-number" aria-hidden="true">3</div>
+      <h3 data-i18n="product.step3_t">{{ t("product.step3_t", lang) }}</h3>
+      <p data-i18n="product.step3_d">{{ t("product.step3_d", lang) }}</p>
+    </div>
+  </div>
+</section>
+
+<section class="landing-section member-preview">
+  <h2 data-i18n="product.member_title">{{ t("product.member_title", lang) }}</h2>
+  <div class="member-grid">
+    <a class="feature-card" href="/member/timer">
+      <h3 data-i18n="product.member_timer">{{ t("product.member_timer", lang) }}</h3>
+      <span class="coming-soon" data-i18n="coming_soon">{{ t("coming_soon", lang) }}</span>
+    </a>
+    <a class="feature-card" href="/member/pomodoro">
+      <h3 data-i18n="product.member_pomodoro">{{ t("product.member_pomodoro", lang) }}</h3>
+      <span class="coming-soon" data-i18n="coming_soon">{{ t("coming_soon", lang) }}</span>
+    </a>
+    <a class="feature-card" href="/member/errors">
+      <h3 data-i18n="product.member_errors">{{ t("product.member_errors", lang) }}</h3>
+      <span class="coming-soon" data-i18n="coming_soon">{{ t("coming_soon", lang) }}</span>
+    </a>
+    <a class="feature-card" href="/member/review">
+      <h3 data-i18n="product.member_review">{{ t("product.member_review", lang) }}</h3>
+      <span class="coming-soon" data-i18n="coming_soon">{{ t("coming_soon", lang) }}</span>
+    </a>
+  </div>
+</section>
+
+<section class="landing-section pwa-preview">
+  <h2 data-i18n="product.pwa_title">{{ t("product.pwa_title", lang) }}</h2>
+  <p data-i18n="product.pwa_desc">{{ t("product.pwa_desc", lang) }}</p>
+</section>
+{% endblock %}

@@ -275,6 +275,14 @@ async def index(request: Request):
         request, "index.html", _index_context(form, None, lang))
 
 
+@app.get("/product", response_class=HTMLResponse)
+async def product_page(request: Request):
+    lang = _lang(request)
+    return templates.TemplateResponse(
+        request, "product.html",
+        {"lang": lang, "ui_json": _UI_JSON, "version": __version__})
+
+
 @app.get("/healthz")
 async def healthz():
     return {"status": "ok"}

@@ -435,3 +435,12 @@ def test_no_pure_white_black_in_css():
     assert "--card-bg: #382a20" in css
     assert "--input-bg: #3f2f23" in css
     assert "rgba(0, 0, 0" not in css
+
+
+def test_product_page():
+    r = client.get("/product")
+    assert r.status_code == 200
+    assert 'class="landing-hero"' in r.text
+    assert 'class="feature-card' in r.text
+    assert "coming-soon" in r.text
+    assert 'href="/"' in r.text  # CTA
