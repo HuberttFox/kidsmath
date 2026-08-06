@@ -1,0 +1,33 @@
+import random
+
+from mathgen.config import Config, resolve
+from mathgen.topics.word_problem import gen
+
+
+def test_statement_contains_numbers_and_question():
+    cfg = resolve(Config(grade=1, topic="word_problem", count=10, seed=1))
+    for _ in range(20):
+        q = gen(cfg, random.Random())
+        # 偏离 brief：模板用全角“？”（中文标点），brief 测试误写半角 "?"，按模板断言全角
+        assert "？" in q.statement
+        assert q.expression
+        assert q.answer == str(eval(q.expression.replace("×", "*").replace("÷", "//")))
+
+
+def test_answer_matches_expression():
+    cfg = resolve(Config(grade=2, topic="word_problem", count=10, seed=2))
+    for _ in range(20):
+        q = gen(cfg, random.Random())
+        if "÷" in q.expression:
+            a, b = map(int, q.expression.replace("÷", " ").split())
+            assert q.answer == (str(a // b) if a % b == 0 else f"{a // b} 余 {a % b}")
+        else:
+            assert q.answer == str(eval(q.expression.replace("×", "*")))
+
+
+def test_no_duplicate_statements_in_sheet():
+    cfg = resolve(Config(grade=1, topic="word_problem", count=8, seed=3))
+    from mathgen.core.engine import generate
+    qs = generate(cfg)
+    stmts = [q.statement for q in qs]
+    assert len(stmts) == len(set(stmts))
