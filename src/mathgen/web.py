@@ -184,11 +184,15 @@ def _parse_op_weights(form: dict) -> dict[str, int] | None:
             except ValueError:
                 raise ConfigError("weight_format", v=part) from None
         return weights or None
+    from mathgen.config import normalize_operators
+    selected = normalize_operators(form.get("operators") or "")
     weights = {}
     for zh, op in _OP_CHARS.items():
         v = form.get(f"w_{zh}")
         if v in (None, ""):
             continue
+        if op not in selected:
+            continue  # 未勾选的运算符：忽略其权重（UI 已禁用，此处防御）
         try:
             weights[op] = int(v)
         except ValueError:

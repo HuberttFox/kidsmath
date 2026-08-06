@@ -84,7 +84,8 @@
               <input type="checkbox" name="operators" value="{{ op }}"{% if op in form.get("operators", "") %} checked{% endif %}>
               <span>{{ op }}</span>
               <input class="weight-input" type="number" name="w_{{ op }}" min="0"
-                     value="{{ form.get('w_' + op, '') }}" aria-label="{{ op }}">
+                     value="{{ form.get('w_' + op, '') }}" aria-label="{{ op }}"
+                     {% if op not in form.get("operators", "") %}disabled{% endif %}>
             </label>
             {% endfor %}
           </div>
@@ -97,7 +98,8 @@
           {{ input("operand_count", form, "2", "number", min="2", max="4") }}
         </label>
         <div class="field-group">
-          <label class="toggle-line" for="parentheses">{{ checkbox("parentheses", form) }}
+          <label class="toggle-line" for="parentheses">
+            <input id="parentheses" type="checkbox" name="parentheses" value="1"{% if form.get("parentheses") %} checked{% endif %}{% if form.get("operand_count", "2")|int < 3 %} disabled{% endif %}>
             <span data-i18n="f.parentheses">{{ t("f.parentheses", lang) }}</span>{{ tip("tip.parentheses") }}
           </label>
         </div>
@@ -281,6 +283,18 @@
       setVal('table', f.table ? fmtRange(f.table) : '');
       setVal('gap', f.gap);
       setVal('answer_lines', f.lines);
+      syncDisables();
+    }
+
+    function syncDisables() {
+      document.querySelectorAll('.op-item').forEach(function (item) {
+        var cb = item.querySelector('input[name="operators"]');
+        var w = item.querySelector('.weight-input');
+        if (w) w.disabled = !cb.checked;
+      });
+      var opc = parseInt((document.getElementById('operand_count') || {}).value, 10) || 2;
+      var paren = document.getElementById('parentheses');
+      if (paren) paren.disabled = opc < 3;
     }
 
     function updateHint() {

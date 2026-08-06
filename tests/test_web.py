@@ -330,6 +330,34 @@ def test_index_has_numbering_form_controls():
     assert 'value="column"' in html
 
 
+def test_weight_input_disabled_when_op_unchecked():
+    r = client.get("/")
+    html = r.text
+    assert 'name="w_加"' in html and "disabled" in html
+    # 勾选后权重框可用（回显场景）
+    r2 = client.post("/generate", data={"grade": "1", "count": "x",
+                                        "operators": ["加", "乘"], "w_加": "7"})
+    assert r2.status_code == 200
+    block = r2.text.split('name="w_加"')[1][:200]
+    assert "disabled" not in block.split(">")[0]
+    r3 = client.post("/generate", data={"grade": "9", "operators": ["加"], "w_乘": "3"})
+    assert r3.status_code == 200
+    assert "参数格式不正确" not in r3.text  # 未勾选的权重被忽略，不报错
+    assert "年级 9" in r3.text
+
+
+def test_parentheses_disabled_below_three_operands():
+    r = client.get("/")
+    assert 'name="parentheses"' in r.text
+    r2 = client.post("/generate", data={"grade": "1", "count": "x", "operand_count": "2"})
+    assert r2.status_code == 200
+    block = r2.text.split('name="parentheses"')[1][:160]
+    assert "disabled" in block
+    r3 = client.post("/generate", data={"grade": "1", "count": "x", "operand_count": "3"})
+    block3 = r3.text.split('name="parentheses"')[1][:160]
+    assert "disabled" not in block3
+
+
 def test_lang_swap_attributes_present():
     r = client.get("/")
     html = r.text

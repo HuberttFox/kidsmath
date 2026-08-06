@@ -141,17 +141,9 @@ def _eval_precedence(tokens: list[str]) -> int | None:
 def _gen_multi(cfg: ResolvedConfig, rng: random.Random, n: int) -> Question:
     for _ in range(1000):
         ops = _pick_ops(rng, cfg, n - 1)
-        operands = [gen_operand(rng, *cfg.operand_ranges[0])]
+        operands = [_gen_operand_by_role(cfg, rng, ops, 0)]
         for i in range(1, n):
-            prev = ops[i - 1]
-            if prev == "×" and not cfg.explicit_ranges:
-                lo, hi = cfg.multiplication_table
-                operands.append(gen_operand(rng, lo, hi))
-            elif prev == "÷" and not cfg.explicit_ranges:
-                lo, hi = cfg.divisor_range
-                operands.append(gen_operand(rng, lo, hi))
-            else:
-                operands.append(gen_operand(rng, *cfg.operand_ranges[i]))
+            operands.append(_gen_operand_by_role(cfg, rng, ops, i))
         if not cfg.allow_negative and len(ops) == 1 and ops[0] == "-" and operands[0] < operands[1]:
             operands[0], operands[1] = operands[1], operands[0]
         groups = _paren_groups(ops) if cfg.parentheses and n >= 3 else None
@@ -172,6 +164,12 @@ def _gen_multi(cfg: ResolvedConfig, rng: random.Random, n: int) -> Question:
                 tokens = _wrap_two(tokens)
             else:
                 tokens = _wrap_one(tokens, groups[0][0], groups[0][1])
+        if not _intermediate_ok(tokens, cfg.allow_negative):
+            continue
+        if groups and not _paren_groups_ok(cfg, ops, operands, groups):
+            continue
+        if not _dividend_ok(cfg, tokens, ops):
+            continue
         result = _eval_precedence(tokens)
         if result is None:
             continue
@@ -181,6 +179,121 @@ def _gen_multi(cfg: ResolvedConfig, rng: random.Random, n: int) -> Question:
         statement = expr.replace("(", "( ").replace(")", " )") + " = ____"
         return Question("arithmetic", statement, str(result), expr, None)
     raise GenerationError("multi_no_solution", n=n)
+
+
+def _gen_operand_by_role(cfg: ResolvedConfig, rng: random.Random,
+                         ops: list[str], i: int) -> int:
+    """按操作数角色取数：× 因数/÷ 除数/被除数按表与除数范围，+− 按 ranges。
+
+    显式 ranges 时一律按位置取（C 项语义）。
+    """
+    n = len(ops) + 1
+    left = ops[i - 1] if i > 0 else None      # 它作为右操作数参与的运算符
+    right = ops[i] if i < n - 1 else None     # 它作为左操作数参与的运算符
+    if cfg.explicit_ranges:
+        return gen_operand(rng, *cfg.operand_ranges[i])
+    if left == "÷" and right == "×":
+        # 双角色：既是除数又是 × 左因数——先按除数取，再校验在表内
+        for _ in range(50):
+            lo, hi = cfg.divisor_range
+            v = gen_operand(rng, lo, hi)
+            tlo, thi = cfg.multiplication_table
+            if tlo <= v <= thi:
+                return v
+    if left == "×" or right == "×":
+        lo, hi = cfg.multiplication_table
+        return gen_operand(rng, lo, hi)
+    if right == "÷":
+        # 被除数：除数×商 构造（∈ [d_lo×q_lo, d_hi×q_hi]，天然整除）
+        d = gen_operand(rng, *cfg.divisor_range)
+        q = gen_operand(rng, *cfg.multiplication_table)
+        return d * q
+    if left == "÷":
+        lo, hi = cfg.divisor_range
+        return gen_operand(rng, lo, hi)
+    return gen_operand(rng, *cfg.operand_ranges[i])
+
+
+def _segments(tokens: list[str]) -> list[list[str]]:
+    """把表达式按顶层 +- 切成段（括号内不切）。第一段无前缀运算符。"""
+    segs: list[list[str]] = []
+    cur: list[str] = []
+    depth = 0
+    for t in tokens:
+        if t == "(":
+            depth += 1
+        elif t == ")":
+            depth -= 1
+        if t in "+-" and depth == 0:
+            segs.append(cur)
+            cur = [t]
+        else:
+            cur.append(t)
+    segs.append(cur)
+    return segs
+
+
+def _intermediate_ok(tokens: list[str], allow_negative: bool) -> bool:
+    """+− 段左到右累积，任一步 < 0 则拒绝（allow_negative=False 时）。"""
+    if allow_negative:
+        return True
+    segs = _segments(tokens)
+    v = _eval_precedence(segs[0])
+    if v is None or v < 0:
+        return False
+    for seg in segs[1:]:
+        rhs = _eval_precedence(seg[1:])
+        if rhs is None:
+            return False
+        v = v + rhs if seg[0] == "+" else v - rhs
+        if v < 0:
+            return False
+    return True
+
+
+def _paren_groups_ok(cfg: ResolvedConfig, ops: list[str], operands: list[int],
+                     groups: list[tuple[int, int]]) -> bool:
+    """括号组值校验：邻接 × → 组值在乘法表范围；÷ 右侧（除数）→ 除数范围；÷ 左侧（被除数）→ 被除数范围。"""
+    if cfg.explicit_ranges:
+        return True
+    tlo, thi = cfg.multiplication_table
+    dlo, dhi = cfg.divisor_range
+    for s, e in groups:
+        val = operands[s]
+        for k in range(s, e + 1):
+            val = val + operands[k + 1] if ops[k] == "+" else val - operands[k + 1]
+        if s > 0 and ops[s - 1] == "×" or e < len(ops) - 1 and ops[e + 1] == "×":
+            if not (tlo <= val <= thi):
+                return False
+        if s > 0 and ops[s - 1] == "÷" or e < len(ops) - 1 and ops[e + 1] == "÷":
+            if not (dlo <= val <= dhi):
+                return False
+        # 组作为 ÷ 的被除数（左邻 ÷）
+        if s > 0 and ops[s - 1] == "÷":
+            if not (dlo * tlo <= val <= dhi * thi):
+                return False
+    return True
+
+
+def _dividend_ok(cfg: ResolvedConfig, tokens: list[str], ops: list[str]) -> bool:
+    """每个 ÷ 的左侧运行值须在被除数范围 [d_lo×q_lo, d_hi×q_hi]（非 explicit）。"""
+    if cfg.explicit_ranges:
+        return True
+    dlo, dhi = cfg.divisor_range
+    qlo, qhi = cfg.multiplication_table
+    depth = 0
+    for pos, t in enumerate(tokens):
+        if t == "(":
+            depth += 1
+        elif t == ")":
+            depth -= 1
+        elif t == "÷" and depth == 0:
+            if pos == 0:
+                continue  # ÷ 在开头由位置 0 构造保证
+            v = _eval_precedence(tokens[:pos])
+            if v is None or not (dlo * qlo <= v <= dhi * qhi):
+                return False
+    return True
 
 
 def _paren_groups(ops: list[str]) -> list[tuple[int, int]] | None:

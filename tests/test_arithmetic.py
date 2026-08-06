@@ -175,6 +175,92 @@ def test_preset_multiplication_still_table():
         assert lo <= a <= hi and lo <= b <= hi
 
 
+def test_multi_all_mul_factors_in_table():
+    from mathgen.topics.arithmetic import _eval_precedence
+    cfg = resolve(Config(grade=5, count=40, seed=14,
+                         multiplication_table=(2, 9), divisor_range=(2, 9)))
+    for q in generate(cfg):
+        toks = [t for t in q.expression.split(" ") if t]
+        for j, t in enumerate(toks):
+            if t != "×":
+                continue
+
+            def factor_at(k: int) -> int:
+                if toks[k] == "(":
+                    end = toks.index(")", k)
+                    return _eval_precedence(toks[k:end + 1])
+                if toks[k] == ")":
+                    depth = 0
+                    for m in range(k, -1, -1):
+                        if toks[m] == ")":
+                            depth += 1
+                        elif toks[m] == "(":
+                            depth -= 1
+                            if depth == 0:
+                                return _eval_precedence(toks[m:k + 1])
+                return int(toks[k])
+
+            assert 2 <= factor_at(j - 1) <= 9, q.expression
+            assert 2 <= factor_at(j + 1) <= 9, q.expression
+
+
+def test_multi_division_operands_constrained():
+    from mathgen.topics.arithmetic import _eval_precedence
+    cfg = resolve(Config(grade=5, count=40, seed=15,
+                         multiplication_table=(2, 9), divisor_range=(2, 9)))
+    for q in generate(cfg):
+        toks = [t for t in q.expression.split(" ") if t]
+        for j, t in enumerate(toks):
+            if t != "÷":
+                continue
+            # 除数：紧邻右 token，或括号组值
+            if toks[j + 1] == "(":
+                end = toks.index(")", j)
+                divisor = _eval_precedence(toks[j + 1:end + 1])
+            else:
+                divisor = int(toks[j + 1])
+            assert 2 <= divisor <= 9, q.expression
+            dividend = _eval_precedence(toks[:j])
+            assert 4 <= dividend <= 81, q.expression
+
+
+def test_multi_no_negative_intermediate():
+    cfg = resolve(Config(grade=5, count=40, seed=16))
+    for q in generate(cfg):
+        toks = q.expression.replace("(", "( ").replace(")", " )").split(" ")
+        toks = [t for t in toks if t]
+        from mathgen.topics.arithmetic import _intermediate_ok
+        assert _intermediate_ok(toks, False), q.expression
+
+
+def test_multi_paren_group_value_in_table():
+    import re as _re
+    cfg = resolve(Config(grade=5, count=40, seed=17, multiplication_table=(2, 9)))
+    pats = [
+        _re.compile(r"^(\d+) ([×÷]) \(\s?(\d+) ([+-]) (\d+)\s?\)$"),
+        _re.compile(r"^\(\s?(\d+) ([+-]) (\d+)\s?\) ([×÷]) (\d+)$"),
+    ]
+    for q in generate(cfg):
+        if "(" not in q.expression:
+            continue
+        m = next((p.match(q.expression) for p in pats if p.match(q.expression)), None)
+        assert m, q.expression
+        if m.group(2) in "×÷":
+            other, op_adj = int(m.group(1)), m.group(2)
+            a, b, op = int(m.group(3)), int(m.group(5)), m.group(4)
+        else:
+            a, b, op = int(m.group(1)), int(m.group(3)), m.group(2)
+            op_adj, other = m.group(4), int(m.group(5))
+        val = a + b if op == "+" else a - b
+        if op_adj == "×":
+            assert 2 <= val <= 9 and 2 <= other <= 9, q.expression
+        else:  # ÷：右侧组=除数，左侧组=被除数
+            if m.group(2) in "×÷":  # num ÷ ( group )：other 是被除数
+                assert 4 <= other <= 891, q.expression
+            else:  # ( group ) ÷ num：other 是除数
+                assert 2 <= other <= 99, q.expression
+
+
 def test_multi_result_within_range():
     cfg = resolve(Config(grade=5, count=30, seed=5))
     lo, hi = cfg.result_range
