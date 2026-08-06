@@ -457,3 +457,13 @@ def test_pwa_assets():
     r3 = client.get("/")
     assert 'rel="manifest"' in r3.text
     assert "/static/sw.js" in r3.text
+
+
+def test_placeholder_pages():
+    for path in ("/user", "/user/history", "/user/saved", "/member",
+                 "/member/timer", "/member/pomodoro", "/member/errors", "/member/review"):
+        r = client.get(path)
+        assert r.status_code == 200, path
+        assert "coming-soon" in r.text, path
+    r = client.get("/")
+    assert 'href="/user"' in r.text  # header 用户入口

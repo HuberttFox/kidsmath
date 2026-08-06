@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - mathgen{% endblock %}
+{% block nav %}
+<a href="/" data-i18n="back_home">{{ t("back_home", lang) }}</a>
+{% endblock %}
+{% block content %}
+<section class="placeholder-hero">
+  <h1 class="placeholder-title" data-i18n="{{ title_key }}">{{ title }}</h1>
+  <p class="coming-soon" data-i18n="coming_soon">{{ t("coming_soon", lang) }}</p>
+</section>
+<section class="placeholder-grid">
+  {% for icon, tkey, desc, link in cards %}
+  <div class="placeholder-card">
+    <span class="placeholder-icon">{{ icon }}</span>
+    <h2>{{ tkey }}</h2>
+    <p>{{ desc }}</p>
+    {% if link %}<a class="btn btn-secondary btn-small" href="{{ link }}">{{ link }}</a>{% endif %}
+  </div>
+  {% endfor %}
+</section>
+{% endblock %}

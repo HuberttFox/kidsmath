@@ -650,6 +650,18 @@ details#advanced[open] > summary { margin-bottom: .9em; }
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
+/* ---- 占位页 ---- */
+.placeholder-hero { text-align: center; padding: 2.4em var(--gap) 1em; }
+.placeholder-title { font-size: 1.6rem; color: var(--text); }
+.placeholder-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1em; max-width: var(--container-max); margin: 1.2em auto 2em; padding: 0 var(--gap); }
+.placeholder-card { background: var(--card-bg); border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: 1.2em; text-align: center; box-shadow: var(--shadow-sm); }
+.placeholder-icon { font-size: 1.8rem; display: block; margin-bottom: .4em; }
+.placeholder-card h2 { font-size: 1.05rem; margin-bottom: .3em; }
+.placeholder-card p { font-size: .88rem; color: var(--text-soft); margin-bottom: .6em; }
+.btn-small { padding: .45em 1.1em; font-size: .85rem; }
+
 /* ---- 响应式 ---- */
 @media (max-width: 768px) {
   .hero-title { font-size: 1.6rem; }

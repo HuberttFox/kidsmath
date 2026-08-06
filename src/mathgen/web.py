@@ -105,6 +105,53 @@ _PRESETS_JSON = json.dumps({
         for g, d in PRESETS.items()},
 }, ensure_ascii=False)
 
+PLACEHOLDER_PAGES = {
+    "/user": ("user.title", [
+        ("🧑", "user.history", "user.history_desc", "/user/history"),
+        ("⭐", "user.saved", "user.saved_desc", "/user/saved"),
+    ]),
+    "/user/history": ("user.history", [("📜", "user.history", "coming_soon", None)]),
+    "/user/saved": ("user.saved", [("⭐", "user.saved", "coming_soon", None)]),
+    "/member": ("member.title", [
+        ("🤖", "member.ai", "member.ai_desc", None),
+        ("⏱️", "member.timer", "member.timer_desc", "/member/timer"),
+        ("🍅", "member.pomodoro", "member.pomodoro_desc", "/member/pomodoro"),
+        ("❌", "member.errors", "member.errors_desc", "/member/errors"),
+        ("🔁", "member.review", "member.review_desc", "/member/review"),
+    ]),
+    "/member/timer": ("member.timer", [("⏱️", "member.timer", "member.timer_desc", None)]),
+    "/member/pomodoro": ("member.pomodoro", [("🍅", "member.pomodoro", "member.pomodoro_desc", None)]),
+    "/member/errors": ("member.errors", [("❌", "member.errors", "member.errors_desc", None)]),
+    "/member/review": ("member.review", [
+        ("🔁", "member.review", "member.review_desc", None),
+        ("📝", "member.review_gen", "coming_soon", None),
+    ]),
+}
+
+
+def _placeholder_context(lang: str, title_key: str, cards) -> dict:
+    cards_i18n = [(icon, t(t_key, lang), t(d_key, lang),
+                   link and t("coming_soon", lang) or None)
+                  for icon, t_key, d_key, link in cards]
+    return {
+        "lang": lang, "ui_json": _UI_JSON, "title": t(title_key, lang),
+        "title_key": title_key, "cards": cards_i18n}
+
+
+@app.get("/user")
+@app.get("/user/history")
+@app.get("/user/saved")
+@app.get("/member")
+@app.get("/member/timer")
+@app.get("/member/pomodoro")
+@app.get("/member/errors")
+@app.get("/member/review")
+async def placeholder_page(request: Request):
+    lang = _lang(request)
+    title_key, cards = PLACEHOLDER_PAGES[request.url.path]
+    return templates.TemplateResponse(
+        request, "placeholder.html", _placeholder_context(lang, title_key, cards))
+
 
 def _index_context(form: dict | None = None, error: str | None = None,
                    lang: str = "zh") -> dict:
