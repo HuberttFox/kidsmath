@@ -36,3 +36,23 @@ def test_all_grades_resolve():
     for g in range(1, 7):
         r = resolve(Config(grade=g))
         assert r.operators, f"grade {g} empty operators"
+
+
+def test_explicit_false_overrides_preset_parentheses():
+    r = resolve(Config(grade=5, parentheses=False))
+    assert r.parentheses is False
+
+
+def test_explicit_operators_overrides_preset():
+    r = resolve(Config(grade=2, operators="+-"))
+    assert r.operators == "+-"
+
+
+def test_explicit_answer_page_false_overrides_preset():
+    r = resolve(Config(grade=2, answer_page=False))
+    assert r.answer_page is False
+
+
+def test_zero_operand_count_raises_chinese_error():
+    with pytest.raises(ConfigError, match="运算数个数"):
+        resolve(Config(operand_count=0))

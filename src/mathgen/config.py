@@ -99,25 +99,25 @@ class Config:
     """用户输入参数，全部有默认值。None 表示未显式指定。"""
 
     topic: str = "arithmetic"
-    operators: str = "+-"
+    operators: str | None = None
     operand_count: int = 2
-    parentheses: bool = False
+    parentheses: bool | None = None
     operand_ranges: list[tuple[int, int]] | None = None
     result_range: tuple[int, int] | None = None
-    allow_negative: bool = False
-    allow_decimal: bool = False
+    allow_negative: bool | None = None
+    allow_decimal: bool | None = None
     carry: bool | None = None
     borrow: bool | None = None
     divisor_range: tuple[int, int] | None = None
-    allow_remainder: bool = False
+    allow_remainder: bool | None = None
     multiplication_table: tuple[int, int] | None = None
     count: int = 20
     seed: int | None = None
-    dedupe: bool = True
+    dedupe: bool | None = None
     columns: int = 2
     gap: int | None = None
     answer_lines: int | None = None
-    answer_page: bool = True
+    answer_page: bool | None = None
     title: str | None = None
     header: str | None = None
     sheets: int = 1
@@ -170,8 +170,15 @@ def resolve(cfg: Config) -> ResolvedConfig:
     for key in ("operators", "operand_count", "parentheses", "allow_negative",
                 "allow_decimal", "allow_remainder", "dedupe", "answer_page", "sheets"):
         value = getattr(cfg, key)
-        if value != Config().__getattribute__(key):
+        if value is not None:
             data[key] = value
+
+    for key, default in (("operators", "+-"), ("parentheses", False),
+                         ("allow_negative", False), ("allow_decimal", False),
+                         ("allow_remainder", False), ("dedupe", True),
+                         ("answer_page", True)):
+        if data.get(key) is None:
+            data[key] = default
 
     if cfg.topic not in TOPICS:
         raise ConfigError(f"题型 {cfg.topic} 不支持，可选：{', '.join(TOPICS)}。")
@@ -202,6 +209,9 @@ def resolve(cfg: Config) -> ResolvedConfig:
         raise ConfigError(f"题间距不能为负，当前 {data['gap']}。")
     if data["answer_lines"] < 0:
         raise ConfigError(f"答题横线数不能为负，当前 {data['answer_lines']}。")
+    if data["operand_count"] < 2:
+        raise ConfigError(
+            f"运算数个数必须 ≥ 2，当前 {data['operand_count']}。建议改为 2 到 4。")
     ranges = data["operand_ranges"]
     if ranges is None:
         ranges = [(1, 20), (1, 20)]
