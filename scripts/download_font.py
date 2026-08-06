@@ -1,6 +1,5 @@
 """下载并子集化 Noto Sans SC（OFL），输出到 src/mathgen/assets/font/NotoSansSC-Regular.ttf。
 子集字符 = 应用题模板 + 常用 UI 字。离线或失败可跳过（有系统字体兜底）。"""
-import re
 import sys
 import urllib.request
 from pathlib import Path
@@ -21,13 +20,16 @@ def main() -> int:
     urllib.request.urlretrieve(URL, tmp)
     text = "".join(p.read_text(encoding="utf-8") for p in
                    (Path(__file__).resolve().parent.parent / "src" / "mathgen" / "topics").glob("*.py"))
+    # 修复 F1：不再用正则过滤，全量子集化 topics/*.py + EXTRA 中的字符。
+    # 旧实现的正则白名单漏掉全角标点（？；）与数学符号（− –），模板字符会静默丢失；
+    # 全量子集由 tests/test_fonts.py 回归测试兜底（断言 topics 全部非 ASCII 字符在 cmap）。
     chars = sorted(set(text + EXTRA))
     opts = subset.Options()
     opts.font_number = 0
     opts.ignore_missing_glyphs = True
     font = subset.load_font(tmp, opts)
     subsetter = subset.Subsetter(options=opts)
-    subsetter.populate(text=re.sub(r"[^一-鿿 0-9（）()。，、：:____×÷＋－+-]", "", "".join(chars)))
+    subsetter.populate(text="".join(chars))
     subsetter.subset(font)
     font = instantiateVariableFont(font, {"wght": 400})
     subset.save_font(font, OUT, opts)
