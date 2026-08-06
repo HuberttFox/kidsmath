@@ -164,6 +164,9 @@ def _config_from_form(form: dict) -> Config:
         sheets=i(form.get("sheets"), 1),
         lang=form.get("lang") or None,
         parentheses=form.get("parentheses") == "1",
+        left_factor_range=rng(form.get("left_factor_range")),
+        right_factor_range=rng(form.get("right_factor_range")),
+        dividend_range=rng(form.get("dividend_range")),
         op_weights=_parse_op_weights(form),
         show_numbers=form.get("show_numbers") != "0",
         number_direction=form.get("number_direction") or None,
@@ -240,6 +243,12 @@ def _as_query(cfg: Config) -> dict:
         q["parentheses"] = "1" if cfg.parentheses else "0"
     if cfg.op_weights:
         q["op_weights"] = ",".join(f"{k}={v}" for k, v in cfg.op_weights.items())
+    if cfg.left_factor_range:
+        q["left_factor_range"] = f"{cfg.left_factor_range[0]}-{cfg.left_factor_range[1]}"
+    if cfg.right_factor_range:
+        q["right_factor_range"] = f"{cfg.right_factor_range[0]}-{cfg.right_factor_range[1]}"
+    if cfg.dividend_range:
+        q["dividend_range"] = f"{cfg.dividend_range[0]}-{cfg.dividend_range[1]}"
     if cfg.show_numbers is False:
         q["show_numbers"] = "0"
     if cfg.number_direction == "column":

@@ -34,6 +34,59 @@ def pick_op(rng: random.Random, cfg: ResolvedConfig) -> str:
     return rng.choice(ops)
 
 
+def left_factor_range(cfg: ResolvedConfig) -> tuple[int, int]:
+    """× 左因数区间：显式左因数 > 显式乘法表 > 显式 ranges[0] > 预设表。"""
+    if cfg.explicit_left_factor:
+        return cfg.left_factor_range
+    if cfg.explicit_table:
+        return cfg.multiplication_table
+    if cfg.explicit_ranges:
+        return cfg.operand_ranges[0]
+    return cfg.multiplication_table
+
+
+def right_factor_range(cfg: ResolvedConfig) -> tuple[int, int]:
+    """× 右因数区间：显式右因数 > 显式乘法表 > 显式 ranges[1] > 预设表。"""
+    if cfg.explicit_right_factor:
+        return cfg.right_factor_range
+    if cfg.explicit_table:
+        return cfg.multiplication_table
+    if cfg.explicit_ranges:
+        return cfg.operand_ranges[1]
+    return cfg.multiplication_table
+
+
+def divisor_range(cfg: ResolvedConfig) -> tuple[int, int]:
+    """÷ 除数区间：显式除数 > 显式 ranges[1] > 预设除数。"""
+    if cfg.explicit_divisor:
+        return cfg.divisor_range
+    if cfg.explicit_ranges:
+        return cfg.operand_ranges[1]
+    return cfg.divisor_range
+
+
+def quotient_range(cfg: ResolvedConfig) -> tuple[int, int] | None:
+    """商范围：显式被除数+显式除数 → 区间推导；否则乘法表。不可满足返回 None。"""
+    if cfg.explicit_dividend and cfg.explicit_divisor:
+        dlo, dhi = cfg.divisor_range
+        alo, ahi = cfg.dividend_range
+        qlo = max(1, -(-alo // dhi))  # ceil(alo/dhi)，商 ≥ 1
+        qhi = ahi // dlo
+        if qlo > qhi:
+            return None
+        return (qlo, qhi)
+    return cfg.multiplication_table
+
+
+def dividend_bounds(cfg: ResolvedConfig) -> tuple[int, int]:
+    """被除数约束区间：显式被除数；否则 除数×商 推导。"""
+    if cfg.explicit_dividend:
+        return cfg.dividend_range
+    dlo, dhi = divisor_range(cfg)
+    q = quotient_range(cfg) or (1, 1)
+    return (dlo * q[0], dhi * q[1])
+
+
 def check_result(cfg: ResolvedConfig) -> Callable[[int], bool]:
     """结果范围谓词：lo ≤ r ≤ hi 且 r ≥ 0（或 cfg.allow_negative）。"""
     lo, hi = cfg.result_range

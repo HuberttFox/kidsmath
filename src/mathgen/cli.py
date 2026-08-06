@@ -32,6 +32,9 @@ def _parse_argv(argv: list[str] | None) -> argparse.Namespace:
     gen.add_argument("--carry", choices=["yes", "no", "any"], default=None, help="进位")
     gen.add_argument("--borrow", choices=["yes", "no", "any"], default=None, help="借位")
     gen.add_argument("--divisor-range", default=None, help="除数范围，如 2-9")
+    gen.add_argument("--dividend-range", default=None, help="被除数范围，如 10-99")
+    gen.add_argument("--left-factor-range", default=None, help="× 左因数范围，如 10-99")
+    gen.add_argument("--right-factor-range", default=None, help="× 右因数范围，如 2-9")
     gen.add_argument("--remainder", action="store_true", default=None, help="允许余数")
     gen.add_argument("--table", default=None, help="乘法表/商范围，如 1-9")
     gen.add_argument("--seed", type=int, default=None, help="随机种子")
@@ -115,6 +118,12 @@ def _cfg_from_ns(ns: argparse.Namespace) -> Config:
         overrides["result_range"] = _parse_range(ns.result_range)
     if ns.divisor_range:
         overrides["divisor_range"] = _parse_range(ns.divisor_range)
+    if ns.dividend_range:
+        overrides["dividend_range"] = _parse_range(ns.dividend_range)
+    if ns.left_factor_range:
+        overrides["left_factor_range"] = _parse_range(ns.left_factor_range)
+    if ns.right_factor_range:
+        overrides["right_factor_range"] = _parse_range(ns.right_factor_range)
     if ns.table:
         overrides["multiplication_table"] = _parse_range(ns.table)
     data.update({k: v for k, v in overrides.items() if v is not None})

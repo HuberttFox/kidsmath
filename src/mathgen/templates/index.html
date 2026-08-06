@@ -142,6 +142,12 @@
           </span>
           {{ input("divisor_range", form, placeholder="2-9") }}
         </label>
+        <label class="field-group" for="dividend_range">
+          <span class="field-label">
+            <span data-i18n="f.dividend_range">{{ t("f.dividend_range", lang) }}</span>{{ tip("tip.dividend_range") }}
+          </span>
+          {{ input("dividend_range", form, placeholder="10-99") }}
+        </label>
         <div class="field-group">
           <label class="toggle-line" for="remainder">{{ checkbox("remainder", form) }}<span data-i18n="f.remainder">{{ t("f.remainder", lang) }}</span>{{ tip("tip.remainder") }}</label>
         </div>
@@ -150,6 +156,18 @@
             <span data-i18n="f.table">{{ t("f.table", lang) }}</span>{{ tip("tip.table") }}
           </span>
           {{ input("table", form, placeholder="1-9") }}
+        </label>
+        <label class="field-group" for="left_factor_range">
+          <span class="field-label">
+            <span data-i18n="f.left_factor">{{ t("f.left_factor", lang) }}</span>{{ tip("tip.left_factor") }}
+          </span>
+          {{ input("left_factor_range", form, placeholder="10-99") }}
+        </label>
+        <label class="field-group" for="right_factor_range">
+          <span class="field-label">
+            <span data-i18n="f.right_factor">{{ t("f.right_factor", lang) }}</span>{{ tip("tip.right_factor") }}
+          </span>
+          {{ input("right_factor_range", form, placeholder="2-9") }}
         </label>
       </div>
     </fieldset>

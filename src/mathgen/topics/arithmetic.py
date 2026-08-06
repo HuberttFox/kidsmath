@@ -5,7 +5,10 @@ import random
 
 from mathgen.config import ResolvedConfig
 from mathgen.core.engine import (GenerationError, check_result, gen_operand,
-                                 gen_pair, gen_result, pick_op)
+                                 gen_pair, gen_result, pick_op,
+                                 dividend_bounds, divisor_range,
+                                 left_factor_range, quotient_range,
+                                 right_factor_range)
 from mathgen.core.question import Question
 
 
@@ -33,40 +36,52 @@ def _gen_two(cfg: ResolvedConfig, rng: random.Random) -> Question:
 
         a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
     elif op == "×":
-        if cfg.explicit_table or not cfg.explicit_ranges:
-            lo, hi = cfg.multiplication_table
+        lo0, hi0 = left_factor_range(cfg)
+        lo1, hi1 = right_factor_range(cfg)
 
-            def make():
-                a = gen_operand(rng, lo, hi)
-                b = gen_operand(rng, lo, hi)
-                return a, b, a * b
-        else:
-            lo0, hi0 = cfg.operand_ranges[0]
-            lo1, hi1 = cfg.operand_ranges[1]
-
-            def make():
-                a = gen_operand(rng, lo0, hi0)
-                b = gen_operand(rng, lo1, hi1)
-                return a, b, a * b
+        def make():
+            a = gen_operand(rng, lo0, hi0)
+            b = gen_operand(rng, lo1, hi1)
+            return a, b, a * b
 
         a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
     else:  # ÷
         lo0, hi0 = cfg.operand_ranges[0]
-        q_lo, q_hi = cfg.multiplication_table
-        construct = cfg.explicit_table or cfg.explicit_divisor or not cfg.explicit_ranges
-        if construct:
-            d_lo, d_hi = cfg.divisor_range
-        else:
-            d_lo, d_hi = cfg.operand_ranges[1]
+        d_lo, d_hi = divisor_range(cfg)
+        q_range = quotient_range(cfg)
+        if q_range is None:
+            raise GenerationError("div_no_solution", ranges=cfg.dividend_range)
+        q_lo, q_hi = q_range
+        explicit_dividend = cfg.explicit_dividend
 
         def make():
-            divisor = gen_operand(rng, d_lo, d_hi)
-            quotient = gen_operand(rng, q_lo, q_hi)
-            remainder = gen_operand(rng, 0, divisor - 1) if cfg.allow_remainder else 0
-            if rng.random() < 0.5:
-                remainder = 0
-            dividend = divisor * quotient + remainder
-            return divisor, quotient, remainder, dividend
+            if explicit_dividend:
+                alo, ahi = cfg.dividend_range
+                for _ in range(100):
+                    dividend = gen_operand(rng, alo, ahi)
+                    divisor = gen_operand(rng, d_lo, d_hi)
+                    if rng.random() < 0.5 and dividend % divisor != 0:
+                        continue
+                    quotient = dividend // divisor
+                    if quotient == 0 or not (q_lo <= quotient <= q_hi):
+                        continue
+                    if not (lo0 <= dividend <= hi0):
+                        continue
+                    return divisor, quotient, dividend % divisor, dividend
+            else:
+                for _ in range(100):
+                    divisor = gen_operand(rng, d_lo, d_hi)
+                    quotient = gen_operand(rng, q_lo, q_hi)
+                    if quotient == 0:
+                        continue
+                    remainder = gen_operand(rng, 0, divisor - 1) if cfg.allow_remainder else 0
+                    if rng.random() < 0.5:
+                        remainder = 0
+                    dividend = divisor * quotient + remainder
+                    if not (lo0 <= dividend <= hi0):
+                        continue
+                    return divisor, quotient, remainder, dividend
+            raise GenerationError("div_no_solution", ranges=(d_lo, d_hi))
 
         divisor, quotient, remainder, dividend = gen_result(
             make,
@@ -143,18 +158,36 @@ def _gen_multi(cfg: ResolvedConfig, rng: random.Random, n: int) -> Question:
     for _ in range(1000):
         ops = _pick_ops(rng, cfg, n - 1)
         operands = [_gen_operand_by_role(cfg, rng, ops, 0)]
+        if operands[0] is None:
+            continue
         for i in range(1, n):
-            operands.append(_gen_operand_by_role(cfg, rng, ops, i))
+            v = _gen_operand_by_role(cfg, rng, ops, i)
+            if v is None:
+                operands = None
+                break
+            operands.append(v)
+        if operands is None:
+            continue
         if not cfg.allow_negative and len(ops) == 1 and ops[0] == "-" and operands[0] < operands[1]:
             operands[0], operands[1] = operands[1], operands[0]
         groups = _paren_groups(ops) if cfg.parentheses and n >= 3 else None
         if groups:
+            new_ops = list(operands)
+            ok = True
             for s, e in groups:
-                for idx in range(s, e + 2):
-                    lo, hi = cfg.operand_ranges[min(idx, n - 1)]
-                    lo = max(2, lo)
-                    hi = max(lo, min(hi, 30))
-                    operands[idx] = gen_operand(rng, lo, hi)
+                target = _group_target_range(cfg, ops, s, e)
+                if target is None:
+                    ok = False
+                    break
+                v = gen_operand(rng, *target)
+                split = _split_group(cfg, rng, ops, s, e, v, cfg.operand_ranges)
+                if split is None:
+                    ok = False
+                    break
+                new_ops[s:e + 2] = split
+            if not ok:
+                continue
+            operands = new_ops
         tokens = []
         for i, op in enumerate(ops):
             tokens.append(str(operands[i]))
@@ -191,30 +224,31 @@ def _gen_operand_by_role(cfg: ResolvedConfig, rng: random.Random,
     n = len(ops) + 1
     left = ops[i - 1] if i > 0 else None      # 它作为右操作数参与的运算符
     right = ops[i] if i < n - 1 else None     # 它作为左操作数参与的运算符
-    table_pri = cfg.explicit_table or not cfg.explicit_ranges
-    divisor_pri = cfg.explicit_divisor or not cfg.explicit_ranges
-    if left == "÷" and right == "×":
-        # 双角色：既是除数又是 × 左因数——按除数取并校验在表内
-        if table_pri or divisor_pri:
-            for _ in range(50):
-                lo, hi = cfg.divisor_range
-                v = gen_operand(rng, lo, hi)
-                tlo, thi = cfg.multiplication_table
-                if tlo <= v <= thi:
-                    return v
-            lo, hi = cfg.divisor_range
-            return gen_operand(rng, lo, hi)
-        return gen_operand(rng, *cfg.operand_ranges[i])
-    if (left == "×" or right == "×") and table_pri:
-        lo, hi = cfg.multiplication_table
+    # 直接操作数角色区间交集（被除数角色是前缀级的，不构成直接约束）
+    lo, hi = 1, 10 ** 9
+    if left == "×":
+        flo, fhi = right_factor_range(cfg)
+        lo, hi = max(lo, flo), min(hi, fhi)
+    if right == "×":
+        flo, fhi = left_factor_range(cfg)
+        lo, hi = max(lo, flo), min(hi, fhi)
+    if left == "÷":
+        dlo, dhi = divisor_range(cfg)
+        lo, hi = max(lo, dlo), min(hi, dhi)
+    if lo > hi:
+        return None  # 双角色区间不相交 → 该形态不可行，整题重试
+    if left == "×" or right == "×" or left == "÷":
         return gen_operand(rng, lo, hi)
-    if i == 0 and right == "÷" and (table_pri or divisor_pri):
-        # 位置 0 即整个 ÷ 前缀（被除数）：除数×商 构造（∈ [d_lo×q_lo, d_hi×q_hi]，天然整除）
-        d = gen_operand(rng, *cfg.divisor_range)
-        q = gen_operand(rng, *cfg.multiplication_table)
-        return d * q
-    if left == "÷" and divisor_pri:
-        lo, hi = cfg.divisor_range
+    if i == 0 and right == "÷":
+        if cfg.explicit_dividend or cfg.explicit_table or cfg.explicit_divisor or not cfg.explicit_ranges:
+            d = gen_operand(rng, *divisor_range(cfg))
+            q = gen_operand(rng, *(quotient_range(cfg) or (1, 1)))
+            if q == 0:
+                q = 1
+            return d * q
+        return gen_operand(rng, *cfg.operand_ranges[0])
+    if left == "÷":
+        lo, hi = divisor_range(cfg)
         return gen_operand(rng, lo, hi)
     return gen_operand(rng, *cfg.operand_ranges[i])
 
@@ -264,23 +298,31 @@ def _paren_groups_ok(cfg: ResolvedConfig, ops: list[str], operands: list[int],
     """
     table_pri = cfg.explicit_table or not cfg.explicit_ranges
     divisor_pri = cfg.explicit_divisor or not cfg.explicit_ranges
+    if cfg.explicit_dividend:
+        divisor_pri = True
     if not table_pri and not divisor_pri:
         return True
-    tlo, thi = cfg.multiplication_table
-    dlo, dhi = cfg.divisor_range
+    tlo, thi = left_factor_range(cfg)
+    dlo, dhi = divisor_range(cfg)
     for s, e in groups:
         val = operands[s]
         for k in range(s, e + 1):
             val = val + operands[k + 1] if ops[k] == "+" else val - operands[k + 1]
-        if table_pri and (s > 0 and ops[s - 1] == "×" or e < len(ops) - 1 and ops[e + 1] == "×"):
-            if not (tlo <= val <= thi):
+        if table_pri and s > 0 and ops[s - 1] == "×":
+            flo, fhi = right_factor_range(cfg)
+            if not (flo <= val <= fhi):
                 return False
-        if divisor_pri and (s > 0 and ops[s - 1] == "÷" or e < len(ops) - 1 and ops[e + 1] == "÷"):
+        if table_pri and e < len(ops) - 1 and ops[e + 1] == "×":
+            flo, fhi = left_factor_range(cfg)
+            if not (flo <= val <= fhi):
+                return False
+        if divisor_pri and s > 0 and ops[s - 1] == "÷":
+            dlo, dhi = divisor_range(cfg)
             if not (dlo <= val <= dhi):
                 return False
-        # 组作为 ÷ 的被除数（左邻 ÷）
-        if divisor_pri and s > 0 and ops[s - 1] == "÷":
-            if not (dlo * tlo <= val <= dhi * thi):
+        if divisor_pri and e < len(ops) - 1 and ops[e + 1] == "÷":
+            alo, ahi = dividend_bounds(cfg)
+            if not (alo <= val <= ahi):
                 return False
     return True
 
@@ -290,10 +332,9 @@ def _dividend_ok(cfg: ResolvedConfig, tokens: list[str], ops: list[str]) -> bool
 
     表/除数语义生效时校验；纯显式 ranges 按位置语义跳过。
     """
-    if cfg.explicit_ranges and not (cfg.explicit_table or cfg.explicit_divisor):
+    if cfg.explicit_ranges and not (cfg.explicit_table or cfg.explicit_divisor or cfg.explicit_dividend):
         return True
-    dlo, dhi = cfg.divisor_range
-    qlo, qhi = cfg.multiplication_table
+    alo, ahi = dividend_bounds(cfg)
     depth = 0
     for pos, t in enumerate(tokens):
         if t == "(":
@@ -304,9 +345,63 @@ def _dividend_ok(cfg: ResolvedConfig, tokens: list[str], ops: list[str]) -> bool
             if pos == 0:
                 continue  # ÷ 在开头由位置 0 构造保证
             v = _eval_precedence(tokens[:pos])
-            if v is None or not (dlo * qlo <= v <= dhi * qhi):
+            if v is None or not (alo <= v <= ahi):
                 return False
     return True
+
+
+def _group_target_range(cfg: ResolvedConfig, ops: list[str],
+                        s: int, e: int) -> tuple[int, int] | None:
+    """括号组值的目标区间：邻接 × 用左/右因数区间，÷ 用被除数/除数区间（交集）。"""
+    lo, hi = 2, 10 ** 9
+    if s > 0 and ops[s - 1] == "×":
+        flo, fhi = right_factor_range(cfg)   # × 在组前 → 组是右因数
+        lo, hi = max(lo, flo), min(hi, fhi)
+    if e < len(ops) - 1 and ops[e + 1] == "×":
+        flo, fhi = left_factor_range(cfg)    # × 在组后 → 组是左因数
+        lo, hi = max(lo, flo), min(hi, fhi)
+    if s > 0 and ops[s - 1] == "÷":
+        dlo, dhi = divisor_range(cfg)        # ÷ 在组前 → 组是除数
+        lo, hi = max(lo, dlo), min(hi, dhi)
+    if e < len(ops) - 1 and ops[e + 1] == "÷":
+        alo, ahi = dividend_bounds(cfg)      # ÷ 在组后 → 组是被除数
+        lo, hi = max(lo, alo), min(hi, ahi)
+    return (lo, hi) if lo <= hi else None
+
+
+def _split_group(cfg: ResolvedConfig, rng: random.Random, ops: list[str],
+                 s: int, e: int, target: int, ranges: list) -> list[int] | None:
+    """反向构造括号组：组值 target 已定，拆出组内操作数（全部 ∈ 对应 ranges）。"""
+    if s == e:
+        blo, bhi = ranges[s + 1]
+        if ops[s] == "+":
+            a_lo = max(ranges[s][0], target - bhi)
+            a_hi = min(ranges[s][1], target - blo)
+            if a_lo > a_hi:
+                return None
+            a = gen_operand(rng, a_lo, a_hi)
+            return [a, target - a]
+        a_lo = max(ranges[s][0], target + blo)
+        a_hi = min(ranges[s][1], target + bhi)
+        if a_lo > a_hi:
+            return None
+        a = gen_operand(rng, a_lo, a_hi)
+        return [a, a - target]
+    last = ops[e]
+    lo, hi = ranges[e + 1]
+    if last == "+":
+        hi = min(hi, target - 2)
+    else:
+        lo = max(lo, 2 - target)
+    if lo > hi:
+        return None
+    for _ in range(30):
+        x = gen_operand(rng, lo, hi)
+        m = target - x if last == "+" else target + x
+        rest = _split_group(cfg, rng, ops, s, e - 1, m, ranges)
+        if rest is not None:
+            return rest + [x]
+    return None
 
 
 def _paren_groups(ops: list[str]) -> list[tuple[int, int]] | None:

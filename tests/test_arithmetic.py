@@ -165,6 +165,84 @@ def test_division_dividend_divisor_positions():
         assert 100 <= a <= 999 and 10 <= b <= 99, q.expression
 
 
+def test_four_role_independent_ranges():
+    # 加减 1-3 位 + 两位数×一位数 + 被除数两位÷除数一位，全解耦
+    cfg = resolve(Config(operators="+-×÷", operand_count=3, parentheses=True,
+                         operand_ranges=[(1, 999), (1, 999), (1, 999)],
+                         result_range=(0, 1000),
+                         left_factor_range=(10, 99), right_factor_range=(2, 9),
+                         dividend_range=(10, 99), divisor_range=(2, 9),
+                         count=200, seed=31))
+    def factor_value(toks, k):
+        if toks[k] == "(":
+            end = toks.index(")", k)
+            return _eval_precedence(toks[k:end + 1])
+        if toks[k] == ")":
+            depth = 0
+            for m in range(k, -1, -1):
+                depth += 1 if toks[m] == ")" else -1 if toks[m] == "(" else 0
+                if toks[m] == "(" and depth == 0:
+                    return _eval_precedence(toks[m:k + 1])
+        return int(toks[k])
+
+    for q in generate(cfg):
+        toks = q.expression.split(" ")
+        assert _eval_precedence(toks) == int(q.answer), q.expression
+        for j, t in enumerate(toks):
+            if t == "×":
+                assert 10 <= factor_value(toks, j - 1) <= 99, q.expression
+                assert 2 <= factor_value(toks, j + 1) <= 9, q.expression
+            if t == "÷":
+                assert 2 <= factor_value(toks, j + 1) <= 9, q.expression
+                dividend = _eval_precedence(toks[:j])
+                assert 10 <= dividend <= 99, q.expression
+
+
+def test_paren_group_value_obeys_role_range():
+    # (22-9)÷10 类：组值作为被除数须 ∈ 被除数区间；除数须 ∈ 除数区间
+    cfg = resolve(Config(operators="+-×÷", operand_count=3, parentheses=True,
+                         operand_ranges=[(1, 999), (1, 999), (1, 999)],
+                         result_range=(0, 1000),
+                         dividend_range=(10, 99), divisor_range=(2, 9),
+                         count=150, seed=32))
+    for q in generate(cfg):
+        if "(" not in q.expression:
+            continue
+        toks = q.expression.split(" ")
+        for i, t in enumerate(toks):
+            if t == "(":
+                end = toks.index(")", i)
+                v = _eval_precedence(toks[i:end + 1])
+                # 组邻接 ÷：÷ 在组前 → 组是除数（2-9）；÷ 在组后 → 组是被除数（10-99）
+                if i > 0 and toks[i - 1] == "÷":
+                    assert 2 <= v <= 9, q.expression
+                if end + 1 < len(toks) and toks[end + 1] == "÷":
+                    assert 10 <= v <= 99, q.expression
+                if i > 0 and toks[i - 1] == "×":
+                    assert 2 <= v <= 9, q.expression  # 组是 × 右因数（右因数区间 2-9）
+                if end + 1 < len(toks) and toks[end + 1] == "×":
+                    assert 10 <= v <= 99, q.expression  # 组是 × 左因数（左因数区间 10-99）
+
+
+def test_quotient_derived_from_dividend_divisor():
+    cfg = resolve(Config(operators="÷", count=60, seed=33,
+                         dividend_range=(10, 99), divisor_range=(2, 9)))
+    for q in generate(cfg):
+        a, b = map(int, q.expression.replace("÷", " ").split())
+        qv = a // b
+        assert 2 <= qv <= 49, q.expression  # 推导区间 [ceil(10/9), 99//2]
+        assert 10 <= a <= 99 and 2 <= b <= 9
+
+
+def test_impossible_dividend_range_errors():
+    from mathgen.core.engine import GenerationError
+    import pytest as _pt
+    cfg = resolve(Config(operators="÷", count=5, seed=34,
+                         dividend_range=(2, 9), divisor_range=(10, 99)))
+    with _pt.raises(GenerationError):
+        generate(cfg)
+
+
 def test_preset_multiplication_still_table():
     cfg = resolve(Config(grade=2, operators="×", count=20, seed=13))
     assert not cfg.explicit_ranges

@@ -133,6 +133,9 @@ class Config:
     op_weights: dict[str, int] | None = None
     show_numbers: bool | None = None
     number_direction: str | None = None
+    left_factor_range: tuple[int, int] | None = None
+    right_factor_range: tuple[int, int] | None = None
+    dividend_range: tuple[int, int] | None = None
 
 
 @dataclass
@@ -169,6 +172,12 @@ class ResolvedConfig:
     explicit_ranges: bool
     explicit_table: bool
     explicit_divisor: bool
+    explicit_left_factor: bool
+    explicit_right_factor: bool
+    explicit_dividend: bool
+    left_factor_range: tuple[int, int] | None
+    right_factor_range: tuple[int, int] | None
+    dividend_range: tuple[int, int] | None
 
 
 _OP_ALIASES = {"加": "+", "减": "-", "乘": "×", "除": "÷"}
@@ -225,7 +234,9 @@ def resolve(cfg: Config) -> ResolvedConfig:
     for key, fld in (("operand_ranges", None), ("result_range", None),
                      ("carry", None), ("borrow", None), ("divisor_range", None),
                      ("multiplication_table", None), ("seed", None),
-                     ("title", None), ("header", None), ("op_weights", None)):
+                     ("title", None), ("header", None), ("op_weights", None),
+                     ("left_factor_range", None), ("right_factor_range", None),
+                     ("dividend_range", None)):
         v = getattr(cfg, key)
         if v is not None:
             data[key] = v
@@ -240,6 +251,9 @@ def resolve(cfg: Config) -> ResolvedConfig:
     data["explicit_ranges"] = cfg.operand_ranges is not None
     data["explicit_table"] = cfg.multiplication_table is not None
     data["explicit_divisor"] = cfg.divisor_range is not None
+    data["explicit_left_factor"] = cfg.left_factor_range is not None
+    data["explicit_right_factor"] = cfg.right_factor_range is not None
+    data["explicit_dividend"] = cfg.dividend_range is not None
 
     # ---- 校验 ----
     data["operators"] = normalize_operators(data["operators"])
@@ -303,6 +317,12 @@ def resolve(cfg: Config) -> ResolvedConfig:
     mt = data["multiplication_table"]
     _check_range("range_invalid_table", mt)
     data["multiplication_table"] = mt
+
+    for key, code in (("left_factor_range", "range_invalid_operand"),
+                      ("right_factor_range", "range_invalid_operand"),
+                      ("dividend_range", "range_invalid_operand")):
+        if data[key] is not None:
+            _check_range(code, data[key])
 
     if data["seed"] is None:
         data["seed"] = random_seed()

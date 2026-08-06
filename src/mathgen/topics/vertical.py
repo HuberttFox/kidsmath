@@ -4,7 +4,9 @@ from __future__ import annotations
 import random
 
 from mathgen.config import ResolvedConfig
-from mathgen.core.engine import check_result, gen_operand, gen_pair, gen_result, pick_op
+from mathgen.core.engine import (check_result, gen_operand, gen_pair, gen_result,
+                                 pick_op, divisor_range, left_factor_range,
+                                 quotient_range, right_factor_range)
 from mathgen.core.question import Question
 
 
@@ -29,21 +31,13 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
         return Question("vertical", _stmt_add(op, a, b), str(result),
                         f"{a} {op} {b}", layout)
     if op == "×":
-        if cfg.explicit_table or not cfg.explicit_ranges:
-            lo, hi = cfg.multiplication_table
+        lo0, hi0 = left_factor_range(cfg)
+        lo1, hi1 = right_factor_range(cfg)
 
-            def make():
-                a = gen_operand(rng, lo, hi)
-                b = gen_operand(rng, lo, hi)
-                return a, b, a * b
-        else:
-            lo0, hi0 = cfg.operand_ranges[0]
-            lo1, hi1 = cfg.operand_ranges[1]
-
-            def make():
-                a = gen_operand(rng, lo0, hi0)
-                b = gen_operand(rng, lo1, hi1)
-                return a, b, a * b
+        def make():
+            a = gen_operand(rng, lo0, hi0)
+            b = gen_operand(rng, lo1, hi1)
+            return a, b, a * b
 
         a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
         layout = {"kind": "vertical", "op": "×", "numbers": [str(a), str(b)]}
@@ -51,20 +45,41 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
                         f"{a} × {b}", layout)
     # ÷
     lo0, hi0 = cfg.operand_ranges[0]
-    q_lo, q_hi = cfg.multiplication_table
-    if cfg.explicit_table or cfg.explicit_divisor or not cfg.explicit_ranges:
-        d_lo, d_hi = cfg.divisor_range
-    else:
-        d_lo, d_hi = cfg.operand_ranges[1]
+    d_lo, d_hi = divisor_range(cfg)
+    q_range = quotient_range(cfg)
+    if q_range is None:
+        raise GenerationError("div_no_solution", ranges=cfg.dividend_range)
+    q_lo, q_hi = q_range
+    explicit_dividend = cfg.explicit_dividend
 
     def make():
-        divisor = gen_operand(rng, d_lo, d_hi)
-        quotient = gen_operand(rng, q_lo, q_hi)
-        remainder = gen_operand(rng, 0, divisor - 1) if cfg.allow_remainder else 0
-        if rng.random() < 0.5:
-            remainder = 0
-        dividend = divisor * quotient + remainder
-        return divisor, quotient, remainder, dividend
+        if explicit_dividend:
+            alo, ahi = cfg.dividend_range
+            for _ in range(100):
+                dividend = gen_operand(rng, alo, ahi)
+                divisor = gen_operand(rng, d_lo, d_hi)
+                if rng.random() < 0.5 and dividend % divisor != 0:
+                    continue
+                quotient = dividend // divisor
+                if quotient == 0 or not (q_lo <= quotient <= q_hi):
+                    continue
+                if not (lo0 <= dividend <= hi0):
+                    continue
+                return divisor, quotient, dividend % divisor, dividend
+        else:
+            for _ in range(100):
+                divisor = gen_operand(rng, d_lo, d_hi)
+                quotient = gen_operand(rng, q_lo, q_hi)
+                if quotient == 0:
+                    continue
+                remainder = gen_operand(rng, 0, divisor - 1) if cfg.allow_remainder else 0
+                if rng.random() < 0.5:
+                    remainder = 0
+                dividend = divisor * quotient + remainder
+                if not (lo0 <= dividend <= hi0):
+                    continue
+                return divisor, quotient, remainder, dividend
+        raise GenerationError("div_no_solution", ranges=(d_lo, d_hi))
 
     divisor, quotient, remainder, dividend = gen_result(
         make, lambda t: lo0 <= t[3] <= hi0 and check_result(cfg)(t[1]),
