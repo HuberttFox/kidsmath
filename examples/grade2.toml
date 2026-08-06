@@ -1,0 +1,11 @@
+grade = 2
+topic = "arithmetic"
+operators = "+-×"
+count = 40
+carry = true
+borrow = true
+table = [1, 9]
+columns = 2
+answer_page = true
+gap = 16
+answer_lines = 0

@@ -42,6 +42,17 @@ def test_bare_generate_text():
     assert "1." in r.stdout
 
 
+def test_toml_table_alias_maps_to_multiplication_table():
+    import tempfile
+    import pathlib
+    from mathgen.cli import _cfg_from_ns, _parse_argv
+    with tempfile.TemporaryDirectory() as d:
+        p = pathlib.Path(d) / "c.toml"
+        p.write_text('table = [1, 9]\ncount = 4\n', encoding="utf-8")
+        cfg = _cfg_from_ns(_parse_argv(["-c", str(p)]))
+    assert cfg.multiplication_table == (1, 9)
+
+
 def test_toml_topic_not_clobbered_by_flag_default():
     import tempfile
     import pathlib

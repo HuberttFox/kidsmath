@@ -66,6 +66,8 @@ def _cfg_from_ns(ns: argparse.Namespace) -> Config:
     if ns.config:
         with open(ns.config, "rb") as f:
             data = dict(tomllib.load(f))
+        if "table" in data:
+            data["multiplication_table"] = tuple(data.pop("table"))
     overrides = {
         "topic": ns.topic, "operators": ns.operators, "count": ns.count,
         "operand_count": ns.operand_count, "grade": ns.grade,
