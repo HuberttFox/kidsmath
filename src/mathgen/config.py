@@ -131,6 +131,7 @@ class Config:
     grade: int | None = None
     lang: str | None = None
     op_weights: dict[str, int] | None = None
+    paren_weight: int | None = None
     show_numbers: bool | None = None
     number_direction: str | None = None
     left_factor_range: tuple[int, int] | None = None
@@ -167,6 +168,7 @@ class ResolvedConfig:
     sheets: int
     lang: str
     op_weights: dict[str, int]
+    paren_weight: int
     show_numbers: bool
     number_direction: str
     explicit_ranges: bool
@@ -213,7 +215,7 @@ def resolve(cfg: Config) -> ResolvedConfig:
         data.update(PRESETS[cfg.grade])
     for key in ("operators", "operand_count", "parentheses", "allow_negative",
                 "allow_decimal", "allow_remainder", "dedupe", "answer_page", "sheets",
-                "show_numbers", "number_direction"):
+                "show_numbers", "number_direction", "paren_weight"):
         value = getattr(cfg, key)
         if value is not None:
             data[key] = value
@@ -223,7 +225,7 @@ def resolve(cfg: Config) -> ResolvedConfig:
                          ("allow_remainder", False), ("dedupe", True),
                          ("answer_page", True), ("operand_count", 2),
                          ("sheets", 1), ("show_numbers", True),
-                         ("number_direction", "row")):
+                         ("number_direction", "row"), ("paren_weight", 5)):
         if data.get(key) is None:
             data[key] = default
 
@@ -283,6 +285,8 @@ def resolve(cfg: Config) -> ResolvedConfig:
         raise ConfigError("gap_negative", n=data["gap"])
     if data["answer_lines"] < 0:
         raise ConfigError("answer_lines_negative", n=data["answer_lines"])
+    if data["paren_weight"] < 1 or data["paren_weight"] > 10:
+        raise ConfigError("invalid_paren_weight", v=data["paren_weight"])
     if data["number_direction"] not in ("row", "column"):
         raise ConfigError("invalid_number_direction", v=data["number_direction"])
     if data["operand_count"] < 2 or data["operand_count"] > 4:

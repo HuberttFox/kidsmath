@@ -170,7 +170,9 @@ def _gen_multi(cfg: ResolvedConfig, rng: random.Random, n: int) -> Question:
             continue
         if not cfg.allow_negative and len(ops) == 1 and ops[0] == "-" and operands[0] < operands[1]:
             operands[0], operands[1] = operands[1], operands[0]
-        groups = _paren_groups(ops) if cfg.parentheses and n >= 3 else None
+        groups = (_paren_groups(ops)
+                  if cfg.parentheses and n >= 3 and rng.random() < cfg.paren_weight / 10
+                  else None)
         if groups:
             new_ops = list(operands)
             ok = True

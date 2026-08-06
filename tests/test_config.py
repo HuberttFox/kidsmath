@@ -178,3 +178,13 @@ def test_bare_resolve_no_grade_no_crash():
     r = resolve(Config())
     assert r.divisor_range == (1, 9)
     assert r.multiplication_table == (1, 9)
+
+
+def test_paren_weight_default_and_validation():
+    assert resolve(Config(grade=2)).paren_weight == 5
+    r = resolve(Config(grade=2, paren_weight=8))
+    assert r.paren_weight == 8
+    with pytest.raises(ConfigError, match="括号权重"):
+        resolve(Config(paren_weight=0))
+    with pytest.raises(ConfigError, match="括号权重"):
+        resolve(Config(paren_weight=11))

@@ -401,3 +401,13 @@ def test_grade5_parentheses_off_roundtrip():
     href = unescape(m.group(1))
     assert "parentheses=0" in href
     assert client.get(href).status_code == 200
+
+
+def test_paren_weight_roundtrip():
+    r = client.post("/generate", data={"grade": "1", "count": "4", "paren_weight": "8"})
+    m = re.search(r'href="(/download\.pdf\?[^"]+)"', r.text)
+    href = unescape(m.group(1))
+    assert "paren_weight=8" in href
+    r2 = client.post("/generate", data={"grade": "1", "count": "4"})
+    m2 = re.search(r'href="(/download\.pdf\?[^"]+)"', r2.text)
+    assert "paren_weight" not in unescape(m2.group(1))

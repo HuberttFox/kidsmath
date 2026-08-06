@@ -53,6 +53,7 @@ def _parse_argv(argv: list[str] | None) -> argparse.Namespace:
     gen.add_argument("--op-weights", default=None, help="运算符权重，如 +=5,-=3,×=2（0=排除）")
     gen.add_argument("--parentheses", action="store_true", default=None, help="混合运算带括号")
     gen.add_argument("--no-parentheses", action="store_false", dest="parentheses", help="不带括号")
+    gen.add_argument("--paren-weight", type=int, choices=range(1, 11), default=None, help="括号权重 1-10")
     gen.add_argument("--zip", action="store_true", help="多份时打包 zip")
     gen.add_argument("--format", choices=["text", "pdf"], default="pdf")
     gen.add_argument("-f", "--output", default=None, help="输出路径（多份时为前缀）")
@@ -110,6 +111,7 @@ def _cfg_from_ns(ns: argparse.Namespace) -> Config:
         "number_direction": ns.number_direction,
         "title": ns.title, "header": ns.header, "sheets": ns.sheets,
         "lang": ns.lang, "parentheses": ns.parentheses,
+        "paren_weight": ns.paren_weight,
         "op_weights": _parse_op_weights(ns.op_weights) if ns.op_weights else None,
     }
     if ns.ranges:

@@ -61,6 +61,8 @@ UI_ZH = {
     "tip.sheets": "一次生成几份不同的卷子",
     "tip.weights": "各运算的出现比重，如 加5 减3 乘2；不填=均匀随机，填 0=排除该运算",
     "tip.parentheses": "至少 3 个运算数、且括号能改变运算顺序时使用，如 22 × (2 + 3)",
+    "f.paren_weight": "括号权重",
+    "tip.paren_weight": "括号题出现比重（1-10，默认 5）；权重越大括号越多",
     "btn.generate": "生成练习卷",
     "btn.generating": "生成中…",
     "preset.prefix": "年级预设：",
@@ -176,6 +178,8 @@ UI_EN = {
     "tip.sheets": "Generate several different sheets at once",
     "tip.weights": "Relative weight of each operator, e.g. +5 -3 ×2; empty = uniform random, 0 = exclude the operator",
     "tip.parentheses": "Used with 3+ operands only when parentheses change the order of operations, e.g. 22 × (2 + 3)",
+    "f.paren_weight": "Parenthesis weight",
+    "tip.paren_weight": "How often parentheses appear (1-10, default 5); higher = more",
     "btn.generate": "Generate",
     "btn.generating": "Generating…",
     "preset.prefix": "Grade preset:",
@@ -263,6 +267,7 @@ ERRORS_ZH = {
     "multi_no_solution": "无法生成 {n} 个运算数的整除混合题，建议减少 ÷ 运算符或调整范围。",
     "div_no_solution": "无法生成除法竖式：被除数范围 {ranges} 内找不到 divisor×quotient(+r)。建议扩大范围。",
     "invalid_number_direction": "编号方向 {v!r} 不支持，可选 row（横向）/ column（竖向）。",
+    "invalid_paren_weight": "括号权重必须在 1-10 之间，当前 {v}。",
     "seed_missing": "缺少 seed 参数，请先通过表单生成再下载。",
 }
 
@@ -299,6 +304,7 @@ ERRORS_EN = {
     "multi_no_solution": "Cannot generate {n}-operand questions with exact division. Use fewer ÷ operators or adjust ranges.",
     "div_no_solution": "Cannot generate a division layout: no divisor×quotient(+r) fits the dividend range {ranges}. Widen the range.",
     "invalid_number_direction": "Number direction {v!r} is not supported. Choose row or column.",
+    "invalid_paren_weight": "Parenthesis weight must be 1-10, got {v}.",
     "seed_missing": "Missing seed parameter. Generate via the form first.",
 }
 

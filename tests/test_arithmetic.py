@@ -355,3 +355,12 @@ def test_two_operand_mul_within_range():
         q = gen(cfg, random.Random(42))
         result = _eval(q.expression)
         assert lo <= result <= hi, q.expression
+
+
+def test_paren_weight_statistics():
+    hi = resolve(Config(grade=5, count=200, seed=51, paren_weight=10))
+    lo = resolve(Config(grade=5, count=200, seed=52, paren_weight=1))
+    hi_n = sum(1 for q in generate(hi) if "(" in q.expression)
+    lo_n = sum(1 for q in generate(lo) if "(" in q.expression)
+    assert hi_n > 100, f"weight=10 括号率过低: {hi_n}/200"
+    assert lo_n < 80, f"weight=1 括号率过高: {lo_n}/200"

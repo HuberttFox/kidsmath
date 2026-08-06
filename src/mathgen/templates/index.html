@@ -103,6 +103,12 @@
             <span data-i18n="f.parentheses">{{ t("f.parentheses", lang) }}</span>{{ tip("tip.parentheses") }}
           </label>
         </div>
+        <label class="field-group" for="paren_weight">
+          <span class="field-label">
+            <span data-i18n="f.paren_weight">{{ t("f.paren_weight", lang) }}</span>{{ tip("tip.paren_weight") }}
+          </span>
+          {{ input("paren_weight", form, "5", "number", min="1", max="10") }}
+        </label>
         <label class="field-group" for="ranges">
           <span class="field-label">
             <span data-i18n="f.ranges">{{ t("f.ranges", lang) }}</span>{{ tip("tip.ranges") }}

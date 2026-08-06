@@ -164,6 +164,7 @@ def _config_from_form(form: dict) -> Config:
         sheets=i(form.get("sheets"), 1),
         lang=form.get("lang") or None,
         parentheses=form.get("parentheses") == "1",
+        paren_weight=i(form.get("paren_weight")),
         left_factor_range=rng(form.get("left_factor_range")),
         right_factor_range=rng(form.get("right_factor_range")),
         dividend_range=rng(form.get("dividend_range")),
@@ -241,6 +242,8 @@ def _as_query(cfg: Config) -> dict:
         q["answer_page"] = "off"
     if cfg.parentheses is not None:
         q["parentheses"] = "1" if cfg.parentheses else "0"
+    if cfg.paren_weight not in (None, 5):
+        q["paren_weight"] = str(cfg.paren_weight)
     if cfg.op_weights:
         q["op_weights"] = ",".join(f"{k}={v}" for k, v in cfg.op_weights.items())
     if cfg.left_factor_range:
