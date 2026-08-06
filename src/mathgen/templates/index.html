@@ -318,6 +318,7 @@
     });
     document.querySelectorAll('#advanced input, #advanced select').forEach(function (el) {
       el.addEventListener('change', function () {
+        syncDisables();
         if (gradeValue() !== '') {
           customized = true;
           setGrade('');
