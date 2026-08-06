@@ -33,7 +33,14 @@ def _gen_two(cfg: ResolvedConfig, rng: random.Random) -> Question:
 
         a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
     elif op == "×":
-        if cfg.explicit_ranges:
+        if cfg.explicit_table or not cfg.explicit_ranges:
+            lo, hi = cfg.multiplication_table
+
+            def make():
+                a = gen_operand(rng, lo, hi)
+                b = gen_operand(rng, lo, hi)
+                return a, b, a * b
+        else:
             lo0, hi0 = cfg.operand_ranges[0]
             lo1, hi1 = cfg.operand_ranges[1]
 
@@ -41,22 +48,16 @@ def _gen_two(cfg: ResolvedConfig, rng: random.Random) -> Question:
                 a = gen_operand(rng, lo0, hi0)
                 b = gen_operand(rng, lo1, hi1)
                 return a, b, a * b
-        else:
-            lo, hi = cfg.multiplication_table
-
-            def make():
-                a = gen_operand(rng, lo, hi)
-                b = gen_operand(rng, lo, hi)
-                return a, b, a * b
 
         a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
     else:  # ÷
         lo0, hi0 = cfg.operand_ranges[0]
         q_lo, q_hi = cfg.multiplication_table
-        if cfg.explicit_ranges:
-            d_lo, d_hi = cfg.operand_ranges[1]
-        else:
+        construct = cfg.explicit_table or cfg.explicit_divisor or not cfg.explicit_ranges
+        if construct:
             d_lo, d_hi = cfg.divisor_range
+        else:
+            d_lo, d_hi = cfg.operand_ranges[1]
 
         def make():
             divisor = gen_operand(rng, d_lo, d_hi)
@@ -183,32 +184,36 @@ def _gen_multi(cfg: ResolvedConfig, rng: random.Random, n: int) -> Question:
 
 def _gen_operand_by_role(cfg: ResolvedConfig, rng: random.Random,
                          ops: list[str], i: int) -> int:
-    """按操作数角色取数：× 因数/÷ 除数/被除数按表与除数范围，+− 按 ranges。
+    """按操作数角色取数。
 
-    显式 ranges 时一律按位置取（C 项语义）。
+    优先级：显式乘法表/除数范围 > 显式 operand_ranges（按位置）> 预设默认。
     """
     n = len(ops) + 1
     left = ops[i - 1] if i > 0 else None      # 它作为右操作数参与的运算符
     right = ops[i] if i < n - 1 else None     # 它作为左操作数参与的运算符
-    if cfg.explicit_ranges:
-        return gen_operand(rng, *cfg.operand_ranges[i])
+    table_pri = cfg.explicit_table or not cfg.explicit_ranges
+    divisor_pri = cfg.explicit_divisor or not cfg.explicit_ranges
     if left == "÷" and right == "×":
-        # 双角色：既是除数又是 × 左因数——先按除数取，再校验在表内
-        for _ in range(50):
+        # 双角色：既是除数又是 × 左因数——按除数取并校验在表内
+        if table_pri or divisor_pri:
+            for _ in range(50):
+                lo, hi = cfg.divisor_range
+                v = gen_operand(rng, lo, hi)
+                tlo, thi = cfg.multiplication_table
+                if tlo <= v <= thi:
+                    return v
             lo, hi = cfg.divisor_range
-            v = gen_operand(rng, lo, hi)
-            tlo, thi = cfg.multiplication_table
-            if tlo <= v <= thi:
-                return v
-    if left == "×" or right == "×":
+            return gen_operand(rng, lo, hi)
+        return gen_operand(rng, *cfg.operand_ranges[i])
+    if (left == "×" or right == "×") and table_pri:
         lo, hi = cfg.multiplication_table
         return gen_operand(rng, lo, hi)
-    if right == "÷":
-        # 被除数：除数×商 构造（∈ [d_lo×q_lo, d_hi×q_hi]，天然整除）
+    if i == 0 and right == "÷" and (table_pri or divisor_pri):
+        # 位置 0 即整个 ÷ 前缀（被除数）：除数×商 构造（∈ [d_lo×q_lo, d_hi×q_hi]，天然整除）
         d = gen_operand(rng, *cfg.divisor_range)
         q = gen_operand(rng, *cfg.multiplication_table)
         return d * q
-    if left == "÷":
+    if left == "÷" and divisor_pri:
         lo, hi = cfg.divisor_range
         return gen_operand(rng, lo, hi)
     return gen_operand(rng, *cfg.operand_ranges[i])
@@ -253,8 +258,13 @@ def _intermediate_ok(tokens: list[str], allow_negative: bool) -> bool:
 
 def _paren_groups_ok(cfg: ResolvedConfig, ops: list[str], operands: list[int],
                      groups: list[tuple[int, int]]) -> bool:
-    """括号组值校验：邻接 × → 组值在乘法表范围；÷ 右侧（除数）→ 除数范围；÷ 左侧（被除数）→ 被除数范围。"""
-    if cfg.explicit_ranges:
+    """括号组值校验：邻接 × → 组值在乘法表范围；÷ 右侧（除数）→ 除数范围；÷ 左侧（被除数）→ 被除数范围。
+
+    表/除数语义生效时（显式设置或非显式 ranges）才校验；纯显式 ranges 按位置语义跳过。
+    """
+    table_pri = cfg.explicit_table or not cfg.explicit_ranges
+    divisor_pri = cfg.explicit_divisor or not cfg.explicit_ranges
+    if not table_pri and not divisor_pri:
         return True
     tlo, thi = cfg.multiplication_table
     dlo, dhi = cfg.divisor_range
@@ -262,22 +272,25 @@ def _paren_groups_ok(cfg: ResolvedConfig, ops: list[str], operands: list[int],
         val = operands[s]
         for k in range(s, e + 1):
             val = val + operands[k + 1] if ops[k] == "+" else val - operands[k + 1]
-        if s > 0 and ops[s - 1] == "×" or e < len(ops) - 1 and ops[e + 1] == "×":
+        if table_pri and (s > 0 and ops[s - 1] == "×" or e < len(ops) - 1 and ops[e + 1] == "×"):
             if not (tlo <= val <= thi):
                 return False
-        if s > 0 and ops[s - 1] == "÷" or e < len(ops) - 1 and ops[e + 1] == "÷":
+        if divisor_pri and (s > 0 and ops[s - 1] == "÷" or e < len(ops) - 1 and ops[e + 1] == "÷"):
             if not (dlo <= val <= dhi):
                 return False
         # 组作为 ÷ 的被除数（左邻 ÷）
-        if s > 0 and ops[s - 1] == "÷":
+        if divisor_pri and s > 0 and ops[s - 1] == "÷":
             if not (dlo * tlo <= val <= dhi * thi):
                 return False
     return True
 
 
 def _dividend_ok(cfg: ResolvedConfig, tokens: list[str], ops: list[str]) -> bool:
-    """每个 ÷ 的左侧运行值须在被除数范围 [d_lo×q_lo, d_hi×q_hi]（非 explicit）。"""
-    if cfg.explicit_ranges:
+    """每个 ÷ 的左侧运行值须在被除数范围 [d_lo×q_lo, d_hi×q_hi]。
+
+    表/除数语义生效时校验；纯显式 ranges 按位置语义跳过。
+    """
+    if cfg.explicit_ranges and not (cfg.explicit_table or cfg.explicit_divisor):
         return True
     dlo, dhi = cfg.divisor_range
     qlo, qhi = cfg.multiplication_table

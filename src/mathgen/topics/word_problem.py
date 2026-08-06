@@ -35,12 +35,19 @@ TEMPLATES_EN = [
 ]
 
 
+def _floor(lo: int, cfg: ResolvedConfig) -> int:
+    """预设（非显式 ranges）时下限提到 2，避免"走了0个/多1朵"语义怪题。"""
+    return lo if cfg.explicit_ranges else max(2, lo)
+
+
 def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
     pool = TEMPLATES_EN if cfg.lang == "en" else TEMPLATES
     template, op = rng.choice(pool)
     if op in "+-":
+        ranges = [(max(_floor(lo, cfg), 1), hi) for lo, hi in cfg.operand_ranges[:2]]
+
         def make():
-            a, b = gen_pair(rng, cfg.operand_ranges,
+            a, b = gen_pair(rng, ranges,
                             None if op == "+" else cfg.borrow,
                             None if op == "-" else None,
                             True if op == "+" else cfg.allow_negative)
@@ -49,6 +56,7 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
         a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
     elif op == "×":
         lo, hi = cfg.multiplication_table
+        lo = _floor(lo, cfg)
 
         def make():
             a = rng.randint(lo, hi)
@@ -59,6 +67,8 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
     else:
         lo, hi = cfg.multiplication_table
         d_lo, d_hi = cfg.divisor_range
+        lo = _floor(lo, cfg)
+        d_lo = _floor(d_lo, cfg)
 
         def make():
             divisor = rng.randint(d_lo, d_hi)

@@ -35,6 +35,24 @@ def test_answer_matches_expression():
             assert q.answer == str(eval(q.expression.replace("×", "*")))
 
 
+def test_preset_avoids_zero_one_operands():
+    cfg = resolve(Config(grade=1, topic="word_problem", count=40, seed=5))
+    for _ in range(60):
+        q = gen(cfg, random.Random())
+        for token in q.statement.split("{"):
+            pass
+        import re
+        nums = [int(n) for n in re.findall(r"\d+", q.statement)]
+        assert all(n >= 2 for n in nums), q.statement
+
+
+def test_explicit_ranges_keep_zero():
+    cfg = resolve(Config(grade=1, topic="word_problem", count=5, seed=6,
+                         operand_ranges=[(0, 9), (0, 9)]))
+    q = gen(cfg, random.Random(1))
+    assert q.expression
+
+
 def test_no_duplicate_statements_in_sheet():
     cfg = resolve(Config(grade=1, topic="word_problem", count=8, seed=3))
     from mathgen.core.engine import generate

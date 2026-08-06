@@ -159,8 +159,7 @@ def test_division_dividend_divisor_positions():
         a, b = map(int, q.expression.replace("÷", " ").split())
         assert 10 <= a <= 99 and 2 <= b <= 9, q.expression
     cfg2 = resolve(Config(grade=3, operators="÷", count=20, seed=12,
-                          operand_ranges=[(100, 999), (10, 99)],
-                          multiplication_table=(2, 9)))
+                          operand_ranges=[(100, 999), (10, 99)]))
     for q in generate(cfg2):
         a, b = map(int, q.expression.replace("÷", " ").split())
         assert 100 <= a <= 999 and 10 <= b <= 99, q.expression

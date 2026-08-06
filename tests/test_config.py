@@ -111,6 +111,22 @@ def test_pick_op_respects_weights():
     assert seen2 == {"+", "×"}
 
 
+def test_all_weights_zero_raises():
+    with pytest.raises(ConfigError, match="权重"):
+        resolve(Config(operators="+×", op_weights={"+": 0, "×": 0}))
+    r = resolve(Config(operators="+×", op_weights={"+": 0, "×": 3}))
+    assert r.op_weights == {"+": 0, "×": 3}
+
+
+def test_explicit_table_divisor_flags():
+    r = resolve(Config(grade=3, operand_ranges=[(1, 99), (1, 99)]))
+    assert r.explicit_ranges and not r.explicit_table and not r.explicit_divisor
+    r2 = resolve(Config(grade=3, multiplication_table=(2, 9)))
+    assert r2.explicit_table and not r2.explicit_ranges
+    r3 = resolve(Config(grade=3, divisor_range=(2, 9)))
+    assert r3.explicit_divisor
+
+
 def test_numbering_options_defaults_and_validation():
     r = resolve(Config(grade=2))
     assert r.show_numbers is True and r.number_direction == "row"

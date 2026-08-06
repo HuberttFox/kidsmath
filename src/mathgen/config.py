@@ -167,6 +167,8 @@ class ResolvedConfig:
     show_numbers: bool
     number_direction: str
     explicit_ranges: bool
+    explicit_table: bool
+    explicit_divisor: bool
 
 
 _OP_ALIASES = {"加": "+", "减": "-", "乘": "×", "除": "÷"}
@@ -236,6 +238,8 @@ def resolve(cfg: Config) -> ResolvedConfig:
     if data["multiplication_table"] is None:
         data["multiplication_table"] = (1, 9)
     data["explicit_ranges"] = cfg.operand_ranges is not None
+    data["explicit_table"] = cfg.multiplication_table is not None
+    data["explicit_divisor"] = cfg.divisor_range is not None
 
     # ---- 校验 ----
     data["operators"] = normalize_operators(data["operators"])
@@ -249,6 +253,8 @@ def resolve(cfg: Config) -> ResolvedConfig:
             raise ConfigError("invalid_op_weight", op=k, ops=data["operators"])
         if v < 0:
             raise ConfigError("negative_op_weight", op=k, v=v)
+    if data["op_weights"] and all(v <= 0 for v in data["op_weights"].values()):
+        raise ConfigError("all_weights_zero", ops=data["operators"])
     if data["count"] <= 0:
         raise ConfigError("count_positive", n=data["count"])
     if data["count"] > 500:

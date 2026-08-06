@@ -98,7 +98,7 @@ def test_matrix_table_divisor_constraints_3ops():
 ])
 def test_matrix_explicit_ranges_asymmetric(ranges, op, lo0, hi0, lo1, hi1, count):
     cfg = resolve(Config(grade=3, operators=op, count=count, seed=300,
-                         operand_ranges=ranges, multiplication_table=(2, 9)))
+                         operand_ranges=ranges))
     for q in generate(cfg):
         a, b = map(int, q.expression.replace(op, " ").split())
         assert lo0 <= a <= hi0 and lo1 <= b <= hi1, q.expression
