@@ -444,3 +444,16 @@ def test_product_page():
     assert 'class="feature-card' in r.text
     assert "coming-soon" in r.text
     assert 'href="/"' in r.text  # CTA
+
+
+def test_pwa_assets():
+    r = client.get("/static/manifest.webmanifest")
+    assert r.status_code == 200
+    assert '"name"' in r.text and "kidsmath" in r.text
+    assert r.headers.get("content-type", "").startswith("application/manifest")
+    r2 = client.get("/static/sw.js")
+    assert r2.status_code == 200
+    assert "pathname.startsWith('/product')" in r2.text  # 产品页不缓存（排除串本身含 product，故不能断言 product 不存在）
+    r3 = client.get("/")
+    assert 'rel="manifest"' in r3.text
+    assert "/static/sw.js" in r3.text

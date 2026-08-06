@@ -4,8 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#a8e6cf">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>{% block title %}mathgen 数学出题{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/static/math-icon.svg">
+  <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -36,6 +40,11 @@
   </footer>
   {% if ui_json %}<script type="application/json" id="ui-json">{{ ui_json | safe }}</script>{% endif %}
   <script src="/static/lang.js"></script>
+  <script>
+    if ('serviceWorker' in navigator && location.protocol !== 'file:') {
+      navigator.serviceWorker.register('/static/sw.js').catch(function () {});
+    }
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

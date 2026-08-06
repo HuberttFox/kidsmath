@@ -1,0 +1,14 @@
+{
+  "name": "kidsmath 数学出题",
+  "short_name": "kidsmath",
+  "description": "小学数学练习题生成工具",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#fffdf7",
+  "theme_color": "#a8e6cf",
+  "icons": [
+    { "src": "/static/math-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/static/math-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

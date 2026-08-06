@@ -35,6 +35,10 @@ mathgen serve --host 0.0.0.0 --port 8080
 
 网页界面字体使用悠哉圆体（Yozai，SIL OFL 1.1，见 `src/mathgen/static/fonts/OFL-yozai.txt`），本地托管离线可用。
 
+PWA：`/static/manifest.webmanifest` + `/static/sw.js`（app shell 缓存，`/product` 不缓存）。
+
+TODO：生成 192/512 PNG 安装图标（当前 manifest 仅 SVG 图标，iOS 主屏图标体验受限）。
+
 详见设计文档 `docs/superpowers/specs/2026-08-06-mathgen-design.md`。
 
 ## 许可
