@@ -146,6 +146,12 @@ def test_index_round_font_and_hero():
     assert 'class="hero"' in r.text
 
 
+def test_healthz_endpoint():
+    r = client.get("/healthz")
+    assert r.status_code == 200
+    assert r.json() == {"status": "ok"}
+
+
 def test_index_grade_and_topic_radio_groups():
     r = client.get("/")
     html = r.text

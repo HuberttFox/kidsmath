@@ -181,6 +181,11 @@ async def index(request: Request):
     return templates.TemplateResponse(request, "index.html", _index_context())
 
 
+@app.get("/healthz")
+async def healthz():
+    return {"status": "ok"}
+
+
 @app.post("/generate", response_class=HTMLResponse)
 async def generate_page(request: Request):
     fd = await request.form()
