@@ -18,7 +18,6 @@
 
 {% block content %}
 <section class="hero">
-  <div class="hero-badge" data-i18n="hero.badge">{{ t("hero.badge", lang) }}</div>
   <h1 class="hero-title" data-i18n="hero.title">{{ t("hero.title", lang) }}</h1>
   <p class="hero-tagline" data-i18n="hero.tagline">{{ t("hero.tagline", lang) }}</p>
 </section>
@@ -28,7 +27,7 @@
 <form method="post" action="/generate" class="sheet-form">
   <input type="hidden" name="lang" value="{{ lang }}">
   <fieldset class="card card-mint">
-    <legend>🎯 <span data-i18n="f.base">{{ t("f.base", lang) }}</span></legend>
+    <legend><span class="legend-dot dot-mint" aria-hidden="true"></span><span data-i18n="f.base">{{ t("f.base", lang) }}</span></legend>
     <div class="form-grid">
       <div class="field-group">
         <label class="field-label" for="grade">
@@ -66,9 +65,9 @@
   </fieldset>
 
   <details id="advanced">
-    <summary>🔧 <span data-i18n="f.advanced">{{ t("f.advanced", lang) }}</span></summary>
+    <summary><span data-i18n="f.advanced">{{ t("f.advanced", lang) }}</span></summary>
     <fieldset class="card card-pink">
-      <legend>🔢 <span data-i18n="f.numeric">{{ t("f.numeric", lang) }}</span></legend>
+      <legend><span class="legend-dot dot-pink" aria-hidden="true"></span><span data-i18n="f.numeric">{{ t("f.numeric", lang) }}</span></legend>
       <div class="form-grid">
         <div class="field-group">
           <span class="field-label">
@@ -148,7 +147,7 @@
       </div>
     </fieldset>
     <fieldset class="card card-yellow">
-      <legend>📄 <span data-i18n="f.layout">{{ t("f.layout", lang) }}</span></legend>
+      <legend><span class="legend-dot dot-yellow" aria-hidden="true"></span><span data-i18n="f.layout">{{ t("f.layout", lang) }}</span></legend>
       <div class="form-grid">
         <label class="field-group" for="columns">
           <span class="field-label">
@@ -196,7 +195,7 @@
       </div>
     </fieldset>
     <fieldset class="card card-blue">
-      <legend>📚 <span data-i18n="f.batch">{{ t("f.batch", lang) }}</span></legend>
+      <legend><span class="legend-dot dot-blue" aria-hidden="true"></span><span data-i18n="f.batch">{{ t("f.batch", lang) }}</span></legend>
       <div class="form-grid">
         <label class="field-group" for="sheets">
           <span class="field-label">

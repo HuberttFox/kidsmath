@@ -4,7 +4,7 @@
 
 {% block content %}
 <h1 class="preview-title" data-i18n="preview.title">{{ t("preview.title", lang) }}</h1>
-<p class="summary badge" data-summary="{{ summary_data }}">{{ summary }}</p>
+<p class="summary" data-summary="{{ summary_data }}">{{ summary }}</p>
 <section class="sheet preview" id="sheet"
          data-ncols="{{ ncols }}"
          style="grid-template-columns: repeat({{ ncols }}, minmax(0, 1fr));"
@@ -17,14 +17,14 @@
   <button type="button" class="btn btn-secondary" id="pageNext" data-i18n="pager.next">{{ t("pager.next", lang) }}</button>
 </div>
 <nav class="actions" aria-label="下载操作">
-  <a class="btn" href="/download.pdf?{{ query }}">⬇️ <span data-i18n="btn.download">{{ t("btn.download", lang) }}</span></a>
-  {% if sheets > 1 %}<a class="btn btn-peach" href="/download.zip?{{ query }}">🗜️ <span data-i18n="btn.zip">{{ t("btn.zip", lang, n=sheets) }}</span></a>{% endif %}
+  <a class="btn" href="/download.pdf?{{ query }}"><span data-i18n="btn.download">{{ t("btn.download", lang) }}</span></a>
+  {% if sheets > 1 %}<a class="btn" href="/download.zip?{{ query }}"><span data-i18n="btn.zip">{{ t("btn.zip", lang, n=sheets) }}</span></a>{% endif %}
   <form method="post" action="/generate" class="inline-form">
     {% for k, v in cfg_fields.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
     <input type="hidden" name="lang" value="{{ lang }}">
-    <button type="submit" class="btn btn-secondary">🔄 <span data-i18n="btn.again">{{ t("btn.again", lang) }}</span></button>
+    <button type="submit" class="btn btn-secondary"><span data-i18n="btn.again">{{ t("btn.again", lang) }}</span></button>
   </form>
-  <a class="btn btn-secondary" href="/?{{ query }}">📝 <span data-i18n="btn.modify">{{ t("btn.modify", lang) }}</span></a>
+  <a class="btn btn-secondary" href="/?{{ query }}"><span data-i18n="btn.modify">{{ t("btn.modify", lang) }}</span></a>
 </nav>
 {% endblock %}
 
