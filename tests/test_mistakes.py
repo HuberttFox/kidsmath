@@ -47,3 +47,26 @@ def test_errors_filter_tabs():
                 "question_json": "{}", "params": "{}", "q_index": "0"})
     for f in ("all", "due", "mastered"):
         assert client.get(f"/member/errors?f={f}").status_code == 200
+
+
+def test_preview_shows_mark_wrong_buttons_when_logged_in():
+    client.get("/api/logout")
+    r = client.post("/generate", data={"grade": "2", "count": "4"})
+    assert 'class="mark-wrong"' not in r.text
+    _login()
+    r = client.post("/generate", data={"grade": "2", "count": "4"})
+    assert r.status_code == 200
+    assert r.text.count('class="mark-wrong"') == 4
+
+
+def test_preview_mark_wrong_persists():
+    _login()
+    r = client.post("/generate", data={"grade": "1", "count": "2"})
+    m = re.search(r'<form method="post" action="/api/mistakes" class="mark-wrong">.*?'
+                  r'<input type="hidden" name="problem" value="([^"]+)">', r.text, re.S)
+    assert m, "标错表单未渲染"
+    client.post("/api/mistakes", data={
+        "kind": "sheet", "topic": "arithmetic", "problem": m.group(1),
+        "answer": "1", "expression": "x", "question_json": "{}", "params": "{}",
+        "q_index": "0"}, follow_redirects=False)
+    assert m.group(1) in client.get("/member/errors").text

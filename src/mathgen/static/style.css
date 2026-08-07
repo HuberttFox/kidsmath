@@ -695,3 +695,6 @@ details#advanced[open] > summary { margin-bottom: .9em; }
   font: inherit; color: var(--text); width: 120px; }
 
 .import-form { display: flex; gap: .8em; align-items: center; flex-wrap: wrap; margin: .6em 0; }
+
+.mark-wrong { position: absolute; top: 2px; right: 2px; z-index: 2; }
+.cell { position: relative; }

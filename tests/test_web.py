@@ -99,7 +99,7 @@ def test_operators_chinese_checkboxes():
         "operators": ["加", "减"]})
     assert r.status_code == 200
     import re as _re
-    cells = _re.findall(r'<div class="cell">(.*?)</div>', r.text)
+    cells = _re.findall(r'<div class="cell">(.*?)</div>', r.text, _re.S)
     assert cells, "no cells in preview"
     assert not any("×" in c or "÷" in c for c in cells)
     assert any("+" in c for c in cells) and any("-" in c for c in cells)
