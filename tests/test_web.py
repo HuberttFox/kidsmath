@@ -533,3 +533,17 @@ def test_android_assets_exist():
     assert (root / "docs" / "android.md").exists()
     for s in (192, 512):
         assert client.get(f"/static/icons/icon-{s}.png").status_code == 200
+
+
+def test_topbar_home_workspace_links():
+    r = client.get("/")
+    assert 'href="/product"' in r.text and "nav.home" in r.text
+    assert 'href="/"' in r.text and "nav.workspace" in r.text
+    r2 = client.get("/product")
+    assert 'href="/product"' in r2.text and 'href="/"' in r2.text
+
+
+def test_logged_in_user_center_link():
+    client.post("/api/register", data={"username": "顶栏用户", "password": "secret123"})
+    r = client.get("/")
+    assert 'href="/user"' in r.text
