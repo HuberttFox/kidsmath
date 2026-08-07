@@ -81,6 +81,27 @@ def _init_tables(conn: sqlite3.Connection) -> None:
     );
     CREATE INDEX IF NOT EXISTS idx_history_user ON config_history(user_id, created_at DESC);
     CREATE INDEX IF NOT EXISTS idx_saved_user ON saved_configs(user_id);
+    CREATE TABLE IF NOT EXISTS mistakes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      kind TEXT NOT NULL,
+      topic TEXT NOT NULL,
+      problem TEXT NOT NULL,
+      answer TEXT NOT NULL,
+      expression TEXT,
+      question_json TEXT,
+      params TEXT,
+      q_index INTEGER,
+      note TEXT,
+      wrong_at TEXT NOT NULL,
+      ease REAL NOT NULL DEFAULT 2.5,
+      interval INTEGER NOT NULL DEFAULT 0,
+      reps INTEGER NOT NULL DEFAULT 0,
+      due_at TEXT NOT NULL,
+      last_q INTEGER,
+      mastered_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_mistakes_queue ON mistakes(user_id, due_at);
     """)
     conn.commit()
 
@@ -217,3 +238,69 @@ def delete_saved(user_id: int, sid: int) -> bool:
         "DELETE FROM saved_configs WHERE id=? AND user_id=?", (sid, user_id))
     conn.commit()
     return cur.rowcount > 0
+
+
+def add_mistake(user_id, kind, topic, problem, answer, expression,
+                question_json, params, q_index, note) -> int:
+    conn = get_conn()
+    now = now_iso()
+    cur = conn.execute(
+        "INSERT INTO mistakes (user_id, kind, topic, problem, answer, expression, "
+        "question_json, params, q_index, note, wrong_at, due_at) "
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (user_id, kind, topic, problem, answer, expression, question_json,
+         params, q_index, note, now, now))
+    conn.commit()
+    return cur.lastrowid
+
+
+def list_mistakes(user_id):
+    rows = get_conn().execute(
+        "SELECT * FROM mistakes WHERE user_id=? ORDER BY wrong_at DESC, id DESC",
+        (user_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_mistake(user_id, mid):
+    row = get_conn().execute(
+        "SELECT * FROM mistakes WHERE id=? AND user_id=?", (mid, user_id)).fetchone()
+    return dict(row) if row else None
+
+
+def update_review(user_id, mid, ease, interval, reps, due_at, last_q) -> bool:
+    conn = get_conn()
+    cur = conn.execute(
+        "UPDATE mistakes SET ease=?, interval=?, reps=?, due_at=?, last_q=? "
+        "WHERE id=? AND user_id=?", (ease, interval, reps, due_at, last_q, mid, user_id))
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def set_mastered(user_id, mid, ts) -> bool:
+    conn = get_conn()
+    cur = conn.execute(
+        "UPDATE mistakes SET mastered_at=? WHERE id=? AND user_id=?", (ts, mid, user_id))
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def delete_mistake(user_id, mid) -> bool:
+    conn = get_conn()
+    cur = conn.execute("DELETE FROM mistakes WHERE id=? AND user_id=?", (mid, user_id))
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def update_note(user_id, mid, note) -> bool:
+    conn = get_conn()
+    cur = conn.execute("UPDATE mistakes SET note=? WHERE id=? AND user_id=?",
+                       (note, mid, user_id))
+    conn.commit()
+    return cur.rowcount > 0
+
+
+def due_mistakes(user_id, now):
+    rows = get_conn().execute(
+        "SELECT * FROM mistakes WHERE user_id=? AND mastered_at IS NULL "
+        "AND due_at <= ? ORDER BY due_at ASC, id ASC", (user_id, now)).fetchall()
+    return [dict(r) for r in rows]

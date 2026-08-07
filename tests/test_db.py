@@ -70,3 +70,34 @@ def test_get_history_owner_scoped():
     hid = db.add_history(uid1, "{}")
     assert db.get_history(uid1, hid) is not None
     assert db.get_history(uid2, hid) is None
+
+
+def test_mistake_crud_and_scoping():
+    uid1 = db.create_user("u1", "h")
+    uid2 = db.create_user("u2", "h")
+    mid = db.add_mistake(uid1, "sheet", "vertical", "23 + 48 = ____", "71",
+                         "23 + 48", '{"topic": "vertical"}', '{"grade": "2", "seed": 1}',
+                         3, "粗心")
+    row = db.get_mistake(uid1, mid)
+    assert row["kind"] == "sheet" and row["question_json"] == '{"topic": "vertical"}'
+    assert row["due_at"] == row["wrong_at"]
+    assert db.get_mistake(uid2, mid) is None
+    assert len(db.list_mistakes(uid1)) == 1
+    assert db.update_review(uid1, mid, 2.6, 1, 1, "2099-01-01", 5)
+    assert not db.update_review(uid2, mid, 2.5, 1, 1, "2099-01-01", 5)
+    assert db.set_mastered(uid1, mid, "2099-01-01")
+    assert db.due_mistakes(uid1, "2100-01-01") == []
+    assert db.set_mastered(uid1, mid, None)
+    assert db.due_mistakes(uid1, "2100-01-01") == []
+    assert db.delete_mistake(uid1, mid)
+    assert not db.delete_mistake(uid2, mid)
+
+
+def test_due_queue_ordering():
+    uid = db.create_user("u1", "h")
+    a = db.add_mistake(uid, "manual", "arithmetic", "1+1", "2", None, None, None, None, None)
+    b = db.add_mistake(uid, "manual", "arithmetic", "2+2", "4", None, None, None, None, None)
+    db.update_review(uid, a, 2.5, 1, 0, "2020-01-01", None)
+    due = db.due_mistakes(uid, "2030-01-01")
+    assert due[0]["id"] == a
+    assert [r["id"] for r in due] == [a, b]
