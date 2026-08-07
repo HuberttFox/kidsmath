@@ -732,3 +732,103 @@ html, body { height: 100%; }
 body { display: flex; flex-direction: column; min-height: 100vh; }
 main { flex: 1 0 auto; }
 .site-footer { flex-shrink: 0; }
+
+/* ---- 工作台侧边栏 ---- */
+.workbench { display: flex; gap: 1.4em; align-items: flex-start; max-width: var(--container-max); margin: 0 auto; padding: 0 var(--gap) 2em; }
+.side-rail {
+  position: sticky; top: 76px; flex: 0 0 168px;
+  background: var(--card-bg); border: 1.5px solid var(--border);
+  border-radius: var(--radius-lg); padding: .7em .5em;
+  box-shadow: var(--shadow-sm);
+}
+.side-nav { display: flex; flex-direction: column; gap: .25em; }
+.side-item {
+  display: flex; align-items: center; gap: .6em;
+  padding: .6em .8em; border-radius: var(--radius-sm);
+  color: var(--text-soft); text-decoration: none; font-weight: 700; font-size: .93rem;
+  position: relative; transition: background var(--dur) ease, color var(--dur) ease, transform var(--dur) ease;
+}
+.side-item:hover { background: var(--mint-soft); color: var(--text); transform: translateX(3px); }
+.side-active { background: var(--mint-soft); color: var(--text); }
+.side-active::before {
+  content: ""; position: absolute; left: 0; top: 18%; bottom: 18%; width: 4px;
+  border-radius: 2px; background: var(--green);
+  transform: scaleY(0); transform-origin: top;
+  animation: sideIn .25s ease forwards;
+}
+@keyframes sideIn { to { transform: scaleY(1); } }
+.side-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--border); transition: background var(--dur) ease; }
+.side-item:hover .side-dot, .side-active .side-dot { background: var(--green); }
+.side-toggle { display: none; background: none; border: none; cursor: pointer; padding: .4em; }
+.side-toggle-bar { display: block; width: 22px; height: 2.5px; background: var(--text); border-radius: 2px; margin: 4px 0; transition: transform var(--dur) ease, opacity var(--dur) ease; }
+.side-backdrop { position: fixed; inset: 0; background: rgba(22, 17, 26, .45); z-index: 40; animation: fadeIn .2s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.workbench-main { flex: 1 1 auto; min-width: 0; }
+@media (max-width: 820px) {
+  .workbench { flex-direction: column; }
+  .side-rail {
+    position: fixed; top: 0; left: 0; bottom: 0; z-index: 50;
+    flex: none; width: 240px; border-radius: 0;
+    transform: translateX(-105%); transition: transform .28s cubic-bezier(.22, .8, .3, 1);
+    background: var(--bg);
+  }
+  .side-rail.side-open { transform: translateX(0); }
+  .side-toggle { display: inline-block; margin-bottom: .3em; }
+}
+
+/* ---- 用户 chip 交互动画 ---- */
+.user-chip {
+  position: relative; overflow: hidden; text-decoration: none;
+  transition: transform var(--dur) ease, box-shadow var(--dur) ease, background var(--dur) ease;
+}
+.user-chip:hover { transform: scale(1.05); box-shadow: var(--shadow-sm); }
+.user-chip:active { transform: scale(0.96); }
+.user-chip::after {
+  content: ""; position: absolute; inset: 0;
+  background: radial-gradient(circle at center, var(--green) 0%, transparent 60%);
+  opacity: 0; transform: scale(0);
+  transition: transform .45s ease, opacity .45s ease;
+  border-radius: inherit; pointer-events: none;
+}
+.user-chip:active::after { opacity: .25; transform: scale(2); }
+
+/* ---- 马卡龙色板（双主题） ---- */
+html { --macaron-pink: #f2a6b8; --macaron-mint: #7fd4a8; --macaron-yellow: #f7d774;
+       --macaron-blue: #8fc4e8; --macaron-lavender: #b8a6e8; }
+html[data-theme="dark"] { --macaron-pink: #e88ea8; --macaron-mint: #6ec79a;
+       --macaron-yellow: #e6c05c; --macaron-blue: #7db4dd; --macaron-lavender: #a792dd; }
+
+/* 功能卡彩色描边轮换 */
+.placeholder-grid .placeholder-card:nth-child(5n+1) { border-color: var(--macaron-pink); box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--macaron-pink) 30%, transparent); }
+.placeholder-grid .placeholder-card:nth-child(5n+2) { border-color: var(--macaron-mint); }
+.placeholder-grid .placeholder-card:nth-child(5n+3) { border-color: var(--macaron-yellow); }
+.placeholder-grid .placeholder-card:nth-child(5n+4) { border-color: var(--macaron-blue); }
+.placeholder-grid .placeholder-card:nth-child(5n+5) { border-color: var(--macaron-lavender); }
+
+/* 侧边栏深色高亮渐变 */
+.side-item:hover, .side-active {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--macaron-mint) 22%, transparent),
+    transparent 85%);
+}
+
+/* 深色 hero 马卡龙柔渐变 */
+html[data-theme="dark"] .hero {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--macaron-pink) 14%, var(--bg)) 0%,
+    color-mix(in srgb, var(--macaron-blue) 12%, var(--bg)) 50%,
+    color-mix(in srgb, var(--macaron-lavender) 14%, var(--bg)) 100%);
+  border: 1.5px solid color-mix(in srgb, var(--macaron-lavender) 25%, var(--border));
+}
+html[data-theme="dark"] .hero .hero-badge {
+  background: color-mix(in srgb, var(--macaron-yellow) 18%, transparent);
+  color: var(--macaron-yellow);
+}
+html[data-theme="dark"] .landing-hero {
+  background: linear-gradient(135deg,
+    color-mix(in srgb, var(--macaron-pink) 16%, var(--bg)) 0%,
+    color-mix(in srgb, var(--macaron-mint) 12%, var(--bg)) 100%);
+}
+
+/* 焦点环彩色 */
+.field-group input:focus-visible { border-color: var(--macaron-blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--macaron-blue) 25%, transparent); }

@@ -7,7 +7,7 @@
   <meta name="theme-color" content="#a8e6cf">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>{% block title %}mathgen 数学出题{% endblock %}</title>
+  <title>{% block title %}Kids Math 数学出题{% endblock %}</title>
   <link rel="icon" type="image/svg+xml" href="/static/math-icon.svg">
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="stylesheet" href="/static/style.css">
@@ -15,14 +15,15 @@
 <body>
   <header class="site-header">
     <div class="container header-inner">
-      <a class="logo" href="/">
+      <a class="logo" href="{% if app_mode %}/{% else %}/product{% endif %}">
         <img class="logo-icon" src="/static/math-icon.svg" alt="" width="36" height="36">
-        <span class="logo-text">mathgen</span>
+        <span class="logo-text">Kids Math</span>
       </a>
+      {% if request.url.path == "/product" %}
       <nav class="nav" aria-label="导航">
-        {% if not app_mode %}<a href="/product" data-i18n="nav.home">{{ t("nav.home", lang) }}</a>{% endif %}
         <a href="/" data-i18n="nav.workspace">{{ t("nav.workspace", lang) }}</a>
       </nav>
+      {% endif %}
       <div class="header-controls">
         {% if request.state.user %}
       <a class="user-chip" href="/user">{{ request.state.user.username }}</a>

@@ -286,7 +286,7 @@ def test_refactor_download_cta_section():
     assert 'class="btn btn-download"' in html
     assert 'class="meta-badge"' in html
     assert 'class="download-version"' in html
-    assert 'mathgen v' in html
+    assert 'Kids Math v' in html
     assert 'id="preview"' in html
 
 
@@ -453,7 +453,7 @@ def test_product_page():
 def test_pwa_assets():
     r = client.get("/static/manifest.webmanifest")
     assert r.status_code == 200
-    assert '"name"' in r.text and "kidsmath" in r.text
+    assert '"name"' in r.text and "Kids Math" in r.text
     assert r.headers.get("content-type", "").startswith("application/manifest")
     r2 = client.get("/static/sw.js")
     assert r2.status_code == 200
@@ -517,10 +517,10 @@ def test_pwa_manifest_id_and_png_icons():
 
 def test_app_mode_hides_product_nav():
     r = client.get("/")
-    assert 'href="/product"' in r.text
+    assert 'data-i18n="nav.workspace"' not in r.text  # 工作台无导航
+    assert 'class="logo" href="/product"' in r.text   # logo 回首页
     r2 = client.get("/?app=1")
-    assert 'href="/product"' not in r2.text
-    assert 'href="/" ' in r2.text or 'nav.workspace' in r2.text  # 工作台恒在
+    assert 'class="logo" href="/"' in r2.text         # TWA：logo 留工作台
 
 
 def test_android_assets_exist():
@@ -533,12 +533,13 @@ def test_android_assets_exist():
         assert client.get(f"/static/icons/icon-{s}.png").status_code == 200
 
 
-def test_topbar_home_workspace_links():
-    r = client.get("/")
-    assert 'href="/product"' in r.text and "nav.home" in r.text
-    assert 'href="/"' in r.text and "nav.workspace" in r.text
-    r2 = client.get("/product")
-    assert 'href="/product"' in r2.text and 'href="/"' in r2.text
+def test_topbar_split():
+    r = client.get("/")                      # 工作台：无导航，仅 logo 回首页
+    assert 'data-i18n="nav.workspace"' not in r.text
+    assert 'class="logo" href="/product"' in r.text  # logo 回首页
+    r2 = client.get("/product")              # 首页：有「工作台」入口
+    assert 'href="/"' in r2.text and "nav.workspace" in r2.text
+    assert 'logo-text' in r.text
 
 
 def test_logged_in_user_center_link():

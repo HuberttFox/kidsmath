@@ -4,7 +4,7 @@ from __future__ import annotations
 LANGS = ("zh", "en")
 
 UI_ZH = {
-    "brand": "mathgen",
+    "brand": "Kids Math",
     "hero.badge": "完全免费 · 开源 · 离线出题",
     "hero.title": "给孩子出数学题",
     "hero.tagline": "选个年级，点一下，一张漂亮的练习卷就出来了",
@@ -102,13 +102,12 @@ UI_ZH = {
     "topic_vertical_label": "竖式",
     "topic_word_problem_label": "应用题",
     "preview.cta": "准备好了吗？",
-    "nav.home": "首页",
     "nav.workspace": "工作台",
     "meta.questions": "{n} 题",
     "meta.sheets": "{n} 份",
     "meta.columns": "{n} 列",
     "footer.made": "完全免费 · 开源 · 离线出题",
-    "footer.copyright": "© {year} mathgen",
+    "footer.copyright": "© {year} Kids Math",
     "f.show_numbers": "显示编号",
     "f.number_direction": "编号方向",
     "tip.show_numbers": "每题前是否显示序号",
@@ -230,6 +229,7 @@ UI_ZH = {
     "ai.photo_hint": "拍下题目照片？登录后可在错题本手动录入",
     "ai.note_ignored": "有 {n} 行未识别，已忽略",
     "ai.note_no_numbers": "未识别到算式，请粘贴含数字的算式",
+    "side.gen": "出题",
     "workspace.member_title": "更多功能",
     "member.title": "会员中心",
     "member.ai": "AI 智能配置",
@@ -281,7 +281,7 @@ UI_ZH = {
 }
 
 UI_EN = {
-    "brand": "mathgen",
+    "brand": "Kids Math",
     "hero.badge": "Free · Open Source · Offline",
     "hero.title": "Math Worksheets for Kids",
     "hero.tagline": "Pick a grade, click once, and a lovely worksheet is ready",
@@ -379,7 +379,6 @@ UI_EN = {
     "topic_vertical_label": "Vertical",
     "topic_word_problem_label": "Word problems",
     "preview.cta": "Ready to start?",
-    "nav.home": "Home",
     "nav.workspace": "Workspace",
     "meta.questions": "{n} questions",
     "meta.sheets": "{n} sheets",
@@ -391,7 +390,7 @@ UI_EN = {
     "tip.number_direction": "Horizontal: 1 2 / 3 4; vertical: 1 3 / 2 4 (column first)",
     "opt.row": "Horizontal",
     "opt.column": "Vertical",
-    "footer.copyright": "© {year} mathgen",
+    "footer.copyright": "© {year} Kids Math",
     "coming_soon": "Coming soon",
     "auth.login": "Log in",
     "auth.register": "Sign up",
@@ -507,6 +506,7 @@ UI_EN = {
     "ai.photo_hint": "Have a photo? Log in to add it to the mistake book",
     "ai.note_ignored": "{n} lines unrecognized, skipped",
     "ai.note_no_numbers": "No expressions found — paste problems with numbers",
+    "side.gen": "Generate",
     "workspace.member_title": "More tools",
     "member.title": "Membership",
     "member.ai": "AI config",

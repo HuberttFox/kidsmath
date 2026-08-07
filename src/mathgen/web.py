@@ -48,7 +48,7 @@ class UserAndCSRFMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-app = FastAPI(title="mathgen")
+app = FastAPI(title="Kids Math")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 app.add_middleware(UserAndCSRFMiddleware)
 
