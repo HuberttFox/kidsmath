@@ -423,6 +423,36 @@ async def member_review(request: Request, user: dict | None = Depends(current_us
         "app_mode": _app_mode(request)})
 
 
+@app.post("/api/mistakes/{mid}/mastered")
+async def mistake_mastered(request: Request, mid: int,
+                           user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    row = db_mod.get_mistake(user["id"], mid)
+    if row:
+        db_mod.set_mastered(user["id"], mid, None if row["mastered_at"] else db_mod.now_iso())
+    return RedirectResponse("/member/errors", status_code=302)
+
+
+@app.post("/api/mistakes/{mid}/delete")
+async def mistake_delete(request: Request, mid: int,
+                         user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    db_mod.delete_mistake(user["id"], mid)
+    return RedirectResponse("/member/errors", status_code=302)
+
+
+@app.post("/api/mistakes/{mid}/note")
+async def mistake_note(request: Request, mid: int,
+                       user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    form = await request.form()
+    db_mod.update_note(user["id"], mid, form.get("note") or None)
+    return RedirectResponse("/member/errors", status_code=302)
+
+
 @app.post("/api/mistakes/{mid}/review")
 async def mistake_review(request: Request, mid: int,
                          user: dict | None = Depends(current_user)):

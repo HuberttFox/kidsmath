@@ -95,3 +95,30 @@ def test_review_anonymous_redirects():
     client.get("/api/logout")
     r = client.post("/api/mistakes/1/review", data={"q": "5"}, follow_redirects=False)
     assert r.status_code == 302 and "/login" in r.headers["location"]
+
+
+def test_mastered_toggle_and_delete():
+    _login()
+    client.post("/api/mistakes/manual", data={"topic": "arithmetic",
+                "problem": "6/2", "answer": "3"})
+    client.post("/api/mistakes/1/mastered")
+    assert "6/2" in client.get("/member/errors?f=mastered").text
+    client.post("/api/mistakes/1/mastered")
+    assert "6/2" not in client.get("/member/errors?f=mastered").text
+    assert client.post("/api/mistakes/1/delete",
+                       follow_redirects=False).status_code == 302
+    assert "还没有错题" in client.get("/member/errors").text
+
+
+def test_note_edit():
+    _login()
+    client.post("/api/mistakes/manual", data={"topic": "arithmetic",
+                "problem": "8/4", "answer": "2"})
+    client.post("/api/mistakes/1/note", data={"note": "进位粗心"})
+    assert "进位粗心" in client.get("/member/errors").text
+
+
+def test_member_home_has_ai_coming_soon():
+    r = client.get("/member")
+    assert r.status_code == 200
+    assert "member.ai" in r.text or "AI" in r.text
