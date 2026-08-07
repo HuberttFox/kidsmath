@@ -552,8 +552,8 @@ def test_logged_in_user_center_link():
 def test_product_page_slim():
     r = client.get("/product")
     assert r.status_code == 200
-    assert "coming-soon" not in r.text
-    assert 'href="/member/timer"' not in r.text
+    assert r.text.count("coming-soon") == 1  # 仅安装应用占位
+    assert 'href="/member' not in r.text
     assert 'data-i18n="product.cta"' in r.text
     assert "product.install_app" in r.text
     assert 'aria-disabled="true"' in r.text
