@@ -15,7 +15,8 @@
   </form>
   {% if recognized > 0 %}
   <h2 data-i18n="ai.result_title">{{ t("ai.result_title", lang) }}</h2>
-  <p class="hint" data-i18n="ai.recognized">{{ t("ai.recognized", lang, n=recognized, total=total) }}</p>
+  <p class="hint" data-i18n="ai.recognized"
+     data-i18n-params='{"n": {{ recognized }}, "total": {{ total }}}'>{{ t("ai.recognized", lang, n=recognized, total=total) }}</p>
   {% for key, value in rows %}
   <p><span data-i18n="{{ key }}">{{ t(key, lang) }}</span>：{{ value }}</p>
   {% endfor %}

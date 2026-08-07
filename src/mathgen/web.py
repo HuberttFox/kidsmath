@@ -656,10 +656,21 @@ def _app_mode(request: Request) -> bool:
     return request.query_params.get("app") == "1"
 
 
+_OP_ZH = {"+": "加", "-": "减", "×": "乘", "÷": "除"}
+
+
+def _operators_zh(ops: str) -> str:
+    """符号串（+-×÷）→ 中文串（加减乘除），供表单 checkbox 比较。"""
+    return "".join(_OP_ZH.get(c, c) for c in ops)
+
+
 def _index_context(form: dict | None = None, error: str | None = None,
                    lang: str = "zh", app_mode: bool = False) -> dict:
+    form = dict(form or {})
+    if form.get("operators"):
+        form["operators"] = _operators_zh(form["operators"])
     return {
-        "form": form or {},
+        "form": form,
         "error": error,
         "lang": lang,
         "presets_json": _PRESETS_JSON,

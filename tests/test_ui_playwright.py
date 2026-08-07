@@ -1,4 +1,5 @@
 import json
+import re
 
 """HTML 按钮选取交互测试（Playwright 真实浏览器）。
 
@@ -272,3 +273,14 @@ def test_review_flip_and_complete(page):
     expect(page.locator("#answerReveal")).to_be_visible()
     page.locator('button[name="q"][value="5"]').click()
     expect(page.locator("text=今日全部完成")).to_be_visible()
+
+
+def test_ai_parse_backfill_form_values(page):
+    page.goto(BASE + "/member/ai")
+    page.locator('textarea[name="text"]').fill("12 + 34 = 46\n23 - 11 = 12")
+    page.locator('button[data-i18n="ai.parse"]').click()
+    expect(page.locator("text=识别 2/2 题")).to_be_visible()
+    page.locator('button[data-i18n="ai.backfill"]').click()
+    page.wait_for_url(BASE + "/**")
+    expect(page.locator('label.grade-btn:has-text("2 年级") input')).to_be_checked()
+    expect(page.locator('input[name="operators"][value="加"]')).to_be_checked()
