@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}{{ t("history.detail_title", lang) }} - mathgen{% endblock %}
+{% block content %}
+<section class="placeholder-hero">
+  <h1 class="placeholder-title" data-i18n="history.detail_title">{{ t("history.detail_title", lang) }}</h1>
+  <p class="hint"><a href="/user/history" data-i18n="history.back">{{ t("history.back", lang) }}</a></p>
+</section>
+<form method="post" action="/api/history/{{ hid }}/mistakes">
+  <nav class="placeholder-grid">
+    {% for item in items %}
+    <div class="placeholder-card">
+      <label class="checkbox-label">
+        <input type="checkbox" name="questions" value="{{ item.snapshot }}">
+        <span>{{ item.i }}. {{ item.problem }}</span>
+      </label>
+      <p>答案：{{ item.answer }}</p>
+    </div>
+    {% endfor %}
+  </nav>
+  <div class="actions">
+    <button class="btn" type="submit" data-i18n="history.capture">{{ t("history.capture", lang) }}</button>
+  </div>
+</form>
+{% endblock %}

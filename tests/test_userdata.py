@@ -143,3 +143,43 @@ def test_import_invalid_field_errors():
             "config": {"grade": "9"}}).encode(), "application/json")}
     r = client.post("/api/config/import", files=files)
     assert "年级" in r.text
+
+
+def test_history_detail_gate_and_capture():
+    _login()
+    client.post("/generate", data={"grade": "1", "count": "4"})
+    page = client.get("/user/history").text
+    m = re.search(r'href="/user/history/(\d+)"', page)
+    assert m, "详情入口缺失"
+    hid = m.group(1)
+    r = client.get(f"/user/history/{hid}", follow_redirects=False)
+    assert r.status_code == 200
+    assert 'name="questions"' in r.text
+    assert r.text.count('name="questions"') >= 2
+    client.post("/api/logout")
+    r2 = client.get(f"/user/history/{hid}", follow_redirects=False)
+    assert r2.status_code == 302 and "/login" in r2.headers["location"]
+    _login()
+
+
+def test_capture_selected_mistakes():
+    _login()
+    client.post("/generate", data={"grade": "1", "count": "3"})
+    page = client.get("/user/history").text
+    hid = re.search(r'href="/user/history/(\d+)"', page).group(1)
+    detail = client.get(f"/user/history/{hid}").text
+    assert 'action="/api/history/' + hid + '/mistakes"' in detail  # 批量表单
+    assert detail.count('name="questions"') == 3                    # 每题一个
+    snaps = [json.dumps({"topic": "arithmetic", "problem": f"3+{i}", "answer": str(3 + i),
+                         "expression": f"3+{i}", "question_json": "{}",
+                         "params": "{}", "q_index": str(i)})
+             for i in (1, 2)]
+    r = client.post(f"/api/history/{hid}/mistakes",
+                    data={"questions": snaps}, follow_redirects=False)
+    assert r.status_code == 302 and "/member/errors" in r.headers["location"]
+    body = client.get("/member/errors").text
+    assert "3+1" in body and "3+2" in body
+    client.post("/api/register", data={"username": "另一用户", "password": "secret123"})
+    r2 = client.post(f"/api/history/{hid}/mistakes", data={"questions": []},
+                     follow_redirects=False)
+    assert r2.status_code == 302  # 跨用户查无 → 回列表

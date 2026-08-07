@@ -10,6 +10,7 @@
   <div class="placeholder-card">
     <h2>{{ item.summary }}</h2>
     <p>{{ item.time }}</p>
+    <a class="btn btn-secondary btn-small" href="/user/history/{{ item.id }}" data-i18n="history.open">{{ t("history.open", lang) }}</a>
     <form method="post" action="/api/history/{{ item.id }}/regenerate" class="inline-form">
       <button class="btn btn-secondary btn-small" type="submit" data-i18n="history.regenerate">{{ t("history.regenerate", lang) }}</button>
     </form>

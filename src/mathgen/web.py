@@ -322,6 +322,64 @@ async def user_saved(request: Request):
         "app_mode": _app_mode(request)})
 
 
+@app.get("/user/history/{hid}", response_class=HTMLResponse)
+async def user_history_detail(request: Request, hid: int,
+                              user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
+    row = db_mod.get_history(user["id"], hid)
+    if not row:
+        return RedirectResponse("/user/history", status_code=302)
+    lang = _lang(request)
+    try:
+        cfg = _config_from_form(json.loads(row["config_json"]))
+        resolved = resolve(cfg)
+        questions = generate(resolved)
+    except (ValueError, ConfigError, GenerationError):
+        return RedirectResponse("/user/history", status_code=302)
+    params_snapshot = json.dumps({k: v for k, v in _as_query(cfg).items()},
+                                 ensure_ascii=False)
+    items = []
+    for idx, q in enumerate(questions):
+        items.append({
+            "i": idx + 1, "problem": q.statement, "answer": q.answer,
+            "snapshot": json.dumps({
+                "topic": q.topic, "problem": q.statement, "answer": q.answer,
+                "expression": q.expression,
+                "question_json": json.dumps(dataclasses.asdict(q), ensure_ascii=False),
+                "params": params_snapshot, "q_index": idx}, ensure_ascii=False),
+        })
+    return templates.TemplateResponse(request, "history_detail.html", {
+        "lang": lang, "ui_json": _UI_JSON, "hid": hid, "items": items,
+        "app_mode": _app_mode(request)})
+
+
+@app.post("/api/history/{hid}/mistakes")
+async def history_capture(request: Request, hid: int,
+                          user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    row = db_mod.get_history(user["id"], hid)
+    if not row:
+        return RedirectResponse("/user/history", status_code=302)
+    form = await request.form()
+    count = 0
+    for raw in form.getlist("questions"):
+        try:
+            d = json.loads(raw)
+            db_mod.add_mistake(
+                user["id"], "sheet", d.get("topic") or "arithmetic",
+                d.get("problem", ""), d.get("answer", ""),
+                d.get("expression") or None, d.get("question_json"),
+                d.get("params"), d.get("q_index"), None)
+            count += 1
+        except (ValueError, TypeError):
+            continue
+    if count == 0:
+        return RedirectResponse(f"/user/history/{hid}", status_code=302)
+    return RedirectResponse("/member/errors", status_code=302)
+
+
 @app.get("/user")
 async def user_page(request: Request):
     user = request.state.user
