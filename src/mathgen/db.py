@@ -102,6 +102,20 @@ def _init_tables(conn: sqlite3.Connection) -> None:
       mastered_at TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_mistakes_queue ON mistakes(user_id, due_at);
+    CREATE TABLE IF NOT EXISTS pomodoro_sessions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      kind TEXT NOT NULL,
+      planned_sec INTEGER NOT NULL,
+      completed_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_pomodoro_user ON pomodoro_sessions(user_id, completed_at);
+    CREATE TABLE IF NOT EXISTS user_settings (
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      key TEXT NOT NULL,
+      value TEXT NOT NULL,
+      PRIMARY KEY (user_id, key)
+    );
     """)
     conn.commit()
 
@@ -304,3 +318,35 @@ def due_mistakes(user_id, now):
         "SELECT * FROM mistakes WHERE user_id=? AND mastered_at IS NULL "
         "AND due_at <= ? ORDER BY due_at ASC, id ASC", (user_id, now)).fetchall()
     return [dict(r) for r in rows]
+
+
+def add_pomodoro_session(user_id, kind, planned_sec):
+    conn = get_conn()
+    cur = conn.execute(
+        "INSERT INTO pomodoro_sessions (user_id, kind, planned_sec, completed_at) "
+        "VALUES (?, ?, ?, ?)", (user_id, kind, planned_sec, now_iso()))
+    conn.commit()
+    return cur.lastrowid
+
+
+def list_pomodoro_sessions(user_id):
+    rows = get_conn().execute(
+        "SELECT kind, planned_sec, completed_at FROM pomodoro_sessions "
+        "WHERE user_id=? ORDER BY completed_at ASC, id ASC", (user_id,)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_setting(user_id, key):
+    row = get_conn().execute(
+        "SELECT value FROM user_settings WHERE user_id=? AND key=?",
+        (user_id, key)).fetchone()
+    return row[0] if row else None
+
+
+def set_setting(user_id, key, value):
+    conn = get_conn()
+    conn.execute(
+        "INSERT INTO user_settings (user_id, key, value) VALUES (?, ?, ?) "
+        "ON CONFLICT(user_id, key) DO UPDATE SET value=excluded.value",
+        (user_id, key, value))
+    conn.commit()

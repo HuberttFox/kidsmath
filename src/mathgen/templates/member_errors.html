@@ -29,6 +29,35 @@
   <a class="pill-toggle{% if filter == 'due' %} pill-on{% endif %}" href="/member/errors?f=due" data-i18n="mistake.due">{{ t("mistake.due", lang) }}</a>
   <a class="pill-toggle{% if filter == 'mastered' %} pill-on{% endif %}" href="/member/errors?f=mastered" data-i18n="mistake.mastered">{{ t("mistake.mastered", lang) }}</a>
 </nav>
+{% if stats %}
+<section class="card card-mint member-errors-manual">
+  <h2 data-i18n="mistake.stats_title">{{ t("mistake.stats_title", lang) }}</h2>
+  <div class="actions">
+    <span class="pill-toggle">{{ t("mistake.stats_total", lang, n=stats.total) }}</span>
+    <span class="pill-toggle">{{ t("mistake.stats_due", lang, n=stats.due) }}</span>
+    <span class="pill-toggle">{{ t("mistake.stats_mastered", lang, n=stats.mastered) }}</span>
+  </div>
+  {% if stats.topics %}
+  <p class="hint" data-i18n="mistake.stats_topics">{{ t("mistake.stats_topics", lang) }}</p>
+  <div class="actions">
+    {% for topic, n in stats.topics.items() %}
+    <span class="pill-toggle">{{ t("mistake.topic." ~ topic, lang) }} · {{ n }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+  {% if stats.ops %}
+  <p class="hint" data-i18n="mistake.stats_ops">{{ t("mistake.stats_ops", lang) }}</p>
+  <div class="actions">
+    {% for op, n in stats.ops.items() %}
+    <span class="pill-toggle">{{ op }} · {{ n }}</span>
+    {% endfor %}
+    {% if stats.max_digits %}
+    <span class="pill-toggle">{{ t("mistake.stats_digits", lang, n=stats.max_digits) }}</span>
+    {% endif %}
+  </div>
+  {% endif %}
+</section>
+{% endif %}
 <form method="post" action="/api/mistakes/export-batch" class="batch-form">
   <input type="hidden" name="mode" value="original">
   <nav class="placeholder-grid">
@@ -40,16 +69,14 @@
       {% if item.note %}<p>{{ item.note }}</p>{% endif %}
       <p class="hint">{{ t("mistake.wrong_at", lang, t=item.wrong_at) }} · {{ t("mistake.next_due", lang, t=item.due_at) }}</p>
       <div class="actions">
+        <button class="btn btn-secondary btn-small" type="button" onclick="previewMistake({{ item.id }}, 'original', this)" data-i18n="mistake.redo">{{ t("mistake.redo", lang) }}</button>
+        {% if item.has_variant %}
+        <button class="btn btn-secondary btn-small" type="button" onclick="previewMistake({{ item.id }}, 'variant', this)" data-i18n="mistake.variant">{{ t("mistake.variant", lang) }}</button>
+        {% endif %}
         <form method="post" action="/api/mistakes/{{ item.id }}/export" class="inline-form">
           <input type="hidden" name="mode" value="original">
-          <button class="btn btn-secondary btn-small" type="submit" data-i18n="mistake.redo">{{ t("mistake.redo", lang) }}</button>
+          <button class="btn btn-secondary btn-small" type="submit" data-i18n="mistake.download_pdf">{{ t("mistake.download_pdf", lang) }}</button>
         </form>
-        {% if item.has_variant %}
-        <form method="post" action="/api/mistakes/{{ item.id }}/export" class="inline-form">
-          <input type="hidden" name="mode" value="variant">
-          <button class="btn btn-secondary btn-small" type="submit" data-i18n="mistake.variant">{{ t("mistake.variant", lang) }}</button>
-        </form>
-        {% endif %}
         <form method="post" action="/api/mistakes/{{ item.id }}/mastered" class="inline-form">
           <button class="btn btn-secondary btn-small" type="submit" data-i18n="{% if item.mastered %}mistake.unmark_mastered{% else %}mistake.mark_mastered{% endif %}">{{ t("mistake.mark_mastered" if not item.mastered else "mistake.unmark_mastered", lang) }}</button>
         </form>
@@ -58,17 +85,45 @@
           <button class="btn btn-secondary btn-small" type="submit" data-i18n="mistake.delete">{{ t("mistake.delete", lang) }}</button>
         </form>
       </div>
+      <div class="mistake-preview" hidden>
+        <p class="mistake-preview-problem"></p>
+        <p class="mistake-preview-answer"></p>
+      </div>
     </div>
     {% else %}
     <p class="hint" style="text-align:center" data-i18n="mistake.empty">{{ t("mistake.empty", lang) }}</p>
     {% endfor %}
   </nav>
-  <div class="actions">
+  <div class="actions batch-bar">
+    <span class="field-label" data-i18n="mistake.batch_mode">{{ t("mistake.batch_mode", lang) }}</span>
     <select name="mode">
       <option value="original" data-i18n="mistake.batch_original">{{ t("mistake.batch_original", lang) }}</option>
       <option value="variant" data-i18n="mistake.batch_variant">{{ t("mistake.batch_variant", lang) }}</option>
     </select>
     <button class="btn" type="submit" data-i18n="mistake.batch_make">{{ t("mistake.batch_make", lang) }}</button>
   </div>
+  <p class="hint batch-hint" data-i18n="mistake.batch_hint">{{ t("mistake.batch_hint", lang) }}</p>
 </form>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.previewMistake = function (id, mode, btn) {
+    var card = btn.closest('.placeholder-card');
+    if (!card) return;
+    var area = card.querySelector('.mistake-preview');
+    if (!area) return;
+    fetch('/api/mistakes/' + id + '/preview?mode=' + mode)
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (!d || d.error) return;
+        var problem = d.problem || d.expression || '';
+        var ans = d.answer || '';
+        card.querySelector('.mistake-preview-problem').textContent = problem;
+        card.querySelector('.mistake-preview-answer').textContent =
+          ans === '' ? '' : ((d.expression || problem || '') + ' = ' + ans);
+        area.hidden = false;
+      })
+      .catch(function () {});
+  };
+</script>
 {% endblock %}

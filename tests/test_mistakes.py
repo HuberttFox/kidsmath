@@ -112,3 +112,21 @@ def test_review_all_cards_preview():
     assert "全部卡片预览" in page
     assert "11-3" in page
     assert "待复习" in page
+    # 预览不得泄露待复习卡片答案：全页唯一"答案：8"来自测验卡的隐藏显示
+    assert page.count("答案：8") == 1
+    assert 'data-i18n="review.status_due"' in page  # 状态徽章走 i18n 字典
+
+
+def test_review_preview_hides_due_answer_but_shows_mastered():
+    _login()
+    client.post("/api/mistakes/manual", data={"topic": "arithmetic",
+                "problem": "11-3", "answer": "8"})
+    client.post("/api/mistakes/manual", data={"topic": "arithmetic",
+                "problem": "7+6", "answer": "13"})
+    client.post("/api/mistakes/1/mastered")
+    page = client.get("/member/review").text
+    # 已掌握卡在预览展示答案，待复习卡不展示
+    assert page.count("答案：13") == 1
+    assert page.count("答案：8") == 1  # 仅测验卡隐藏显示
+    assert 'review-mastered' in page and '已掌握' in page
+    assert 'review-due' in page and '待复习' in page

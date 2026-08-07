@@ -345,3 +345,42 @@ def test_sidebar_switches_stage_without_reload(page):
     page.wait_for_timeout(1500)
     assert "embed=1" in page.evaluate("document.getElementById('stage').src")
     expect(page.frame_locator("#stage").locator('#generateBtn')).to_be_visible()
+
+
+def test_theme_lang_switch_keeps_form_config(page):
+    page.goto(BASE + "/")
+    stage = _stage(page)
+    stage.locator('label.grade-btn:has-text("2 年级")').click()
+    stage.locator('#count').fill("7")
+    # 主题切换不得重载 iframe / 清空表单
+    page.locator('#themeToggle').click()
+    page.wait_for_timeout(900)
+    expect(stage.locator('#count')).to_have_value("7")
+    # 语言切换同样保留
+    page.locator('#langToggle').click()
+    page.wait_for_timeout(900)
+    expect(stage.locator('#count')).to_have_value("7")
+    expect(stage.locator('input[name="grade"][value="2"]')).to_be_checked()
+
+
+def test_ai_wizard_guided_backfill(page):
+    page.goto(BASE + "/member/ai")
+    page.locator('#tab-wizard').click()
+    page.locator('#wiz-step-1 button[onclick="wizNext(1)"]').click()
+    page.wait_for_timeout(200)
+    page.locator('#wiz-step-2 label.grade-btn:has-text("3 年级")').click()
+    page.locator('#wiz-step-2 button[onclick="wizNext(2)"]').click()
+    page.wait_for_timeout(200)
+    page.locator('#wizOps .op-item:has-text("乘")').click()
+    page.locator('#wiz-step-3 button[onclick="wizNext(3)"]').click()
+    page.wait_for_timeout(200)
+    page.locator('#wizCount').fill("9")
+    page.locator('#wiz-step-4 button[onclick="wizNext(4)"]').click()
+    page.wait_for_timeout(200)
+    page.locator('#wiz-step-5 button[onclick="wizSubmit()"]').click()
+    page.wait_for_url(BASE + "/**")
+    page.wait_for_timeout(1500)
+    stage = _stage(page)
+    expect(stage.locator('label.grade-btn:has-text("3 年级") input')).to_be_checked()
+    expect(stage.locator('#count')).to_have_value("9")
+    expect(stage.locator('input[name="operators"][value="乘"]')).to_be_checked()

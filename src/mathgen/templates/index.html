@@ -93,13 +93,8 @@
         location.hash = '#' + path;
         highlight(path);
         setOpen(false);
-        fadeStage();
       });
     });
-    function fadeStage() {
-      stage.style.opacity = '0';
-      setTimeout(function () { stage.style.opacity = '1'; }, 60);
-    }
     function injectEmbed(doc) {
       if (!doc) return;
       doc.querySelectorAll('a[href]').forEach(function (a) {
@@ -115,7 +110,14 @@
         }
       });
     }
+    function replayFade() {
+      // 单机制淡入：新页加载后重放一次性动画，旧页不先淡出（无闪烁）
+      stage.style.animation = 'none';
+      void stage.offsetWidth;
+      stage.style.animation = 'pageFade .18s ease';
+    }
     stage.addEventListener('load', function () {
+      replayFade();
       try {
         injectEmbed(stage.contentDocument);
         var p = stage.contentWindow.location.pathname;
@@ -143,11 +145,14 @@
       setOpen(!rail.classList.contains('side-open'));
     });
     backdrop.addEventListener('click', function () { setOpen(false); });
-    document.addEventListener('langchange', function () {
-      if (stage && stage.src) stage.src = stage.src;
+    // 主题/语言切换：向 iframe 转发事件而非重载，保留表单输入
+    document.addEventListener('langchange', function (e) {
+      var d = stage.contentDocument;
+      if (d && d.documentElement) d.dispatchEvent(new CustomEvent('langchange', { detail: e.detail }));
     });
-    document.addEventListener('themechange', function () {
-      if (stage && stage.src) stage.src = stage.src;
+    document.addEventListener('themechange', function (e) {
+      var d = stage.contentDocument;
+      if (d && d.documentElement) d.dispatchEvent(new CustomEvent('themechange', { detail: e.detail }));
     });
   })();
 </script>

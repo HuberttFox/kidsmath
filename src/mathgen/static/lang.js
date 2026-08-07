@@ -93,6 +93,20 @@
       applyTheme(THEMES[(idx + 1) % THEMES.length]);
     });
   }
+  // 响应父壳转发（工作台内 iframe 不重载切换主题/语言，避免清空表单）
+  function appliedTheme() {
+    return document.documentElement.getAttribute('data-theme') || 'auto';
+  }
+  document.addEventListener('themechange', function (e) {
+    var t = e && e.detail && e.detail.theme;
+    if (!t || t === appliedTheme()) return;
+    applyTheme(t);
+  });
+  document.addEventListener('langchange', function (e) {
+    var l = e && e.detail && e.detail.lang;
+    if (!l || l === document.documentElement.lang) return;
+    applyLang(l);
+  });
   applyLang(currentLang());
   applyTheme(currentTheme());
 })();

@@ -10,8 +10,15 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>{% block title %}Kids Math 数学出题{% endblock %}</title>
   <script>
-    if (window.self !== window.top && location.search.indexOf('embed') === -1) {
-      location.replace(location.href + (location.href.indexOf('?') === -1 ? '?' : '&') + 'embed=1');
+    if (window.self !== window.top) {
+      var params = location.search.replace(/^\?/, '').split('&').filter(Boolean);
+      var embedded = params.some(function (p) { return p === 'embed' || p.indexOf('embed=') === 0; });
+      if (!embedded) {
+        // query 加在 fragment 前，避免 '?embed=1' 落进 #hash 导致无限重载
+        var url = location.href, hash = '', h = url.indexOf('#');
+        if (h !== -1) { hash = url.slice(h); url = url.slice(0, h); }
+        location.replace(url + (url.indexOf('?') === -1 ? '?' : '&') + 'embed=1' + hash);
+      }
     }
   </script>
   <link rel="icon" type="image/svg+xml" href="/static/math-icon.svg">

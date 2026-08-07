@@ -6,7 +6,11 @@
   <p class="hint" data-i18n="ai.desc">{{ t("ai.desc", lang) }}</p>
 </section>
 {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
-<section class="card card-mint">
+<nav class="actions ai-tabs">
+  <button class="btn ai-tab-active" type="button" id="tab-paste" data-i18n="ai.tab_paste" onclick="switchAiTab('paste')">{{ t("ai.tab_paste", lang) }}</button>
+  <button class="btn btn-secondary" type="button" id="tab-wizard" data-i18n="ai.tab_wizard" onclick="switchAiTab('wizard')">{{ t("ai.tab_wizard", lang) }}</button>
+</nav>
+<section class="card card-mint ai-page" id="ai-paste">
   <form method="post" action="/api/ai/parse" class="form-grid">
     <label class="field-group">
       <textarea name="text" class="ai-area" placeholder="{{ t("ai.input_placeholder", lang) }}">{{ text }}</textarea>
@@ -35,4 +39,146 @@
   {% endif %}
   <p class="hint"><a href="/member/errors" data-i18n="ai.photo_hint">{{ t("ai.photo_hint", lang) }}</a></p>
 </section>
+<section class="card card-mint ai-page" id="ai-wizard" hidden>
+  <div id="wiz-step-1" class="wiz-step">
+    <h2 data-i18n="ai.q_topic">{{ t("ai.q_topic", lang) }}</h2>
+    <div class="topic-group">
+      <label class="topic-card"><input type="radio" name="wiz_topic" value="arithmetic" checked><span class="topic-icon">🧮</span><span class="topic-label" data-i18n="mistake.topic.arithmetic">{{ t("mistake.topic.arithmetic", lang) }}</span></label>
+      <label class="topic-card"><input type="radio" name="wiz_topic" value="vertical"><span class="topic-icon">✍️</span><span class="topic-label" data-i18n="mistake.topic.vertical">{{ t("mistake.topic.vertical", lang) }}</span></label>
+      <label class="topic-card"><input type="radio" name="wiz_topic" value="word_problem"><span class="topic-icon">📖</span><span class="topic-label" data-i18n="mistake.topic.word_problem">{{ t("mistake.topic.word_problem", lang) }}</span></label>
+    </div>
+    <div class="actions"><button class="btn" type="button" onclick="wizNext(1)" data-i18n="ai.next">{{ t("ai.next", lang) }}</button></div>
+  </div>
+  <div id="wiz-step-2" class="wiz-step" hidden>
+    <h2 data-i18n="ai.q_grade">{{ t("ai.q_grade", lang) }}</h2>
+    <div class="grade-group">
+      {% for g in range(1, 7) %}
+      <label class="grade-btn"><input type="radio" name="wiz_grade" value="{{ g }}"{% if g == 2 %} checked{% endif %}><span>{{ t("grade.x", lang, g=g) }}</span></label>
+      {% endfor %}
+    </div>
+    <div class="actions">
+      <button class="btn btn-secondary" type="button" onclick="wizPrev(2)" data-i18n="ai.prev">{{ t("ai.prev", lang) }}</button>
+      <button class="btn" type="button" onclick="wizNext(2)" data-i18n="ai.next">{{ t("ai.next", lang) }}</button>
+    </div>
+  </div>
+  <div id="wiz-step-3" class="wiz-step" hidden>
+    <h2 data-i18n="ai.q_ops">{{ t("ai.q_ops", lang) }}</h2>
+    <div class="op-checkboxes" id="wizOps">
+      {% for op in ["加", "减", "乘", "除"] %}
+      <label class="op-item"><input type="checkbox" value="{{ op }}"{% if op in ["加", "减"] %} checked{% endif %}><span>{{ op }}</span></label>
+      {% endfor %}
+    </div>
+    <div class="actions">
+      <button class="btn btn-secondary" type="button" onclick="wizPrev(3)" data-i18n="ai.prev">{{ t("ai.prev", lang) }}</button>
+      <button class="btn" type="button" onclick="wizNext(3)" data-i18n="ai.next">{{ t("ai.next", lang) }}</button>
+    </div>
+  </div>
+  <div id="wiz-step-4" class="wiz-step" hidden>
+    <h2 data-i18n="ai.q_count">{{ t("ai.q_count", lang) }}</h2>
+    <label class="field-group"><span class="field-label" data-i18n="f.count">{{ t("f.count", lang) }}</span>
+      <input type="number" id="wizCount" value="20" min="1" max="500"></label>
+    <div class="actions">
+      <button class="btn btn-secondary" type="button" onclick="wizPrev(4)" data-i18n="ai.prev">{{ t("ai.prev", lang) }}</button>
+      <button class="btn" type="button" onclick="wizNext(4)" data-i18n="ai.next">{{ t("ai.next", lang) }}</button>
+    </div>
+  </div>
+  <div id="wiz-step-5" class="wiz-step" hidden>
+    <h2 data-i18n="ai.q_adv">{{ t("ai.q_adv", lang) }}</h2>
+    <div class="form-grid">
+      <label class="field-group"><span class="field-label" data-i18n="f.carry">{{ t("f.carry", lang) }}</span>
+        <select id="wizCarry">
+          <option value="" data-i18n="opt.any">{{ t("opt.any", lang) }}</option>
+          <option value="yes" data-i18n="opt.carry_yes">{{ t("opt.carry_yes", lang) }}</option>
+          <option value="no" data-i18n="opt.carry_no">{{ t("opt.carry_no", lang) }}</option>
+        </select></label>
+      <label class="field-group"><span class="field-label" data-i18n="f.borrow">{{ t("f.borrow", lang) }}</span>
+        <select id="wizBorrow">
+          <option value="" data-i18n="opt.any">{{ t("opt.any", lang) }}</option>
+          <option value="yes" data-i18n="opt.carry_yes">{{ t("opt.carry_yes", lang) }}</option>
+          <option value="no" data-i18n="opt.carry_no">{{ t("opt.carry_no", lang) }}</option>
+        </select></label>
+      <label class="toggle-line" for="wizParens"><input type="checkbox" id="wizParens"><span data-i18n="f.parentheses">{{ t("f.parentheses", lang) }}</span></label>
+    </div>
+    <div class="actions">
+      <button class="btn btn-secondary" type="button" onclick="wizPrev(5)" data-i18n="ai.prev">{{ t("ai.prev", lang) }}</button>
+      <button class="btn" type="button" onclick="wizSubmit()" data-i18n="ai.generate">{{ t("ai.generate", lang) }}</button>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  var WIZ_ORDER = {
+    arithmetic: [1, 2, 3, 4, 5],
+    vertical: [1, 2, 4, 5],
+    word_problem: [1, 2, 4]
+  };
+  function wizTopic() {
+    var el = document.querySelector('input[name="wiz_topic"]:checked');
+    return el ? el.value : 'arithmetic';
+  }
+  function showWizStep(n) {
+    [1, 2, 3, 4, 5].forEach(function (i) {
+      var el = document.getElementById('wiz-step-' + i);
+      if (el) el.hidden = (i !== n);
+    });
+  }
+  function wizNext(from) {
+    var order = WIZ_ORDER[wizTopic()] || WIZ_ORDER.arithmetic;
+    var i = order.indexOf(from);
+    if (i >= 0 && i + 1 < order.length) showWizStep(order[i + 1]);
+    else if (i >= 0) wizSubmit();
+  }
+  function wizPrev(from) {
+    var order = WIZ_ORDER[wizTopic()] || WIZ_ORDER.arithmetic;
+    var idx = order.indexOf(from);
+    if (idx > 0) showWizStep(order[idx - 1]);
+  }
+  function switchAiTab(tab) {
+    document.getElementById('ai-paste').hidden = (tab !== 'paste');
+    document.getElementById('ai-wizard').hidden = (tab !== 'wizard');
+    var on = document.getElementById('tab-' + tab);
+    var off = document.getElementById('tab-' + (tab === 'paste' ? 'wizard' : 'paste'));
+    if (on) { on.classList.add('ai-tab-active'); on.classList.remove('btn-secondary'); }
+    if (off) { off.classList.remove('ai-tab-active'); off.classList.add('btn-secondary'); }
+  }
+  function wizSubmit() {
+    var topic = wizTopic();
+    var gradeEl = document.querySelector('input[name="wiz_grade"]:checked');
+    var gradeVal = gradeEl ? gradeEl.value : '2';
+    var countEl = document.getElementById('wizCount');
+    var fields = { topic: topic, grade: gradeVal, count: (countEl && countEl.value) || '20' };
+    if (topic === 'arithmetic') {
+      var OP_MAP = {加: '+', 减: '-', 乘: '×', 除: '÷'};
+      var ops = [];
+      document.querySelectorAll('#wizOps input:checked').forEach(function (c) { ops.push(OP_MAP[c.value]); });
+      fields.operators = ops.join('');
+      var RANGES = {
+        '1': ['1-20', '1-20'], '2': ['1-99', '1-99'], '3': ['100-999', '100-999'],
+        '4': ['1000-9999', '1000-9999'], '5': ['10-999', '10-999', '10-999'],
+        '6': ['10-9999', '10-9999', '10-9999', '10-9999']
+      };
+      var r = RANGES[gradeVal] || RANGES['2'];
+      fields.operand_count = String(r.length);
+      fields.ranges = r.join(',');
+      var carry = document.getElementById('wizCarry');
+      var borrow = document.getElementById('wizBorrow');
+      var parens = document.getElementById('wizParens');
+      if (carry && carry.value) fields.carry = carry.value;
+      if (borrow && borrow.value) fields.borrow = borrow.value;
+      if (parens && parens.checked) fields.parentheses = '1';
+    }
+    var form = document.createElement('form');
+    form.method = 'post';
+    form.action = '/api/ai/backfill';
+    var t = document.createElement('input');
+    t.type = 'hidden'; t.name = 'text'; t.value = '';
+    var f = document.createElement('input');
+    f.type = 'hidden'; f.name = 'fields'; f.value = JSON.stringify(fields);
+    form.appendChild(t);
+    form.appendChild(f);
+    document.body.appendChild(form);
+    form.submit();
+  }
+</script>
 {% endblock %}

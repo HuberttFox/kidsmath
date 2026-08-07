@@ -416,17 +416,43 @@ def _mistake_card(row: dict, lang: str) -> dict:
     }
 
 
+def _mistake_stats(rows: list[dict]) -> dict:
+    """错题聚合：待复习/已掌握计数、题型分布、运算符分布、最大位数。"""
+    import re
+    stats = {"total": len(rows), "due": 0, "mastered": 0}
+    topics: dict[str, int] = {}
+    ops: dict[str, int] = {}
+    max_digits = 0
+    for r in rows:
+        if r["mastered_at"]:
+            stats["mastered"] += 1
+        else:
+            stats["due"] += 1
+        topics[r["topic"]] = topics.get(r["topic"], 0) + 1
+        expr = r["expression"] or r["problem"]
+        for ch in "+-×÷":
+            if ch in expr:
+                ops[ch] = ops.get(ch, 0) + 1
+        for n in re.findall(r"\d+", expr):
+            max_digits = max(max_digits, len(n))
+    stats["topics"] = dict(sorted(topics.items(), key=lambda kv: -kv[1]))
+    stats["ops"] = dict(sorted(ops.items(), key=lambda kv: -kv[1]))
+    stats["max_digits"] = max_digits
+    return stats
+
+
 def _render_errors(request: Request, user: dict, f: str) -> HTMLResponse:
     lang = _lang(request)
-    rows = db_mod.list_mistakes(user["id"])
+    all_rows = db_mod.list_mistakes(user["id"])
+    rows = all_rows
     if f == "due":
-        rows = [r for r in rows if not r["mastered_at"]]
+        rows = [r for r in all_rows if not r["mastered_at"]]
     elif f == "mastered":
-        rows = [r for r in rows if r["mastered_at"]]
+        rows = [r for r in all_rows if r["mastered_at"]]
     cards = [_mistake_card(r, lang) for r in rows]
     return templates.TemplateResponse(request, "member_errors.html", {
         "lang": lang, "ui_json": _UI_JSON, "items": cards, "filter": f,
-        "app_mode": _app_mode(request)})
+        "stats": _mistake_stats(all_rows), "app_mode": _app_mode(request)})
 
 
 @app.get("/member/errors", response_class=HTMLResponse)
@@ -470,26 +496,28 @@ async def member_review(request: Request, user: dict | None = Depends(current_us
         return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
     lang = _lang(request)
     now_iso = db_mod.now_iso()
-    due = db_mod.due_mistakes(user["id"], now_iso)
-    cards = []
     now = datetime.now()
-    for i, row in enumerate(due, 1):
+    due_rows = []
+    all_cards = []
+    for row in db_mod.list_mistakes(user["id"]):
+        due = row["due_at"]
+        status = "mastered" if row["mastered_at"] else ("due" if due <= now_iso else "coming")
+        if status == "due":
+            due_rows.append(row)
+        all_cards.append({
+            "id": row["id"], "problem": row["problem"], "answer": row["answer"],
+            "due": due[:16].replace("T", " "), "due_date": due[:10], "status": status})
+    due_rows.sort(key=lambda r: (r["due_at"], r["id"]))
+    cards = []
+    for i, row in enumerate(due_rows, 1):
         days = 0
         try:
-            due_dt = datetime.fromisoformat(row["due_at"])
-            days = (due_dt - now).days
+            days = (datetime.fromisoformat(row["due_at"]) - now).days
         except ValueError:
             pass
         cards.append({
             "id": row["id"], "problem": row["problem"], "answer": row["answer"],
-            "days_left": days, "n": i, "total": len(due)})
-    all_cards = []
-    for row in db_mod.list_mistakes(user["id"]):
-        status = "mastered" if row["mastered_at"] else ("due" if row["due_at"] <= now_iso else "coming")
-        all_cards.append({
-            "id": row["id"], "problem": row["problem"], "answer": row["answer"],
-            "due": row["due_at"][:16].replace("T", " "), "status": status,
-            "mastered": bool(row["mastered_at"])})
+            "days_left": days, "n": i, "total": len(due_rows)})
     return templates.TemplateResponse(request, "member_review.html", {
         "lang": lang, "ui_json": _UI_JSON, "cards": cards, "all_cards": all_cards,
         "app_mode": _app_mode(request)})
@@ -544,6 +572,48 @@ async def mistake_review(request: Request, mid: int,
         due_at = (datetime.now() + timedelta(days=interval)).isoformat(timespec="seconds")
         db_mod.update_review(user["id"], mid, ease, interval, reps, due_at, q)
     return RedirectResponse("/member/review", status_code=302)
+
+
+@app.post("/api/mistakes/{mid}/reschedule")
+async def mistake_reschedule(request: Request, mid: int,
+                             user: dict | None = Depends(current_user)):
+    """复习卡改期：只改 due_at（日期），不动 SM-2 状态；改期视为重新排队。"""
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    form = await request.form()
+    date = (form.get("due") or "").strip()
+    row = db_mod.get_mistake(user["id"], mid)
+    valid = False
+    try:
+        datetime.strptime(date, "%Y-%m-%d")
+        valid = True
+    except (ValueError, TypeError):
+        valid = False
+    if row and valid:
+        due_at = f"{date}T12:00:00"
+        db_mod.update_review(user["id"], mid, row["ease"], row["interval"],
+                             row["reps"], due_at, row["last_q"])
+        db_mod.set_mastered(user["id"], mid, None)
+    return RedirectResponse("/member/review", status_code=302)
+
+
+@app.get("/api/mistakes/{mid}/preview")
+async def mistake_preview(request: Request, mid: int,
+                          user: dict | None = Depends(current_user)):
+    """重出/变式页内预览：按 original/variant 重新生成题目并返回 JSON。"""
+    if not user:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    row = db_mod.get_mistake(user["id"], mid)
+    if not row:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "not found"}, status_code=404)
+    q = _mistake_question(row, request.query_params.get("mode") or "original")
+    if q is None:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "unavailable"}, status_code=422)
+    return {"problem": q.statement or "", "answer": q.answer or "",
+            "expression": q.expression or q.statement or ""}
 
 
 def _mistake_question(row: dict, mode: str) -> Question | None:
@@ -643,8 +713,160 @@ async def member_timer(request: Request):
 @app.get("/member/pomodoro", response_class=HTMLResponse)
 async def member_pomodoro(request: Request):
     lang = _lang(request)
+    user = request.state.user
+    stats = _pomodoro_stats(user["id"]) if user else None
+    cal = None
+    if stats is not None:
+        try:
+            stats["goal"] = int(db_mod.get_setting(user["id"], "pomodoro_goal") or 0)
+        except ValueError:
+            stats["goal"] = 0
+        cal = _pomodoro_calendar(user["id"],
+                                 (request.query_params.get("month") or "").strip(),
+                                 (request.query_params.get("day") or "").strip())
     return templates.TemplateResponse(request, "member_pomodoro.html", {
-        "lang": lang, "ui_json": _UI_JSON, "app_mode": _app_mode(request)})
+        "lang": lang, "ui_json": _UI_JSON, "app_mode": _app_mode(request),
+        "stats": stats, "cal": cal, "logged_in": bool(user)})
+
+
+def _pomodoro_calendar(user_id: int, month_str: str, day_str: str) -> dict:
+    """月度日历 + 饼图数据 + 选定日当天记录。"""
+    from datetime import datetime, timedelta
+    now = datetime.now()
+    y, m = now.year, now.month
+    if month_str and "-" in month_str:
+        try:
+            y, m = (int(x) for x in month_str.split("-"))
+        except ValueError:
+            pass
+    y = max(2000, min(2100, y))
+    m = max(1, min(12, m))
+    days_in_month = (datetime(y, m + 1, 1) - timedelta(days=1)).day if m < 12 else 31
+    first_weekday = datetime(y, m, 1).weekday()
+    rows = db_mod.list_pomodoro_sessions(user_id)
+    day_map: dict[int, dict] = {}
+    total_focus = total_break = total_focus_sec = 0
+    for r in rows:
+        try:
+            dt = datetime.fromisoformat(r["completed_at"])
+        except ValueError:
+            continue
+        if dt.year != y or dt.month != m:
+            continue
+        d = day_map.setdefault(dt.day, {"focus": 0, "break": 0, "sec": 0})
+        if r["kind"] == "focus":
+            d["focus"] += 1
+            total_focus += 1
+            d["sec"] += r["planned_sec"] or 0
+            total_focus_sec += r["planned_sec"] or 0
+        else:
+            d["break"] += 1
+            total_break += 1
+    cells = [None] * first_weekday
+    for dd in range(1, days_in_month + 1):
+        info = day_map.get(dd, {"focus": 0, "break": 0, "sec": 0})
+        cells.append({"day": dd, "focus": info["focus"], "break": info["break"], "sec": info["sec"]})
+    while len(cells) % 7 != 0:
+        cells.append(None)
+    weeks = [cells[i:i + 7] for i in range(0, len(cells), 7)]
+    day_sessions = []
+    if day_str:
+        try:
+            day_dt = datetime.strptime(day_str, "%Y-%m-%d")
+        except ValueError:
+            day_dt = None
+        if day_dt and day_dt.year == y and day_dt.month == m:
+            for r in rows:
+                try:
+                    dt = datetime.fromisoformat(r["completed_at"])
+                except ValueError:
+                    continue
+                if dt.strftime("%Y-%m-%d") == day_str:
+                    day_sessions.append({"time": dt.strftime("%H:%M"),
+                                         "kind": r["kind"], "sec": r["planned_sec"] or 0})
+    prev_m = f"{y}-{m - 1:02d}" if m > 1 else f"{y - 1}-12"
+    next_m = f"{y}-{m + 1:02d}" if m < 12 else f"{y + 1}-1"
+    return {
+        "month_label": f"{y}年{m}月", "month_en": f"{y}-{m:02d}",
+        "weeks": weeks, "total_focus": total_focus, "total_break": total_break,
+        "total_focus_sec": total_focus_sec, "day_sessions": day_sessions,
+        "selected_day": day_str, "prev_month": prev_m, "next_month": next_m,
+        "today_str": now.strftime("%Y-%m-%d"),
+    }
+
+
+def _pomodoro_stats(user_id: int) -> dict:
+    """按日期聚合专注会话：今日/本周/本月、近 14 天、连续天数。"""
+    from datetime import datetime, timedelta
+    rows = db_mod.list_pomodoro_sessions(user_id)
+    now = datetime.now()
+    today = now.strftime("%Y-%m-%d")
+    week_start = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    days: dict[str, int] = {}
+    today_cnt = week_cnt = month_cnt = 0
+    today_sec = week_sec = month_sec = 0
+    for r in rows:
+        if r["kind"] != "focus":
+            continue
+        try:
+            dt = datetime.fromisoformat(r["completed_at"])
+        except ValueError:
+            continue
+        d = dt.strftime("%Y-%m-%d")
+        days[d] = days.get(d, 0) + 1
+        sec = r["planned_sec"] or 0
+        if d == today:
+            today_cnt += 1
+            today_sec += sec
+        if dt >= week_start:
+            week_cnt += 1
+            week_sec += sec
+        if dt >= month_start:
+            month_cnt += 1
+            month_sec += sec
+    recent = []
+    for i in range(13, -1, -1):
+        d = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+        recent.append({"date": d, "count": days.get(d, 0)})
+    streak = 0
+    cur = today if today in days else (now - timedelta(days=1)).strftime("%Y-%m-%d")
+    while days.get(cur, 0) > 0:
+        streak += 1
+        cur = (datetime.strptime(cur, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
+    return {"today": today_cnt, "week": week_cnt, "month": month_cnt,
+            "today_sec": today_sec, "week_sec": week_sec, "month_sec": month_sec,
+            "recent": recent, "streak": streak}
+
+
+@app.post("/api/pomodoro/log")
+async def pomodoro_log(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    form = await request.form()
+    kind = form.get("kind") or "focus"
+    if kind not in ("focus", "break"):
+        kind = "focus"
+    try:
+        sec = int(form.get("sec") or 0)
+    except ValueError:
+        sec = 0
+    db_mod.add_pomodoro_session(user["id"], kind, max(0, sec))
+    from fastapi.responses import JSONResponse
+    return JSONResponse({"ok": True})
+
+
+@app.post("/api/pomodoro/goal")
+async def pomodoro_goal(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    form = await request.form()
+    try:
+        g = int(form.get("goal") or 0)
+    except ValueError:
+        g = 0
+    db_mod.set_setting(user["id"], "pomodoro_goal", str(max(0, g)))
+    return RedirectResponse("/member/pomodoro", status_code=302)
 
 
 def _ai_field_labels() -> list[tuple[str, str]]:

@@ -430,9 +430,9 @@ def test_no_pure_white_black_in_css():
     assert "#000" not in css
     assert "#fff" not in css.replace("#fffdf7", "").replace("#fff8ec", "")  # 米色系除外
     assert "--card-bg: #fff8ec" in css
-    assert "--bg: #2b211a" in css  # dark 深马卡龙
-    assert "--card-bg: #382a20" in css
-    assert "--input-bg: #3f2f23" in css
+    assert "--bg: #241b26" in css  # dark 午夜马卡龙
+    assert "--card-bg: #33263a" in css
+    assert "--input-bg: #3b2b42" in css
     assert "rgba(0, 0, 0" not in css
 
 
@@ -457,7 +457,7 @@ def test_pwa_assets():
     assert r.headers.get("content-type", "").startswith("application/manifest")
     r2 = client.get("/static/sw.js")
     assert r2.status_code == 200
-    assert "kidsmath-v4" in r2.text
+    assert "kidsmath-v6" in r2.text
     assert "startsWith('/static/')" in r2.text  # v3 白名单：仅缓存 /、/product、/static/*
     r3 = client.get("/")
     assert 'rel="manifest"' in r3.text

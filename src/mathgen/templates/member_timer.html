@@ -10,46 +10,103 @@
       <input type="number" id="timerMin" value="5" min="0"></label>
     <label class="field-group"><span class="field-label" data-i18n="timer.seconds">{{ t("timer.seconds", lang) }}</span>
       <input type="number" id="timerSec" value="0" min="0" max="59"></label>
+    <label class="field-group"><span class="field-label" data-i18n="timer.mode">{{ t("timer.mode", lang) }}</span>
+      <select id="timerMode">
+        <option value="countdown" data-i18n="timer.countdown">{{ t("timer.countdown", lang) }}</option>
+        <option value="countup" data-i18n="timer.countup">{{ t("timer.countup", lang) }}</option>
+      </select></label>
+  </div>
+  <div class="actions">
+    {% for m in [1, 3, 5, 10, 15, 25] %}
+    <button class="btn btn-secondary btn-small" type="button" onclick="setPreset({{ m }})">{{ m }}</button>
+    {% endfor %}
   </div>
   <p class="timer-display" id="timerDisplay">05:00</p>
   <div class="actions">
     <button class="btn" type="button" id="timerStart" data-i18n="timer.start" onclick="startTimer()">{{ t("timer.start", lang) }}</button>
-    <button class="btn btn-secondary" type="button" id="timerPause" data-i18n="timer.pause" onclick="window.Timer.pause()">{{ t("timer.pause", lang) }}</button>
+    <button class="btn btn-secondary" type="button" id="timerResume" data-i18n="timer.resume" onclick="resumeTimer()">{{ t("timer.resume", lang) }}</button>
+    <button class="btn btn-secondary" type="button" id="timerPause" data-i18n="timer.pause" onclick="pauseTimer()">{{ t("timer.pause", lang) }}</button>
     <button class="btn btn-secondary" type="button" id="timerReset" data-i18n="timer.reset" onclick="resetTimer()">{{ t("timer.reset", lang) }}</button>
   </div>
 </section>
+{% include "sound_section.html" %}
 <script src="/static/timer.js"></script>
 <script src="/static/audio.js"></script>
+<script src="/static/sound.js"></script>
 <script>
 (function () {
   var display = document.getElementById('timerDisplay');
   var timerMin = document.getElementById('timerMin');
   var timerSec = document.getElementById('timerSec');
-  function fmt(sec) {
-    var m = Math.floor(sec / 60), s = sec % 60;
-    return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+  var timerMode = document.getElementById('timerMode');
+  function isUp() { return timerMode.value === 'countup'; }
+  function seconds() { return window.Timer.parseMinutesSeconds(timerMin.value, timerSec.value); }
+  function resetDisplay() {
+    display.textContent = isUp() ? '00:00' : window.Timer.fmt(seconds());
   }
-  function seconds() {
-    var m = parseInt(timerMin.value || '0', 10) || 0;
-    var s = parseInt(timerSec.value || '0', 10) || 0;
-    return m * 60 + Math.min(s, 59);
+  function askNotify() {
+    try {
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+      }
+    } catch (e) { /* 忽略 */ }
+  }
+  function notifyEnd() {
+    try {
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(document.title, { body: '{{ t("timer.done", lang) }}' });
+      }
+    } catch (e) { /* 静默降级 */ }
+  }
+  function soundFollow(action) {
+    if (window.Sound && window.Sound.isMusicLoaded()) {
+      if (action === 'resume') window.Sound.resumeMusic();
+      else window.Sound.pauseMusic();
+    }
   }
   window.startTimer = function () {
+    askNotify();
+    document.body.classList.remove('time-up');
+    timerMode.disabled = true;
+    if (isUp()) {
+      display.textContent = '00:00';
+      window.Timer.startUp();
+      soundFollow('resume');
+      return;
+    }
     var sec = seconds();
     if (sec <= 0) sec = 1;
-    document.body.classList.remove('time-up');
-    display.textContent = fmt(sec);
+    display.textContent = window.Timer.fmt(sec);
     window.Timer.start(sec);
+    soundFollow('resume');
+  };
+  window.pauseTimer = function () {
+    window.Timer.pause();
+    soundFollow('pause');
+  };
+  window.resumeTimer = function () {
+    window.Timer.resume();
+    soundFollow('resume');
+  };
+  window.setPreset = function (min) {
+    timerMin.value = min;
+    timerSec.value = 0;
+    resetDisplay();
   };
   window.resetTimer = function () {
     window.Timer.reset();
-    display.textContent = fmt(seconds());
+    timerMode.disabled = false;
+    resetDisplay();
     document.body.classList.remove('time-up');
+    soundFollow('pause');
   };
-  window.Timer.init(function (sec) { display.textContent = fmt(sec); },
+  window.Timer.init(function (sec) { display.textContent = window.Timer.fmt(sec); },
                    function () {
                      document.body.classList.add('time-up');
+                     timerMode.disabled = false;
                      window.playChime();
+                     notifyEnd();
+                     soundFollow('pause');
                    });
 })();
 </script>

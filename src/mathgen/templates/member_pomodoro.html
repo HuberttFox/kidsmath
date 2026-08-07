@@ -13,16 +13,104 @@
     <label class="field-group"><span class="field-label" data-i18n="timer.seconds">{{ t("timer.seconds", lang) }}</span>
       <input type="number" id="focusSec" value="" min="0" max="59"></label>
   </div>
+  <div class="actions">
+    {% for f, b in [(25,5),(50,10),(45,15),(30,5)] %}
+    <button class="btn btn-secondary btn-small" type="button" onclick="setPomodoroPreset({{ f }}, {{ b }})">{{ f }}/{{ b }}</button>
+    {% endfor %}
+  </div>
   <p class="timer-display" id="timerDisplay">25:00</p>
   <div class="actions">
     <button class="btn" type="button" id="pomodoroStart" data-i18n="pomodoro.start" onclick="startFocus()">{{ t("pomodoro.start", lang) }}</button>
     <button class="btn btn-secondary" type="button" id="pomodoroStartBreak" data-i18n="pomodoro.start_break" onclick="startBreak()">{{ t("pomodoro.start_break", lang) }}</button>
-    <button class="btn btn-secondary" type="button" id="pomodoroPause" data-i18n="pomodoro.pause" onclick="window.Timer.pause()">{{ t("pomodoro.pause", lang) }}</button>
+    <button class="btn btn-secondary" type="button" id="pomodoroPause" data-i18n="pomodoro.pause" onclick="pausePomodoro()">{{ t("pomodoro.pause", lang) }}</button>
     <button class="btn btn-secondary" type="button" id="pomodoroReset" data-i18n="pomodoro.reset" onclick="resetPomodoro()">{{ t("pomodoro.reset", lang) }}</button>
   </div>
 </section>
+{% include "sound_section.html" %}
+{% if stats %}
+<section class="review-card">
+  <h2 data-i18n="pomodoro.history">{{ t("pomodoro.history", lang) }}</h2>
+  <div class="actions">
+    <span class="pill-toggle">{{ t("pomodoro.today", lang) }} · {{ t("pomodoro.focus_count", lang, n=stats.today) }} · {{ t("pomodoro.focus_time", lang, m=(stats.today_sec // 60)) }}</span>
+    <span class="pill-toggle">{{ t("pomodoro.week", lang) }} · {{ t("pomodoro.focus_count", lang, n=stats.week) }}</span>
+    <span class="pill-toggle">{{ t("pomodoro.month", lang) }} · {{ t("pomodoro.focus_count", lang, n=stats.month) }}</span>
+    {% if stats.streak %}<span class="pill-toggle">{{ t("pomodoro.streak", lang, n=stats.streak) }}</span>{% endif %}
+  </div>
+  <div class="actions">
+    <label class="field-group"><span class="field-label" data-i18n="pomodoro.goal">{{ t("pomodoro.goal", lang) }}</span>
+      <input type="number" id="pomoGoal" value="{{ stats.goal or 0 }}" min="0"></label>
+    <button class="btn btn-secondary btn-small" type="button" onclick="setPomoGoal()" data-i18n="pomodoro.set_goal">{{ t("pomodoro.set_goal", lang) }}</button>
+  </div>
+  {% if cal %}
+  {% set _c = 251.33 %}{% set _tot = cal.total_focus + cal.total_break %}
+  <div class="pomo-charts">
+    <div class="pomo-pie">
+      <svg viewBox="0 0 100 100" width="120" height="120" role="img" aria-label="{{ t('pomodoro.pie_title', lang) }}">
+        <circle cx="50" cy="50" r="40" fill="none" stroke="var(--border)" stroke-width="20"/>
+        {% if _tot > 0 %}
+        <circle cx="50" cy="50" r="40" fill="none" stroke="var(--green)" stroke-width="20"
+          stroke-dasharray="{{ (_c * cal.total_focus / _tot) | round(2) }} {{ _c }}" transform="rotate(-90 50 50)"/>
+        <circle cx="50" cy="50" r="40" fill="none" stroke="var(--pink)" stroke-width="20"
+          stroke-dasharray="{{ (_c * cal.total_break / _tot) | round(2) }} {{ _c }}"
+          stroke-dashoffset="{{ (-_c * cal.total_focus / _tot) | round(2) }}" transform="rotate(-90 50 50)"/>
+        {% endif %}
+      </svg>
+      <div class="pomo-legend">
+        <span><i style="background: var(--green)"></i>{{ t("pomodoro.focus_short", lang) }} · {{ cal.total_focus }}</span>
+        <span><i style="background: var(--pink)"></i>{{ t("pomodoro.break_short", lang) }} · {{ cal.total_break }}</span>
+      </div>
+    </div>
+    <div class="pomo-bar">
+      <p class="hint" data-i18n="pomodoro.recent">{{ t("pomodoro.recent", lang) }}</p>
+      <div class="bar-row" role="img" aria-label="{{ t('pomodoro.recent', lang) }}">
+        {% for d in stats.recent %}
+        <div class="bar-col" title="{{ d.date }} · {{ d.count }}">
+          <div class="bar{% if d.count == 0 %} bar-empty{% endif %}" style="height: {{ d.count * 8 + (2 if d.count else 0) }}px"></div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  <div class="pomo-cal">
+    <div class="actions pomo-cal-nav">
+      <a class="btn btn-secondary btn-small" href="/member/pomodoro?month={{ cal.prev_month }}" data-i18n="pomodoro.prev_month">{{ t("pomodoro.prev_month", lang) }}</a>
+      <span class="pill-toggle">{{ cal.month_label }}</span>
+      <a class="btn btn-secondary btn-small" href="/member/pomodoro?month={{ cal.next_month }}" data-i18n="pomodoro.next_month">{{ t("pomodoro.next_month", lang) }}</a>
+    </div>
+    {% set wks = ['一','二','三','四','五','六','日'] if lang == 'zh' else ['Mo','Tu','We','Th','Fr','Sa','Su'] %}
+    <div class="cal-grid">
+      {% for w in wks %}<span class="cal-wk">{{ w }}</span>{% endfor %}
+      {% for row in cal.weeks %}
+        {% for c in row %}
+          {% if c %}
+            {% set cdate = cal.month_en ~ "-" ~ ("%02d"|format(c.day)) %}
+            <a class="cal-cell{% if c.focus or c.break %} cal-has{% endif %}{% if cdate == cal.today_str %} cal-today{% endif %}"
+               href="/member/pomodoro?month={{ cal.month_en }}&day={{ cdate }}">{{ c.day }}{% if c.focus %}<b>{{ c.focus }}</b>{% endif %}</a>
+          {% else %}
+            <span class="cal-cell cal-empty"></span>
+          {% endif %}
+        {% endfor %}
+      {% endfor %}
+    </div>
+  </div>
+  {% if cal.selected_day %}
+  <p class="hint">{{ t("pomodoro.day_sessions", lang) }}：{{ cal.selected_day }}</p>
+  {% if cal.day_sessions %}
+  <ul class="pomo-day-list">
+    {% for s in cal.day_sessions %}
+    <li>{{ s.time }} · {% if s.kind == 'focus' %}{{ t("pomodoro.focus_short", lang) }}{% else %}{{ t("pomodoro.break_short", lang) }}{% endif %} · {{ t("pomodoro.focus_time", lang, m=(s.sec // 60)) }}</li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="hint" data-i18n="pomodoro.no_sessions">{{ t("pomodoro.no_sessions", lang) }}</p>
+  {% endif %}
+  {% endif %}
+  {% endif %}
+</section>
+{% endif %}
 <script src="/static/timer.js"></script>
 <script src="/static/audio.js"></script>
+<script src="/static/sound.js"></script>
 <script>
 (function () {
   var display = document.getElementById('timerDisplay');
@@ -30,43 +118,83 @@
   var breakMin = document.getElementById('breakMin');
   var focusSec = document.getElementById('focusSec');
   var state = 'idle';
-  function fmt(sec) {
-    var m = Math.floor(sec / 60), s = sec % 60;
-    return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
-  }
-  function seconds() {
-    var extra = parseInt(focusSec.value || '0', 10) || 0;
-    return (parseInt(focusMin.value || '0', 10) || 0) * 60 + extra;
+  var plannedSec = 0;
+  var loggedIn = {{ 'true' if logged_in else 'false' }};
+  window.logPomo = function (kind, sec) {
+    if (!loggedIn) return;
+    try {
+      fetch('/api/pomodoro/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'kind=' + encodeURIComponent(kind) + '&sec=' + Math.max(0, Math.round(sec))
+      }).catch(function () {});
+    } catch (e) { /* 忽略 */ }
+  };
+  window.setPomoGoal = function () {
+    var el = document.getElementById('pomoGoal');
+    if (!el) return;
+    try {
+      fetch('/api/pomodoro/goal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'goal=' + encodeURIComponent(el.value)
+      });
+    } catch (e) { /* 忽略 */ }
+  };
+  function readFocusSec() { return window.Timer.parseMinutesSeconds(focusMin.value, focusSec.value); }
+  function readBreakSec() { return window.Timer.parseMinutesSeconds(breakMin.value, ''); }
+  function soundFollow(action) {
+    if (window.Sound && window.Sound.isMusicLoaded()) {
+      if (action === 'resume') window.Sound.resumeMusic();
+      else window.Sound.pauseMusic();
+    }
   }
   window.startFocus = function () {
-    var sec = seconds();
+    var sec = readFocusSec();
     if (sec <= 0) sec = 1;
     state = 'focus';
+    plannedSec = sec;
     document.body.classList.remove('time-up');
-    display.textContent = fmt(sec);
+    display.textContent = window.Timer.fmt(sec);
     window.Timer.start(sec);
+    soundFollow('resume');
   };
   window.startBreak = function () {
-    var sec = (parseInt(breakMin.value || '0', 10) || 0) * 60;
-    if (sec <= 0) sec = 60;
+    var sec = readBreakSec();
+    if (sec <= 0) sec = 1;
     state = 'break';
+    plannedSec = sec;
     document.body.classList.remove('time-up');
-    display.textContent = fmt(sec);
+    display.textContent = window.Timer.fmt(sec);
     window.Timer.start(sec);
+    soundFollow('resume');
+  };
+  window.pausePomodoro = function () {
+    window.Timer.pause();
+    soundFollow('pause');
+  };
+  window.setPomodoroPreset = function (f, b) {
+    focusMin.value = f;
+    breakMin.value = b;
+    focusSec.value = '';
+    display.textContent = window.Timer.fmt(readFocusSec());
   };
   window.resetPomodoro = function () {
     window.Timer.reset();
     state = 'idle';
-    display.textContent = fmt((parseInt(focusMin.value || '0', 10) || 0) * 60);
+    display.textContent = window.Timer.fmt(readFocusSec());
     document.body.classList.remove('time-up');
+    soundFollow('pause');
   };
-  window.Timer.init(function (sec) { display.textContent = fmt(sec); },
+  window.Timer.init(function (sec) { display.textContent = window.Timer.fmt(sec); },
                    function () {
                      document.body.classList.add('time-up');
                      if (state === 'focus') {
-                       display.textContent = fmt((parseInt(breakMin.value || '0', 10) || 0) * 60 || 60);
+                       display.textContent = window.Timer.fmt(readBreakSec());
                      }
+                     window.logPomo(state === 'focus' ? 'focus' : 'break', plannedSec);
                      window.playChime();
+                     soundFollow('pause');
                    });
 })();
 </script>

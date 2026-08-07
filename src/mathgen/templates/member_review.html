@@ -12,7 +12,13 @@
   {% for c in all_cards %}
   <details class="placeholder-card">
     <summary>{{ c.problem }} · <span class="review-badge review-{{ c.status }}" data-i18n="review.status_{{ c.status }}">{{ t("review.status_" ~ c.status, lang) }}</span> · {{ c.due }}</summary>
-    <p>答案：{{ c.answer }}</p>
+    {% if c.status != "due" %}
+    <p>{{ t("review.answer", lang, a=c.answer) }}</p>
+    {% endif %}
+    <form method="post" action="/api/mistakes/{{ c.id }}/reschedule" class="actions resched-form">
+      <input type="date" name="due" value="{{ c.due_date }}">
+      <button class="btn btn-secondary btn-small" type="submit" data-i18n="review.reschedule">{{ t("review.reschedule", lang) }}</button>
+    </form>
   </details>
   {% endfor %}
 </nav>
@@ -23,7 +29,7 @@
 <article class="review-card" id="reviewCard" data-total="{{ card.total }}">
   <p class="hint" data-i18n="review.card_num">{{ t("review.card_num", lang, n=card.n, total=card.total) }}</p>
   <h2 class="review-problem">{{ card.problem }}</h2>
-  <p id="answerReveal" class="review-answer" hidden>答案：{{ card.answer }}</p>
+  <p id="answerReveal" class="review-answer" hidden>{{ t("review.answer", lang, a=card.answer) }}</p>
   <div class="actions">
     <button class="btn btn-secondary" type="button" id="showAnswer"
             data-i18n="review.show_answer" onclick="document.getElementById('answerReveal').hidden=false;this.hidden=true;">
