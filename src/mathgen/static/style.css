@@ -696,8 +696,7 @@ details#advanced[open] > summary { margin-bottom: .9em; }
 
 .import-form { display: flex; gap: .8em; align-items: center; flex-wrap: wrap; margin: .6em 0; }
 
-.mark-wrong { position: absolute; top: 2px; right: 2px; z-index: 2; }
-.cell { position: relative; }
+.mark-wrong { display: inline-block; margin-left: .6em; vertical-align: middle; }
 
 .review-card { max-width: 480px; margin: 1em auto; background: var(--card-bg);
   border: 1.5px solid var(--border); border-radius: var(--radius-lg);

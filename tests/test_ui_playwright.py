@@ -253,3 +253,22 @@ def test_pomodoro_chime_and_title_flash(page):
     page.wait_for_timeout(2500)
     assert page.evaluate("window.__chimeCalled")
     assert "time-up" in page.locator("body").get_attribute("class")
+
+
+def test_review_flip_and_complete(page):
+    page.goto(BASE + "/register")
+    page.locator('input[name="username"]').fill("复习用户")
+    page.locator('input[name="password"]').fill("secret123")
+    page.locator('button[type="submit"]').click()
+    page.wait_for_url(BASE + "/")
+    page.locator('label.grade-btn:has-text("1 年级")').click()
+    page.locator('#generateBtn').click()
+    expect(page.locator('#download')).to_be_visible()
+    page.locator('form.mark-wrong button').first.click()
+    page.wait_for_url(BASE + "/member/errors")
+    page.goto(BASE + "/member/review")
+    expect(page.locator("text=显示答案")).to_be_visible()
+    page.locator("#showAnswer").click()
+    expect(page.locator("#answerReveal")).to_be_visible()
+    page.locator('button[name="q"][value="5"]').click()
+    expect(page.locator("text=今日全部完成")).to_be_visible()
