@@ -17,7 +17,7 @@
 
 - 零新增 Python 依赖（sqlite3 内置；SM-2 纯函数；提示音 Web Audio 合成）。
 - 全交互 form-encoded（隐藏字段 POST），浏览器原生下载 / 302 回跳，不引入 fetch/JS 表单。
-- 登录墙模式：**FastAPI dependency `current_user(request)`**（内部读 `request.state.user`，中间件已注入——P-A 既有代码不重构，新端点统一 `Depends(current_user)`）。
+- 登录墙模式：**FastAPI dependency `current_user(request) -> User | None`**：查 cookie → token SHA-256 → sessions → users（与 P-A spec §3 完全一致，依赖自包含）。新端点统一 `Depends(current_user)`。
   - 未登录行为：GET 页面 → `302 /login?next=<path>`；POST → `302 /login`。
 - 门禁分布：
   - `/member/errors`、`/member/review` → 需登录（用户数据）
@@ -94,8 +94,8 @@ GET  /member/review                复习页（due_at<=now 队列，排除 maste
 - 重出（original）：`Question(**json.loads(question_json))` 直用；manual 题（question_json NULL）→ `Question(topic, problem, answer, expression=problem, layout=None)` 文本退化渲染（答案页经 answer.py 退化分支显示「题面 = 答案」）。
 - 变式（variant）：`p = json.loads(params); p.pop("seed")`（**必须显式删 seed**——`_config_from_form` 对显式 seed 沿用快照值，config.py 仅 `if data["seed"] is None` 才随机），`_config_from_form(p)` → `resolve` → `generate(cfg)[q_index]`。
 - manual 题**无变式**（无 params），前端不显示变式按钮。
-- 合成卷：每题模式统一（全 original 或全 variant，前端单选）；布局参数取**首项 params**（columns/gap/answer_lines/answer_page/title），`dataclasses.replace(ResolvedConfig, count=N, title=「错题练习」)`；**batch 上限 100**，超限拒绝。
-- 答案页：sheet/expression 非空 → `f"{expression} = {answer}"`；manual（expression NULL）→ 退化 `f"{problem} = {answer}"`（answer.py 增加退化分支）。
+- 合成卷：每题模式统一（全 original 或全 variant，前端单选）；布局参数取**第一个非 NULL 的 params**（batch 首项可能是 manual 题 params 为 NULL）；全 manual（全 NULL）→ 默认布局 `resolve(Config())` 后 `replace(count=N, title=「错题练习」)`；**batch 上限 100**，超限拒绝。
+- 答案页：sheet/expression 非空 → `f"{expression} = {answer}"`；manual（expression NULL，防御直出场景）→ 退化 `f"{problem} = {answer}"`（answer.py 增加退化分支）。
 - PDF 下载头：`Content-Disposition: attachment; filename="worksheet.pdf"; filename*=UTF-8''错题练习.pdf`（RFC 5987）。
 
 ## 6. 页面与交互
@@ -127,14 +127,14 @@ GET  /member/review                复习页（due_at<=now 队列，排除 maste
 
 - `static/timer.js`：倒计时核心（`endTime = performance.now() + remaining` 防漂移，tick 差值计算；后台节流回前台时间仍准）+ mm:ss 格式化；不含文案（data-i18n 由 lang.js 机制）。
 - `static/audio.js`：`playChime()`——`AudioContext || webkitAudioContext`；**用户手势内创建**（开始按钮点击），结束 `resume()` 兜底；两声短音（880Hz→660Hz 各 0.2s）；gain 包络 0.2s 渐入渐出防爆音；失败静默降级。
-- sw.js v3 ASSETS 列表加 `timer.js`、`audio.js`（与 P-B 同批改）。
+- sw.js v3 ASSETS 列表加 `timer.js`、`audio.js`（与 P-B 同批改；SW 脚本字节变化自动触发 install，无需 bump 版本号）。
 - 预览页（登录态）：每题 statement 行尾「错」按钮 → POST `/api/mistakes`（data 属性带问题快照）→ 按钮变「已收 ✓」。
 - 预览页每题快照来源：server 端 context 已有完整 questions（web.py 生成处），渲染时逐题输出 statement/answer/expression/topic/params/seed/index 到 data 属性（Jinja autoescape 处理引号）。
 
 ## 8. 错误处理
 
 - 未登录：GET 302 /login?next=；POST 302 /login。
-- 跨用户 IDOR：一律 `WHERE id=? AND user_id=?` → 404 语义（302 回列表）。
+- 跨用户 IDOR：一律 `WHERE id=? AND user_id=?`；查无此行或跨用户 → 302 回列表，不泄露存在性。
 - batch >100：拒绝并 302 /member/errors（列表带错误提示，可后置简化）。
 - 坏 question_json / params：捕获 → 302 回列表（不 500）。
 - 提示音失败：静默（无音）。
