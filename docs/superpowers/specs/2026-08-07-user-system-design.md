@@ -42,21 +42,24 @@ CREATE TABLE IF NOT EXISTS saved_configs (
 - 历史**每用户上限 200 条**：插入后 `DELETE FROM config_history WHERE id NOT IN (SELECT id ... ORDER BY created_at DESC LIMIT 200) AND user_id=?`
 - sessions 清理：登录时 `DELETE FROM sessions WHERE expires_at < now`（顺手清过期行）
 
-接口：`connect()`（每次操作短连接或模块单例 + 锁）、`create_user/get_user_by_name`、`create_session/get_user_by_token/delete_session/cleanup_sessions`、`add_history/list_history/delete_history`、`add_saved/list_saved/delete_saved`、`get_saved`。所有按用户查询带 `user_id`。
+连接：**模块单例连接 + `threading.Lock`**（sqlite3 默认 check_same_thread=False + WAL + busy_timeout）。
+
+接口：`connect()`、`create_user/get_user_by_name`、`create_session/get_user_by_token/delete_session/cleanup_sessions`、`add_history/list_history/delete_history`、`add_saved/list_saved/delete_saved`、`get_saved`。所有按用户查询带 `user_id`。
 
 ## 3. 认证 `src/mathgen/auth.py` + web 集成
 
 - 密码：`hashlib.pbkdf2_hmac('sha256', pw, salt, 200_000)`，存 `pbkdf2_sha256$200000$<salt hex>$<hash hex>`；校验用 `hmac.compare_digest`
-- Session token：`secrets.token_urlsafe(32)`；cookie 值；**DB 存 token 的 SHA-256 摘要**（防 DB 泄露直接用 cookie）
+- Session token：`secrets.token_urlsafe(32)`；cookie 值；**DB 存 token 的 SHA-256 摘要**（防 DB 泄露直接用 cookie）；**过期 30 天**（`expires_at = now + 30d`）
 - Cookie：`kidsmath_session`，`HttpOnly` + `SameSite=Lax`；**`Secure` 仅当 `request.url.scheme == "https"`**（LAN http 可用）
 - 端点：
   - `POST /api/register`（username/password）→ 校验：用户名 trim 后 2-32 字符、唯一；密码 ≥6 位；成功建用户 + 自动登录
-  - `POST /api/login` → 统一文案"用户名或密码错误"（防枚举）；成功建 session + set cookie + 302 回 `/?`（或 Referer）
+  - `POST /api/login` → 统一文案"用户名或密码错误"（防枚举）；成功建 session + set cookie + **302 优先 next（仅白名单站内路径：`/`、`/user*`、`/member*` 前缀，防开放重定向），无 next 才回 `/?`**
   - `POST /api/logout` → 删 session + 清 cookie + 302
   - `GET /api/me` → `{"username": ...}` 或 401
-- 页面：`GET /login`、`GET /register`（马卡龙表单页，复用 base.html，i18n 双语）
+- 页面：`GET /login`、`GET /register`（马卡龙表单页，复用 base.html，i18n 双语）；**失败渲染对应页 + error**（与导入失败一致），成功才 302
 - 依赖 `current_user(request) -> User | None`：查 cookie → token SHA-256 → sessions → users
 - **门禁：仅 `/user/*`**——未登录访问 `/user*` → 302 `/login?next=...`；`/member/*` 公开（占位）
+- 未登录 POST `/api/saved`、`/api/history/*` → 302 `/login`（导出例外，见 §7）
 
 ## 4. CSRF 基础防护
 
@@ -84,7 +87,7 @@ CREATE TABLE IF NOT EXISTS saved_configs (
 
 ## 7. 参数导入导出（纯表单零 JS）
 
-- **导出**：`GET /user` 页 + index 高级参数区放 `<form method="post" action="/api/config/export">` + **现有表单全部隐藏字段**（服务端 `_config_from_form` 解析，前端无需复制字段）→ 响应 `Content-Disposition: attachment; filename=kidsmath-config.json`，内容 `{"version": 1, "config": {<form 字段键值，去 seed>}}` → 浏览器直接下载
+- **导出**（formaction 方案）：index 主表单内加 `<button type="submit" formaction="/api/config/export">导出配置</button>`——HTML5 formaction 让主表单直接 POST 导出端点，字段天然是**浏览器当前值**（服务端 `_config_from_form` 解析），零 JS 零复制 → 响应 `Content-Disposition: attachment; filename=kidsmath-config.json`，内容 `{"version": 1, "config": {<form 字段键值，去 seed>}}` → 浏览器直接下载。**导出允许未登录使用**（不涉个人数据）；仅保存/历史/导入保存路径门禁
 - **导入**：index 高级参数区 `<input type="file" name="file">` + 隐藏 form 自动 submit 到 `POST /api/config/import` → 解析（版本/字段）→ `_config_from_form` + `resolve()` 校验：
   - **成功 → 302 `/?query`**（浏览器原生跟随，回填表单）
   - **失败 → 直接渲染 index.html + error**（与 `/generate` 错误路径一致，中文提示）
@@ -103,7 +106,8 @@ CREATE TABLE IF NOT EXISTS saved_configs (
 - **compose.yaml**：`volumes: - mathgen-data:/data`（命名卷）
 - **deploy.md**：改写"无数据落盘"→ 数据存 `/data` 卷（用户/历史/保存配置）；备份 = 备份卷
 - **sw.js v3**：运行时缓存白名单化——仅缓存 `/`、`/product`、静态资源（css/js/fonts/icons）；排除 `/user/*`、`/login`、`/register`、`/api/*`、`/generate`、`/download.*`
-- 数据库文件：`/data/kidsmath.db`（可配置 env `KIDSMATH_DB`，默认 `data/kidsmath.db` 相对目录，Docker 里 `/data`）
+- 数据库文件：env `KIDSMATH_DB` 可配置，默认 `data/kidsmath.db`（相对 CWD）
+- **compose.yaml 必须显式 `environment: KIDSMATH_DB: /data/kidsmath.db`**（否则默认 `/app/data/` 与挂载的 `/data` 卷错位，docker compose down 数据即丢）
 
 ## 10. 测试
 
