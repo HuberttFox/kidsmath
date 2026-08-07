@@ -284,3 +284,12 @@ def test_ai_parse_backfill_form_values(page):
     page.wait_for_url(BASE + "/**")
     expect(page.locator('label.grade-btn:has-text("2 年级") input')).to_be_checked()
     expect(page.locator('input[name="operators"][value="加"]')).to_be_checked()
+
+
+def test_import_button_auto_submits(page):
+    page.goto(BASE + "/")
+    page.set_input_files('input[type="file"][name="file"]',
+                         {"name": "kidsmath-config.json", "mimeType": "application/json",
+                          "buffer": bytes(json.dumps({"version": 1, "config": {"grade": "1", "count": "5"}}), "utf-8")})
+    page.wait_for_url(BASE + "/**")
+    expect(page.locator('#count')).to_have_value("5")

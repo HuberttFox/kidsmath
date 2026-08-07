@@ -61,16 +61,22 @@ def test_history_db_failure_does_not_break_generate(monkeypatch):
     assert r.status_code == 200  # 出题主流程不受影响
 
 
-def test_save_from_preview_and_apply():
+def test_save_from_main_form():
     _login()
-    r = client.post("/generate", data={"grade": "2", "count": "3"})
-    assert r.status_code == 200
-    # 预览页保存表单（登录态渲染）
-    assert 'action="/api/saved"' in r.text
+    r = client.get("/")
+    assert 'formaction="/api/saved"' in r.text  # 主表单保存按钮
     r2 = client.post("/api/saved", data={"grade": "2", "count": "3", "name": "卷A"},
                      follow_redirects=False)
     assert r2.status_code == 302 and "/user/saved" in r2.headers["location"]
     assert "卷A" in client.get("/user/saved").text
+
+
+def test_import_single_button_auto_submit():
+    r = client.get("/")
+    assert 'import-btn' in r.text
+    assert 'accept="application/json,.json"' in r.text
+    assert 'onchange="this.form.submit()"' in r.text
+    assert 'type="file"' in r.text
 
 
 def test_saved_apply_redirects():
