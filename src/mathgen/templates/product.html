@@ -69,28 +69,6 @@
   </div>
 </section>
 
-<section class="landing-section member-preview">
-  <h2 data-i18n="product.member_title">{{ t("product.member_title", lang) }}</h2>
-  <div class="member-grid">
-    <a class="feature-card" href="/member/timer">
-      <h3 data-i18n="product.member_timer">{{ t("product.member_timer", lang) }}</h3>
-      <span class="coming-soon" data-i18n="coming_soon">{{ t("coming_soon", lang) }}</span>
-    </a>
-    <a class="feature-card" href="/member/pomodoro">
-      <h3 data-i18n="product.member_pomodoro">{{ t("product.member_pomodoro", lang) }}</h3>
-      <span class="coming-soon" data-i18n="coming_soon">{{ t("coming_soon", lang) }}</span>
-    </a>
-    <a class="feature-card" href="/member/errors">
-      <h3 data-i18n="product.member_errors">{{ t("product.member_errors", lang) }}</h3>
-      <span class="coming-soon" data-i18n="coming_soon">{{ t("coming_soon", lang) }}</span>
-    </a>
-    <a class="feature-card" href="/member/review">
-      <h3 data-i18n="product.member_review">{{ t("product.member_review", lang) }}</h3>
-      <span class="coming-soon" data-i18n="coming_soon">{{ t("coming_soon", lang) }}</span>
-    </a>
-  </div>
-</section>
-
 <section class="landing-section pwa-preview">
   <div class="download-icon"><img src="/static/math-icon.svg" alt="" width="64" height="64"></div>
   <h2 data-i18n="product.pwa_title">{{ t("product.pwa_title", lang) }}</h2>
@@ -99,8 +77,10 @@
     <span class="meta-badge" data-i18n="product.hero_badge">{{ t("product.hero_badge", lang) }}</span>
   </div>
   <div class="actions">
-    <a class="btn btn-download" href="/" data-i18n="product.pwa_install">{{ t("product.pwa_install", lang) }}</a>
+    <span class="btn btn-download" aria-disabled="true" data-i18n="product.install_app">{{ t("product.install_app", lang) }}</span>
+    <span class="coming-soon" data-i18n="coming_soon">{{ t("coming_soon", lang) }}</span>
   </div>
+  <p class="download-subtitle" data-i18n="product.install_desc">{{ t("product.install_desc", lang) }}</p>
   <p class="download-version">kidsmath v{{ version }}</p>
 </section>
 {% endblock %}

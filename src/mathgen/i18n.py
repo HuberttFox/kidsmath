@@ -270,7 +270,9 @@ UI_ZH = {
     "product.member_errors": "错题本",
     "product.member_review": "间隔复习",
     "product.pwa_title": "安装为应用",
-    "product.pwa_install": "开始使用",
+    "product.install_app": "安装为桌面应用",
+    "product.install_desc": "打包为独立应用安装（即将上线）",
+
     "product.pwa_desc": "在浏览器菜单中选择「安装应用」，像 App 一样使用",
 }
 
@@ -541,7 +543,9 @@ UI_EN = {
     "product.member_errors": "Mistake book",
     "product.member_review": "Spaced review",
     "product.pwa_title": "Install as an app",
-    "product.pwa_install": "Get started",
+    "product.install_app": "Install as desktop app",
+    "product.install_desc": "Packaged standalone app (coming soon)",
+
     "product.pwa_desc": "Choose “Install app” in your browser menu to use it like an app",
 }
 

@@ -547,3 +547,13 @@ def test_logged_in_user_center_link():
     client.post("/api/register", data={"username": "顶栏用户", "password": "secret123"})
     r = client.get("/")
     assert 'href="/user"' in r.text
+
+
+def test_product_page_slim():
+    r = client.get("/product")
+    assert r.status_code == 200
+    assert "coming-soon" not in r.text
+    assert 'href="/member/timer"' not in r.text
+    assert 'data-i18n="product.cta"' in r.text
+    assert "product.install_app" in r.text
+    assert 'aria-disabled="true"' in r.text
