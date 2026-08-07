@@ -457,7 +457,7 @@ def test_pwa_assets():
     assert r.headers.get("content-type", "").startswith("application/manifest")
     r2 = client.get("/static/sw.js")
     assert r2.status_code == 200
-    assert "kidsmath-v3" in r2.text
+    assert "kidsmath-v4" in r2.text
     assert "startsWith('/static/')" in r2.text  # v3 白名单：仅缓存 /、/product、/static/*
     r3 = client.get("/")
     assert 'rel="manifest"' in r3.text
@@ -562,3 +562,17 @@ def test_vertical_division_no_solution_not_500():
         "operators": "除", "table": "2-2", "dividend_range": "5-6"})
     assert r.status_code == 200  # GenerationError → 错误条，非 500
     assert 'class="error"' in r.text
+
+
+def test_workspace_tool_entries():
+    r = client.get("/")
+    for href in ("/member/timer", "/member/pomodoro", "/member/errors", "/member/review"):
+        assert f'href="{href}"' in r.text
+    assert "workspace.member_title" in r.text
+
+
+def test_product_tools_intro_no_links():
+    r = client.get("/product")
+    assert "product.tools_title" in r.text
+    assert 'href="/member' not in r.text  # 无逐个入口
+    assert 'data-i18n="product.tools_cta"' in r.text  # 统一 CTA

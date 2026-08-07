@@ -60,5 +60,6 @@ docker compose down              # 停止（容器删除，数据保留在 mathg
 - 用户系统：账号密码登录（pbkdf2 哈希）、会话 cookie、历史与保存配置存 SQLite（`KIDSMATH_DB` 环境变量指定路径，默认 `data/kidsmath.db`）。
 - 局域网/裸 HTTP 部署时自动禁用 Secure cookie（HTTPS 下启用）。
 - 番茄钟/计时提示音：浏览器自动播放策略要求**首次点击**（开始按钮）后才可发声；后台标签页 JS 定时器被节流，提示音可能延迟到回前台才响，页面标题闪动为兜底。
+- Service worker 版本 bump 后旧缓存自动清理（install 阶段），新版本部署后用户首次访问仍可能命中旧缓存页（显示旧 UI），刷新一次或等下一轮 install 即可。
 - 预览与下载共用 seed，保证题目一致。
 - Docker 镜像运行非 root 用户（mathgen），多阶段构建（uv 锁版本，`--no-dev` 不带测试依赖）。

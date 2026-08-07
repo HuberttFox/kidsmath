@@ -230,6 +230,7 @@ UI_ZH = {
     "ai.photo_hint": "拍下题目照片？登录后可在错题本手动录入",
     "ai.note_ignored": "有 {n} 行未识别，已忽略",
     "ai.note_no_numbers": "未识别到算式，请粘贴含数字的算式",
+    "workspace.member_title": "更多功能",
     "member.title": "会员中心",
     "member.ai": "AI 智能配置",
     "member.ai_desc": "用一句话描述需求，自动生成配置",
@@ -272,6 +273,8 @@ UI_ZH = {
     "product.member_review": "间隔复习",
     "product.pwa_title": "安装为应用",
     "product.install_app": "立即下载",
+    "product.tools_title": "配套学习工具",
+    "product.tools_cta": "去工作台使用",
     "product.install_desc": "安卓安装包（APK）与打包说明见 GitHub Releases",
 
     "product.pwa_desc": "在浏览器菜单中选择「安装应用」，像 App 一样使用",
@@ -504,6 +507,7 @@ UI_EN = {
     "ai.photo_hint": "Have a photo? Log in to add it to the mistake book",
     "ai.note_ignored": "{n} lines unrecognized, skipped",
     "ai.note_no_numbers": "No expressions found — paste problems with numbers",
+    "workspace.member_title": "More tools",
     "member.title": "Membership",
     "member.ai": "AI config",
     "member.ai_desc": "Describe needs in one sentence, generate config",
@@ -546,6 +550,8 @@ UI_EN = {
     "product.member_review": "Spaced review",
     "product.pwa_title": "Install as an app",
     "product.install_app": "Download now",
+    "product.tools_title": "Learning tools",
+    "product.tools_cta": "Open the workspace",
     "product.install_desc": "Android APK and packaging docs on GitHub Releases",
 
     "product.pwa_desc": "Choose “Install app” in your browser menu to use it like an app",

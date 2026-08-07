@@ -286,7 +286,8 @@ details#advanced[open] > summary { margin-bottom: .9em; }
 }
 .field-group { display: flex; flex-direction: column; gap: .35em; font-size: .92rem; }
 .field-label { font-weight: 700; font-size: .85rem; display: inline-flex; align-items: center; gap: .3em; }
-.field-group input[type="text"], .field-group input[type="number"], .field-group select {
+.field-group input[type="text"], .field-group input[type="number"],
+.field-group input[type="password"], .field-group select {
   padding: .55em .8em;
   border: 1.5px solid var(--input-border);
   border-radius: var(--radius-sm);
@@ -714,3 +715,20 @@ body.time-up .placeholder-title { animation: timeflash 1s steps(2) infinite; }
 .import-btn { cursor: pointer; }
 
 .sheet.preview { column-gap: 12px; row-gap: 4px; }
+
+/* ---- 数字输入 spinner 定制 ---- */
+.field-group input[type="number"] { appearance: textfield; -moz-appearance: textfield; }
+.field-group input[type="number"]::-webkit-outer-spin-button,
+.field-group input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none; margin: 0;
+}
+input[type="number"] { position: relative; }
+input[type="number"] + .spin {
+  display: inline-flex; flex-direction: column; gap: 1px;
+}
+
+/* ---- 底部固定 ---- */
+html, body { height: 100%; }
+body { display: flex; flex-direction: column; min-height: 100vh; }
+main { flex: 1 0 auto; }
+.site-footer { flex-shrink: 0; }

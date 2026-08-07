@@ -267,6 +267,32 @@
     <input type="file" name="file" accept="application/json,.json"
            onchange="this.form.submit()">
   </form>
+</section>
+<section class="placeholder-hero">
+  <h2 data-i18n="workspace.member_title">{{ t("workspace.member_title", lang) }}</h2>
+</section>
+<section class="placeholder-grid">
+  <a class="placeholder-card" href="/member/timer" style="text-decoration:none">
+    <span class="placeholder-icon">⏱️</span>
+    <h3 data-i18n="member.timer">{{ t("member.timer", lang) }}</h3>
+    <p data-i18n="member.timer_desc">{{ t("member.timer_desc", lang) }}</p>
+  </a>
+  <a class="placeholder-card" href="/member/pomodoro" style="text-decoration:none">
+    <span class="placeholder-icon">🍅</span>
+    <h3 data-i18n="member.pomodoro">{{ t("member.pomodoro", lang) }}</h3>
+    <p data-i18n="member.pomodoro_desc">{{ t("member.pomodoro_desc", lang) }}</p>
+  </a>
+  <a class="placeholder-card" href="/member/errors" style="text-decoration:none">
+    <span class="placeholder-icon">❌</span>
+    <h3 data-i18n="member.errors">{{ t("member.errors", lang) }}</h3>
+    <p data-i18n="member.errors_desc">{{ t("member.errors_desc", lang) }}</p>
+  </a>
+  <a class="placeholder-card" href="/member/review" style="text-decoration:none">
+    <span class="placeholder-icon">🔁</span>
+    <h3 data-i18n="member.review">{{ t("member.review", lang) }}</h3>
+    <p data-i18n="member.review_desc">{{ t("member.review_desc", lang) }}</p>
+  </a>
+</section>
 {% endblock %}
 
 {% block scripts %}
