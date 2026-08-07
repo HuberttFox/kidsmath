@@ -33,7 +33,9 @@ docker compose up -d --build
 
 ```bash
 docker build -t mathgen .
-docker run -d --name mathgen -p 8080:8080 --restart unless-stopped mathgen
+# 数据卷必须手动挂载：/data/kidsmath.db（含用户/历史/保存配置）
+docker run -d --name mathgen -p 8080:8080 --restart unless-stopped \
+  -v mathgen-data:/data -e KIDSMATH_DB=/data/kidsmath.db mathgen
 ```
 
 ### 常用操作
@@ -41,7 +43,7 @@ docker run -d --name mathgen -p 8080:8080 --restart unless-stopped mathgen
 ```bash
 docker compose logs -f mathgen   # 看日志
 docker compose restart mathgen   # 重启
-docker compose down              # 停止（容器删除，无数据落盘）
+docker compose down              # 停止（容器删除，数据保留在 mathgen-data 卷）
 ```
 
 ## PWA 安装
@@ -51,10 +53,11 @@ docker compose down              # 停止（容器删除，无数据落盘）
   - `Content-Type: application/manifest+json` 用于 `/static/manifest.webmanifest`（缺失时部分浏览器仍可解析，但建议配全）；
   - `Cache-Control: no-cache` 或短 TTL 用于 `/static/sw.js`，避免旧 SW 长期驻留；
   - 其余静态资源（HTML/CSS/JS）建议 `Cache-Control: max-age=31536000, immutable` + SW 内部版本化刷新。
-- Service worker 离线缓存 app shell；`/product` 页面**不缓存**，离线时不可用（有意为之，详见 spec）。
+- Service worker 离线缓存 app shell 与 `/product`；`/user/*`、`/login`、`/api/*`、`/generate`、`/download.*` **一律走网络**（认证与会话状态必须实时）。
 
 ## 说明
 
-- 无用户系统、无题库存储，纯出题工具；数据不落盘。
+- 用户系统：账号密码登录（pbkdf2 哈希）、会话 cookie、历史与保存配置存 SQLite（`KIDSMATH_DB` 环境变量指定路径，默认 `data/kidsmath.db`）。
+- 局域网/裸 HTTP 部署时自动禁用 Secure cookie（HTTPS 下启用）。
 - 预览与下载共用 seed，保证题目一致。
 - Docker 镜像运行非 root 用户（mathgen），多阶段构建（uv 锁版本，`--no-dev` 不带测试依赖）。

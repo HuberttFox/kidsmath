@@ -16,7 +16,7 @@ ENV LANG=C.UTF-8 \
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/src /app/src
-RUN useradd -m mathgen && chown -R mathgen:mathgen /app
+RUN useradd -m mathgen && chown -R mathgen:mathgen /app && mkdir -p /data && chown mathgen:mathgen /data
 USER mathgen
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
