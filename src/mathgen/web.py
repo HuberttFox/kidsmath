@@ -166,6 +166,16 @@ def _placeholder_context(lang: str, title_key: str, cards) -> dict:
 @app.get("/user")
 @app.get("/user/history")
 @app.get("/user/saved")
+async def user_page(request: Request):
+    user = request.state.user
+    if not user:
+        return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
+    lang = _lang(request)
+    return templates.TemplateResponse(request, "placeholder.html", {
+        "lang": lang, "ui_json": _UI_JSON, "title": t("user.title", lang),
+        "title_key": "user.title", "cards": [], "app_mode": _app_mode(request)})
+
+
 @app.get("/member")
 @app.get("/member/timer")
 @app.get("/member/pomodoro")
@@ -342,6 +352,97 @@ def _as_query(cfg: Config) -> dict:
     if cfg.lang == "en":
         q["lang"] = "en"
     return q
+
+
+def _expires_iso():
+    from datetime import datetime, timedelta
+    return (datetime.now() + timedelta(days=auth.SESSION_DAYS)).isoformat(timespec="seconds")
+
+
+def _set_session_cookie(resp: RedirectResponse, request: Request, user_id: int) -> None:
+    cookie, thash = auth.new_session_token()
+    db_mod.create_session(thash, user_id, _expires_iso())
+    resp.set_cookie(auth.COOKIE_NAME, cookie, httponly=True, samesite="lax",
+                    secure=request.url.scheme == "https", max_age=60 * 60 * 24 * 30)
+
+
+SAFE_NEXT_PREFIXES = ("/", "/user", "/member")
+
+
+def _safe_next(path: str | None) -> str | None:
+    if path and path.startswith(SAFE_NEXT_PREFIXES) and not path.startswith("//"):
+        return path
+    return None
+
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    lang = _lang(request)
+    return templates.TemplateResponse(request, "login.html",
+        {"lang": lang, "ui_json": _UI_JSON, "error": None})
+
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    lang = _lang(request)
+    return templates.TemplateResponse(request, "register.html",
+        {"lang": lang, "ui_json": _UI_JSON, "error": None})
+
+
+@app.post("/api/register", response_class=HTMLResponse)
+async def api_register(request: Request):
+    lang = _lang(request)
+    form = await request.form()
+    username = (form.get("username") or "").strip()
+    password = form.get("password") or ""
+    if not (2 <= len(username) <= 32):
+        return templates.TemplateResponse(request, "register.html",
+            {"lang": lang, "ui_json": _UI_JSON, "error": t("auth.error_username_invalid", lang)})
+    if len(password) < 6:
+        return templates.TemplateResponse(request, "register.html",
+            {"lang": lang, "ui_json": _UI_JSON, "error": t("auth.error_password_short", lang)})
+    if db_mod.get_user_by_name(username):
+        return templates.TemplateResponse(request, "register.html",
+            {"lang": lang, "ui_json": _UI_JSON, "error": t("auth.error_username_taken", lang)})
+    uid = db_mod.create_user(username, auth.hash_password(password))
+    resp = RedirectResponse(_safe_next(request.query_params.get("next")) or "/", status_code=302)
+    _set_session_cookie(resp, request, uid)
+    return resp
+
+
+@app.post("/api/login", response_class=HTMLResponse)
+async def api_login(request: Request):
+    lang = _lang(request)
+    form = await request.form()
+    username = (form.get("username") or "").strip()
+    password = form.get("password") or ""
+    user = db_mod.get_user_by_name(username) if username else None
+    if not user or not auth.verify_password(password, user["password_hash"]):
+        return templates.TemplateResponse(request, "login.html",
+            {"lang": lang, "ui_json": _UI_JSON, "error": t("auth.error_invalid", lang)})
+    db_mod.cleanup_sessions(db_mod.now_iso())
+    resp = RedirectResponse(_safe_next(request.query_params.get("next")) or "/", status_code=302)
+    _set_session_cookie(resp, request, user["id"])
+    return resp
+
+
+@app.post("/api/logout")
+async def api_logout(request: Request):
+    token = request.cookies.get(auth.COOKIE_NAME)
+    if token:
+        db_mod.delete_session(hashlib.sha256(token.encode()).hexdigest())
+    resp = RedirectResponse("/", status_code=302)
+    resp.delete_cookie(auth.COOKIE_NAME)
+    return resp
+
+
+@app.get("/api/me")
+async def api_me(request: Request):
+    user = request.state.user
+    if not user:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    return {"username": user["username"]}
 
 
 @app.get("/", response_class=HTMLResponse)

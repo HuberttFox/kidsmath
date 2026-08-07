@@ -40,3 +40,60 @@ def test_csrf_same_origin_allowed():
     r = client.post("/generate", data={"grade": "1", "count": "3"},
                     headers={"origin": "http://testserver"})
     assert r.status_code == 200
+
+
+def _register(username="家长", password="secret123"):
+    return client.post("/api/register", data={"username": username, "password": password},
+                       follow_redirects=False)
+
+
+def test_register_and_me():
+    r = _register()
+    assert r.status_code == 302
+    assert client.get("/api/me").json()["username"] == "家长"
+
+
+def test_register_duplicate():
+    _register()
+    r = _register()
+    assert r.status_code == 200
+    assert "用户名已存在" in r.text
+
+
+def test_register_short_password():
+    r = _register(password="123")
+    assert "密码至少 6 位" in r.text
+
+
+def test_register_blank_username():
+    r = _register(username="   ")
+    assert "用户名需 2-32 个字符" in r.text
+
+
+def test_login_logout():
+    _register()
+    r = client.post("/api/login", data={"username": "家长", "password": "secret123"},
+                    follow_redirects=False)
+    assert r.status_code == 302 and "kidsmath_session" in r.headers.get("set-cookie", "")
+    r2 = client.post("/api/login", data={"username": "家长", "password": "wrong"})
+    assert "用户名或密码错误" in r2.text  # 统一文案
+    client.post("/api/logout")
+    assert client.get("/api/me").status_code == 401
+
+
+def test_gate_user_redirects_to_login():
+    r = client.get("/user/history", follow_redirects=False)
+    assert r.status_code == 302
+    assert "/login" in r.headers["location"]
+
+
+def test_member_pages_public():
+    assert client.get("/member/timer").status_code == 200
+
+
+def test_login_next_consumed():
+    _register()
+    r = client.post("/api/login?next=/user/saved",
+                    data={"username": "家长", "password": "secret123"},
+                    follow_redirects=False)
+    assert r.headers["location"] == "/user/saved"

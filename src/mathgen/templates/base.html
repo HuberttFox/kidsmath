@@ -24,7 +24,14 @@
         {% block nav %}{% endblock %}
       </nav>
       <div class="header-controls">
-        <a class="btn btn-secondary btn-small" href="/user" id="userEntry">👤 <span data-i18n="user.title">{{ t("user.title", lang) }}</span></a>
+        {% if request.state.user %}
+      <span class="user-chip">{{ request.state.user.username }}</span>
+      <form method="post" action="/api/logout" class="inline-form">
+        <button class="pill-toggle" type="submit" data-i18n="auth.logout">{{ t("auth.logout", lang) }}</button>
+      </form>
+      {% else %}
+      <a class="pill-toggle" href="/login" data-i18n="auth.login">{{ t("auth.login", lang) }}</a>
+      {% endif %}
         <button class="pill-toggle" id="langToggle" type="button" aria-label="Language"><span id="langLabel"></span></button>
         <button class="pill-toggle" id="themeToggle" type="button" aria-label="Theme"><span id="themeLabel"></span></button>
       </div>

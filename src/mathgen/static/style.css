@@ -677,3 +677,15 @@ details#advanced[open] > summary { margin-bottom: .9em; }
   .form-grid { grid-template-columns: 1fr; }
   .actions .btn { width: 100%; }
 }
+
+/* ---- 认证页 ---- */
+.auth-card { max-width: 400px; margin: 3em auto; background: var(--card-bg);
+  border: 1.5px solid var(--border); border-radius: var(--radius-lg);
+  padding: 1.6em; box-shadow: var(--shadow-sm); }
+.auth-card h1 { text-align: center; margin-bottom: 1em; }
+.auth-card .field-group { margin-bottom: .9em; }
+.auth-card .actions { justify-content: center; }
+.auth-card .hint { text-align: center; margin-top: 1em; }
+.user-chip { display: inline-flex; align-items: center; padding: .4em 1em;
+  border-radius: var(--radius-md); background: var(--mint-soft);
+  font-weight: 700; color: var(--text); }

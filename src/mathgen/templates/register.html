@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ t("auth.register", lang) }} - mathgen{% endblock %}
+{% block nav %}{% endblock %}
+{% block content %}
+<section class="auth-card">
+  <h1 data-i18n="auth.register">{{ t("auth.register", lang) }}</h1>
+  {% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/api/register">
+    <label class="field-group"><span class="field-label" data-i18n="auth.username">{{ t("auth.username", lang) }}</span>
+      <input type="text" name="username" required></label>
+    <label class="field-group"><span class="field-label" data-i18n="auth.password">{{ t("auth.password", lang) }}</span>
+      <input type="password" name="password" required></label>
+    <div class="actions"><button class="btn" type="submit" data-i18n="auth.register">{{ t("auth.register", lang) }}</button></div>
+  </form>
+  <p class="hint"><a href="/login" data-i18n="auth.has_account">{{ t("auth.has_account", lang) }}</a></p>
+</section>
+{% endblock %}
