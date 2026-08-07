@@ -35,10 +35,10 @@ ParseResult = {
 
 **规则管线**：
 1. 分行 → 清洗：去空白、题号变体（`1.`、`(1)`、`①`）、全角 `−→-`、运算符变体（`x`/`✕`/`*`→`×`）。
-2. 表达式识别：正则 `\d+\s*[+\-×÷*/]\s*\d+`（支持括号、多运算符）；竖式线性化（`23\n+48\n----` 折叠为一行）。
+2. 表达式识别：**整链正则** `(?:\d+\s*[+\-×÷*/]\s*)+\d+`（锚定整行/折叠行，勿用二元段正则——`finditer("12+34+5")` 只命中 "12+34" 会截断、污染 operand_count 众数）；竖式线性化（`23\n+48\n----` 折叠为一行）。
 3. 应用题检测：算式率 < 50% 且含中文字句 → topic=word_problem；**混合输入以多数为准**（算式率 ≥50% → arithmetic，应用题行计入 notes 忽略）。
 4. 运算符频率 → operators（top 2，`+`/`-`/`×`/`÷` 映射，含变体归一）。
-5. 位数分布 → operand 主位数 d（众数）；**operand_count = 表达式数字个数众数，2-4 钳制**（越界取 2）。
+5. 位数分布 → operand 主位数 d（众数）；**operand_count = 整链表达式数字个数众数，钳制到 [2, 4]**（>4 → 4，Config 上限 operand_count=4；<2 理论不可达，防御取 2）。
 6. **grade 映射**：仅一位数±→1；两位数±→2；含 ×/÷→3；三位数±→3（数位可覆盖算子推断）。
 7. 括号率 >30% → parentheses=1。
 8. **count = max(N, 10)**（N=recognized，显式回填，生成数 ≥ 粘贴行数）。
@@ -76,7 +76,7 @@ POST /api/ai/parse        — 解析（公开）
 ## 6. 测试
 
 新增：
-- `tests/test_parser.py` 表驱动：算术行 / 竖式折叠 / 应用题检测 / 混合 majority / 无数字 / 括号率阈值 / 位数分布 / grade 映射 / operand_count 众数（含钳制）/ 变体运算符归一（`x ✕ *` → ×、全角 −）/ 题号清洗（`1.` `(1)` `①`）/ count=max(N,10)。
+- `tests/test_parser.py` 表驱动：算术行 / 竖式折叠 / 应用题检测 / 混合 majority / 无数字 / 括号率阈值 / 位数分布 / grade 映射 / operand_count 众数（含钳制）/ 变体运算符归一（`x ✕ *` → ×、全角 −）/ 题号清洗（`1.` `(1)` `①`）/ count=max(N,10) / **3 项链式行 → operand_count=3**。
 - `tests/test_ai.py`（TestClient）：POST 解析渲染摘要 + 回填按钮；resolve 失败错误条；302 回填 query 断言（grade/topic/operators/operand_count/parentheses/result_range——**result_range 断言仅对 ± 例题成立**）；fields 空禁用按钮；公开无门禁。
 - `tests/test_ui_playwright.py` 追加：粘贴 5 行 → 解析 → 摘要断言 → 点回填 → 表单值断言（grade/topic/operators 选中态）。
 
