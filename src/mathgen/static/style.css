@@ -698,3 +698,9 @@ details#advanced[open] > summary { margin-bottom: .9em; }
 
 .mark-wrong { position: absolute; top: 2px; right: 2px; z-index: 2; }
 .cell { position: relative; }
+
+.review-card { max-width: 480px; margin: 1em auto; background: var(--card-bg);
+  border: 1.5px solid var(--border); border-radius: var(--radius-lg);
+  padding: 1.4em; box-shadow: var(--shadow-sm); }
+.review-problem { font-size: 1.3em; text-align: center; margin: .6em 0; }
+.review-answer { text-align: center; font-weight: 700; color: var(--accent); }

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import dataclasses
+from datetime import datetime, timedelta
 import hashlib
 import io
 import json
@@ -404,9 +405,43 @@ async def member_review(request: Request, user: dict | None = Depends(current_us
     if not user:
         return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
     lang = _lang(request)
-    return templates.TemplateResponse(request, "placeholder.html", {
-        "lang": lang, "ui_json": _UI_JSON, "title": t("member.review", lang),
-        "title_key": "member.review", "cards": [], "app_mode": _app_mode(request)})
+    due = db_mod.due_mistakes(user["id"], db_mod.now_iso())
+    cards = []
+    now = datetime.now()
+    for i, row in enumerate(due, 1):
+        days = 0
+        try:
+            due_dt = datetime.fromisoformat(row["due_at"])
+            days = (due_dt - now).days
+        except ValueError:
+            pass
+        cards.append({
+            "id": row["id"], "problem": row["problem"], "answer": row["answer"],
+            "days_left": days, "n": i, "total": len(due)})
+    return templates.TemplateResponse(request, "member_review.html", {
+        "lang": lang, "ui_json": _UI_JSON, "cards": cards,
+        "app_mode": _app_mode(request)})
+
+
+@app.post("/api/mistakes/{mid}/review")
+async def mistake_review(request: Request, mid: int,
+                         user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    form = await request.form()
+    try:
+        q = int(form.get("q", 0))
+    except ValueError:
+        q = 0
+    if q not in (1, 3, 5):
+        q = 1
+    row = db_mod.get_mistake(user["id"], mid)
+    if row:
+        from mathgen.sm2 import sm2_update
+        ease, interval, reps = sm2_update(q, row["ease"], row["interval"], row["reps"])
+        due_at = (datetime.now() + timedelta(days=interval)).isoformat(timespec="seconds")
+        db_mod.update_review(user["id"], mid, ease, interval, reps, due_at, q)
+    return RedirectResponse("/member/review", status_code=302)
 
 
 @app.get("/member")
@@ -595,7 +630,6 @@ def _as_query(cfg: Config) -> dict:
 
 
 def _expires_iso():
-    from datetime import datetime, timedelta
     return (datetime.now() + timedelta(days=auth.SESSION_DAYS)).isoformat(timespec="seconds")
 
 

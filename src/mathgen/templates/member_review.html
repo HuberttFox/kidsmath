@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ t("review.title", lang) }} - mathgen{% endblock %}
+{% block content %}
+<section class="placeholder-hero">
+  <h1 class="placeholder-title" data-i18n="review.title">{{ t("review.title", lang) }}</h1>
+</section>
+{% if cards %}
+{% for card in cards %}
+<article class="review-card" id="reviewCard" data-total="{{ card.total }}">
+  <p class="hint" data-i18n="review.card_num">{{ t("review.card_num", lang, n=card.n, total=card.total) }}</p>
+  <h2 class="review-problem">{{ card.problem }}</h2>
+  <p id="answerReveal" class="review-answer" hidden>答案：{{ card.answer }}</p>
+  <div class="actions">
+    <button class="btn btn-secondary" type="button" id="showAnswer"
+            data-i18n="review.show_answer" onclick="document.getElementById('answerReveal').hidden=false;this.hidden=true;">
+      {{ t("review.show_answer", lang) }}</button>
+  </div>
+  <nav class="actions review-actions">
+    <form method="post" action="/api/mistakes/{{ card.id }}/review" class="inline-form">
+      <button class="btn btn-danger-soft" type="submit" name="q" value="1" data-i18n="review.again">{{ t("review.again", lang) }}</button>
+    </form>
+    <form method="post" action="/api/mistakes/{{ card.id }}/review" class="inline-form">
+      <button class="btn btn-secondary" type="submit" name="q" value="3" data-i18n="review.hard">{{ t("review.hard", lang) }}</button>
+    </form>
+    <form method="post" action="/api/mistakes/{{ card.id }}/review" class="inline-form">
+      <button class="btn btn-primary-soft" type="submit" name="q" value="5" data-i18n="review.good">{{ t("review.good", lang) }}</button>
+    </form>
+  </nav>
+  <p class="hint">{{ t("review.next_due", lang, t=card.days_left) }}</p>
+</article>
+{% endfor %}
+{% else %}
+<p class="hint" style="text-align:center" data-i18n="review.done">{{ t("review.done", lang) }}</p>
+{% endif %}
+{% endblock %}

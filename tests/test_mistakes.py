@@ -70,3 +70,28 @@ def test_preview_mark_wrong_persists():
         "answer": "1", "expression": "x", "question_json": "{}", "params": "{}",
         "q_index": "0"}, follow_redirects=False)
     assert m.group(1) in client.get("/member/errors").text
+
+
+def test_review_flow_updates_due():
+    _login()
+    client.post("/api/mistakes/manual", data={"topic": "arithmetic",
+                "problem": "3+5", "answer": "8"})
+    page = client.get("/member/review").text
+    assert "3+5" in page and "显示答案" in page
+    r = client.post("/api/mistakes/1/review", data={"q": "5"}, follow_redirects=False)
+    assert r.status_code == 302
+    assert "今日全部完成" in client.get("/member/review").text
+
+
+def test_review_q3_slight_ease_drop():
+    _login()
+    client.post("/api/mistakes/manual", data={"topic": "arithmetic",
+                "problem": "7*8", "answer": "56"})
+    client.post("/api/mistakes/1/review", data={"q": "3"})
+    assert "今日全部完成" in client.get("/member/review").text
+
+
+def test_review_anonymous_redirects():
+    client.get("/api/logout")
+    r = client.post("/api/mistakes/1/review", data={"q": "5"}, follow_redirects=False)
+    assert r.status_code == 302 and "/login" in r.headers["location"]
