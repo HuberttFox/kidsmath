@@ -8,7 +8,7 @@ import io
 import json
 import sys
 import zipfile
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -442,6 +442,93 @@ async def mistake_review(request: Request, mid: int,
         due_at = (datetime.now() + timedelta(days=interval)).isoformat(timespec="seconds")
         db_mod.update_review(user["id"], mid, ease, interval, reps, due_at, q)
     return RedirectResponse("/member/review", status_code=302)
+
+
+def _mistake_question(row: dict, mode: str) -> Question | None:
+    """构造题；original=question_json 直用（manual 退化文本），variant=params 重建同序号。"""
+    from mathgen.core.question import Question as Q
+    try:
+        if mode == "original":
+            if row["question_json"]:
+                data = json.loads(row["question_json"])
+                return Q(**{k: data[k] for k in
+                            ("topic", "statement", "answer", "expression", "layout")
+                            if k in data})
+            return Q(row["topic"], row["problem"], row["answer"],
+                     row["expression"] or row["problem"], None)
+        p = json.loads(row["params"]) if row["params"] else {}
+        p.pop("seed", None)
+        cfg = _config_from_form(p)
+        rc = resolve(cfg)
+        idx = row["q_index"] or 0
+        return generate(rc)[idx]
+    except (json.JSONDecodeError, ConfigError, GenerationError, IndexError, TypeError):
+        return None
+
+
+def _export_pdf(request: Request, user: dict, rows: list[dict],
+                mode: str, title: str | None) -> Response:
+    from mathgen.output.pdf import render_pdf
+    questions = []
+    layout_cfg = None
+    for row in rows:
+        if mode == "variant":
+            q = _mistake_question(row, "variant")
+        else:
+            q = _mistake_question(row, "original")
+        if q is None:
+            return RedirectResponse("/member/errors", status_code=302)
+        questions.append(q)
+        if layout_cfg is None and row["params"]:
+            try:
+                layout_cfg = resolve(_config_from_form(json.loads(row["params"])))
+            except (json.JSONDecodeError, ConfigError):
+                pass
+    if layout_cfg is None:
+        layout_cfg = resolve(Config())
+    cfg = dataclasses.replace(layout_cfg, count=len(questions),
+                              title=title or "错题练习")
+    pdf = render_pdf(questions, cfg)
+    filename = "worksheet.pdf"
+    disp = ('attachment; filename="{filename}"; '
+            "filename*=UTF-8''" + quote("错题练习.pdf"))
+    return Response(pdf, media_type="application/pdf",
+                    headers={"Content-Disposition": disp})
+
+
+@app.post("/api/mistakes/{mid}/export")
+async def mistake_export(request: Request, mid: int,
+                         user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    form = await request.form()
+    row = db_mod.get_mistake(user["id"], mid)
+    if not row:
+        return RedirectResponse("/member/errors", status_code=302)
+    return _export_pdf(request, user, [row], form.get("mode") or "original",
+                       form.get("title") or None)
+
+
+@app.post("/api/mistakes/export-batch")
+async def mistakes_export_batch(request: Request,
+                                user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    form = await request.form()
+    ids = [x for x in (form.get("ids") or "").split(",") if x]
+    if not ids or len(ids) > 100:
+        return RedirectResponse("/member/errors", status_code=302)
+    rows = []
+    for mid in ids:
+        try:
+            row = db_mod.get_mistake(user["id"], int(mid))
+        except ValueError:
+            row = None
+        if not row:
+            return RedirectResponse("/member/errors", status_code=302)
+        rows.append(row)
+    return _export_pdf(request, user, rows, form.get("mode") or "original",
+                       form.get("title") or None)
 
 
 @app.get("/member")

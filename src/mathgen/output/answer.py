@@ -5,4 +5,4 @@ from mathgen.core.question import Question
 
 
 def answer_lines(questions: list[Question]) -> list[str]:
-    return [f"{q.expression} = {q.answer}" for q in questions]
+    return [f"{q.expression if q.expression else q.statement} = {q.answer}" for q in questions]
