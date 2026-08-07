@@ -1,3 +1,5 @@
+import json
+
 """HTML 按钮选取交互测试（Playwright 真实浏览器）。
 
 fixture 起本地 uvicorn 服务，用 Chromium 点击驱动验证 JS 联动：
@@ -194,3 +196,34 @@ def test_macaron_no_pure_white_black_render(page):
                 continue  # 透明背景（渐变卡）
             assert not (nums[0] >= 250 and nums[1] >= 250 and nums[2] >= 250), f"{theme}/{sel}: 纯白 {nums}"
             assert not (nums[0] <= 5 and nums[1] <= 5 and nums[2] <= 5), f"{theme}/{sel}: 纯黑 {nums}"
+
+
+def test_export_formaction_downloads_current_fields(page):
+    page.goto(BASE + "/")
+    page.locator('label.grade-btn:has-text("3 年级")').click()
+    page.locator('#count').fill("8")
+    with page.expect_download() as dl:
+        page.locator('button[formaction="/api/config/export"]').click()
+    download = dl.value
+    assert download.suggested_filename == "kidsmath-config.json"
+    stream = download.path()
+    data = json.load(open(stream, encoding="utf-8"))
+    assert data["version"] == 1
+    assert data["config"]["grade"] == "3" and data["config"]["count"] == "8"
+
+
+def test_register_login_flow_and_history_page(page):
+    username = "试用户"
+    page.goto(BASE + "/register")
+    page.locator('input[name="username"]').fill(username)
+    page.locator('input[name="password"]').fill("secret123")
+    page.locator('button[type="submit"]').click()
+    page.wait_for_url(BASE + "/")
+    page.locator('label.grade-btn:has-text("1 年级")').click()
+    page.locator('#generateBtn').click()
+    expect(page.locator('#download')).to_be_visible()
+    page.goto(BASE + "/user/history")
+    expect(page.locator("text=重新生成")).to_be_visible()
+    expect(page.locator("text=grade=1")).to_be_visible()
+    page.goto(BASE + "/user/saved")
+    expect(page.locator("text=还没有保存的配置")).to_be_visible()
