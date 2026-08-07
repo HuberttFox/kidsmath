@@ -606,6 +606,7 @@ details#advanced[open] > summary { margin-bottom: .9em; }
 }
 
 .pager { display: flex; align-items: center; justify-content: center; gap: 1em; margin: 1em 0; }
+#pager[hidden] { display: none; }
 .pager-page { font-weight: 700; color: var(--text-soft); }
 .pager-per { display: inline-flex; align-items: center; gap: .4em; font-weight: 700; color: var(--text-soft); }
 .pager-per select, #jumpInput {

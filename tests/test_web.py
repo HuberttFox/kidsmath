@@ -257,6 +257,7 @@ def test_css_has_dark_theme_and_fonts():
     assert 'prefers-color-scheme: dark' in r.text
     assert 'data-theme="dark"' in r.text
     assert "M PLUS Rounded 1c" in r.text
+    assert "#pager[hidden] { display: none; }" in r.text
 
 
 def test_page_fade_animation_fixes_invisible_preview():
