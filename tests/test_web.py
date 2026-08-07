@@ -472,3 +472,26 @@ def test_placeholder_pages():
     assert 'href="/user/history"' in client.get("/user").text
     assert 'href="即将上线"' not in client.get("/member").text
     assert 'href="Coming soon"' not in client.get("/member").text
+
+
+def test_all_data_i18n_keys_exist_in_both_langs():
+    import re as _re
+    from mathgen.i18n import UI_EN, UI_ZH
+    pages = [client.get("/").text, client.get("/product").text,
+             client.get("/user").text, client.get("/member").text,
+             client.post("/generate", data={"grade": "1", "count": "3"}).text]
+    keys = set()
+    for html in pages:
+        keys |= set(_re.findall(r'data-i18n="([^"]+)"', html))
+        keys |= set(_re.findall(r'data-i18n-tip="([^"]+)"', html))
+    assert keys, "未收集到 i18n 键"
+    missing_zh = keys - set(UI_ZH)
+    missing_en = keys - set(UI_EN)
+    assert not missing_zh, f"缺 zh 键: {missing_zh}"
+    assert not missing_en, f"缺 en 键: {missing_en}"
+    # data-summary 的 topic 值必须是合法题型（属性值经 Jinja 转义，先 unescape）
+    import json as _json
+    for html in pages:
+        for m in _re.finditer(r'data-summary="([^"]+)"', html):
+            d = _json.loads(unescape(m.group(1)))
+            assert d["topic"] in ("arithmetic", "vertical", "word_problem"), d

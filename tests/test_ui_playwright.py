@@ -157,3 +157,40 @@ def test_column_major_pagination_continues_counting(page):
     page.locator('#pageNext').click()
     second_first = page.locator('.cell:visible').first.inner_text()
     assert second_first.startswith("7."), second_first  # 左列继续计数
+
+
+def test_font_uniform_yozai(page):
+    page.goto(BASE + "/")
+    page.evaluate("document.fonts.ready.then(() => true)")
+    for sel in ("body", "h1", "button", "input[type=text]", "input[type=number]",
+                "select", ".grade-btn span", ".topic-label", ".pill-toggle"):
+        font = page.locator(sel).first.evaluate("el => getComputedStyle(el).fontFamily")
+        assert "Yozai" in font, f"{sel}: {font}"
+    css = page.request.get(BASE + "/static/style.css").text()
+    assert css.count('font-family: "Yozai"') == 3, "Yozai 声明应仅 @font-face×2 + body"
+    assert css.count("font-family: inherit") == 2, "inherit 声明应仅 2 处（无元素级覆盖）"
+
+
+def test_language_switch_all_elements(page):
+    page.goto(BASE + "/")
+    page.locator('#langToggle').click()  # → EN
+    keys = page.evaluate("""() => Array.from(document.querySelectorAll('[data-i18n]'))
+        .map(el => el.getAttribute('data-i18n'))""")
+    assert keys, "无 data-i18n 元素"
+    for key in keys:
+        text = page.locator(f'[data-i18n="{key}"]').first.evaluate("el => el.textContent")
+        assert text.strip() and text != key, f"键 {key} 未切换: {text!r}"
+
+
+def test_macaron_no_pure_white_black_render(page):
+    page.goto(BASE + "/")
+    for theme in ("light", "dark"):
+        if theme == "dark":
+            page.locator('#themeToggle').click()
+        for sel in ("body", "input[type=text]", "input[type=number]", "select"):
+            nums = page.locator(sel).first.evaluate(
+                "el => { const m = getComputedStyle(el).backgroundColor.match(/[\\d.]+/g); return m ? m.map(Number) : []; }")
+            if len(nums) == 4 and nums[3] == 0:
+                continue  # 透明背景（渐变卡）
+            assert not (nums[0] >= 250 and nums[1] >= 250 and nums[2] >= 250), f"{theme}/{sel}: 纯白 {nums}"
+            assert not (nums[0] <= 5 and nums[1] <= 5 and nums[2] <= 5), f"{theme}/{sel}: 纯黑 {nums}"
