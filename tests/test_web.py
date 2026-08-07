@@ -430,8 +430,8 @@ def test_no_pure_white_black_in_css():
     css = client.get("/static/style.css").text
     assert "#ffffff" not in css and "#FFFFFF" not in css
     assert "#000" not in css
-    assert "#fff" not in css.replace("#fffdf7", "")  # 暖白除外
-    assert "--white: #fffdf7" in css
+    assert "#fff" not in css.replace("#fffdf7", "").replace("#fff8ec", "")  # 米色系除外
+    assert "--card-bg: #fff8ec" in css
     assert "--bg: #2b211a" in css  # dark 深马卡龙
     assert "--card-bg: #382a20" in css
     assert "--input-bg: #3f2f23" in css
