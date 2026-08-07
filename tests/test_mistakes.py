@@ -118,7 +118,8 @@ def test_note_edit():
     assert "进位粗心" in client.get("/member/errors").text
 
 
-def test_member_home_has_ai_coming_soon():
+def test_member_home_ai_card_links_to_ai_page():
     r = client.get("/member")
     assert r.status_code == 200
-    assert "member.ai" in r.text or "AI" in r.text
+    assert 'href="/member/ai"' in r.text  # AI 卡指向真实页面
+    assert client.get("/member/ai").status_code == 200

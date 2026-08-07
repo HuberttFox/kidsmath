@@ -152,7 +152,7 @@ PLACEHOLDER_PAGES = {
     "/user/history": ("user.history", [("📜", "user.history", "coming_soon", None)]),
     "/user/saved": ("user.saved", [("⭐", "user.saved", "coming_soon", None)]),
     "/member": ("member.title", [
-        ("🤖", "member.ai", "member.ai_desc", None),
+        ("🤖", "member.ai", "member.ai_desc", "/member/ai"),
         ("⏱️", "member.timer", "member.timer_desc", "/member/timer"),
         ("🍅", "member.pomodoro", "member.pomodoro_desc", "/member/pomodoro"),
         ("❌", "member.errors", "member.errors_desc", "/member/errors"),
