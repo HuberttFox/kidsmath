@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}{{ t("ai.title", lang) }} - mathgen{% endblock %}
+{% block content %}
+<section class="placeholder-hero">
+  <h1 class="placeholder-title" data-i18n="ai.title">{{ t("ai.title", lang) }}</h1>
+  <p class="hint" data-i18n="ai.desc">{{ t("ai.desc", lang) }}</p>
+</section>
+{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
+<section class="card card-mint">
+  <form method="post" action="/api/ai/parse" class="form-grid">
+    <label class="field-group">
+      <textarea name="text" class="ai-area" placeholder="{{ t("ai.input_placeholder", lang) }}">{{ text }}</textarea>
+    </label>
+    <div class="actions"><button class="btn" type="submit" data-i18n="ai.parse">{{ t("ai.parse", lang) }}</button></div>
+  </form>
+  {% if recognized > 0 %}
+  <h2 data-i18n="ai.result_title">{{ t("ai.result_title", lang) }}</h2>
+  <p class="hint" data-i18n="ai.recognized">{{ t("ai.recognized", lang, n=recognized, total=total) }}</p>
+  {% for key, value in rows %}
+  <p><span data-i18n="{{ key }}">{{ t(key, lang) }}</span>：{{ value }}</p>
+  {% endfor %}
+  {% for note in notes %}
+  <p class="hint">{{ t("ai.note_" ~ note, lang, n=total - recognized) }}</p>
+  {% endfor %}
+  {% if can_backfill %}
+  <form method="post" action="/api/ai/backfill" class="actions">
+    <input type="hidden" name="fields" value="{{ fields_json }}">
+    <input type="hidden" name="text" value="{{ text }}">
+    <button class="btn" type="submit" data-i18n="ai.backfill">{{ t("ai.backfill", lang) }}</button>
+  </form>
+  {% endif %}
+  {% elif recognized == 0 and text %}
+  <p class="hint" data-i18n="ai.note_no_numbers">{{ t("ai.note_no_numbers", lang) }}</p>
+  {% endif %}
+  <p class="hint"><a href="/member/errors" data-i18n="ai.photo_hint">{{ t("ai.photo_hint", lang) }}</a></p>
+</section>
+{% endblock %}

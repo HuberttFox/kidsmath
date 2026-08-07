@@ -575,6 +575,66 @@ async def member_pomodoro(request: Request):
         "lang": lang, "ui_json": _UI_JSON, "app_mode": _app_mode(request)})
 
 
+def _ai_field_labels() -> list[tuple[str, str]]:
+    return [("topic", "ai.field_topic"), ("operators", "ai.field_operators"),
+            ("grade", "ai.field_grade"), ("count", "ai.field_count"),
+            ("ranges", "ai.field_ranges"), ("parentheses", "ai.field_parentheses")]
+
+
+def _ai_context(request: Request, text: str = "", fields: dict | None = None,
+                notes: list[str] | None = None, recognized: int = 0,
+                total: int = 0, error: str | None = None) -> HTMLResponse:
+    lang = _lang(request)
+    rows = []
+    if fields:
+        topic = fields.get("topic")
+        topic_label = t(_TOPIC_LABELS.get(topic, topic), lang) if topic else None
+        ranges = fields.get("result_range")
+        parens = "✓" if fields.get("parentheses") else t("ai.default", lang)
+        rows = [
+            ("ai.field_topic", topic_label or t("ai.default", lang)),
+            ("ai.field_operators", fields.get("operators") or t("ai.default", lang)),
+            ("ai.field_grade", f"{fields.get('grade') or '-'} 年级"),
+            ("ai.field_count", fields.get("count") or t("ai.default", lang)),
+            ("ai.field_ranges", ranges or t("ai.default", lang)),
+            ("ai.field_parentheses", parens),
+        ]
+    return templates.TemplateResponse(request, "member_ai.html", {
+        "lang": lang, "ui_json": _UI_JSON, "text": text, "rows": rows,
+        "fields_json": json.dumps(fields or {}, ensure_ascii=False),
+        "can_backfill": bool(fields), "recognized": recognized, "total": total,
+        "notes": notes or [], "error": error, "app_mode": _app_mode(request)})
+
+
+@app.get("/member/ai", response_class=HTMLResponse)
+async def member_ai(request: Request):
+    return _ai_context(request)
+
+
+@app.post("/api/ai/parse", response_class=HTMLResponse)
+async def ai_parse(request: Request):
+    form = await request.form()
+    text = form.get("text") or ""
+    from mathgen.parser import parse_examples
+    res = parse_examples(text)
+    return _ai_context(request, text=text, fields=res["fields"],
+                       notes=res["notes"], recognized=res["recognized"],
+                       total=res["total"])
+
+
+@app.post("/api/ai/backfill", response_class=HTMLResponse)
+async def ai_backfill(request: Request):
+    form = await request.form()
+    text = form.get("text") or ""
+    try:
+        data = json.loads(form.get("fields") or "{}")
+        cfg = _config_from_form(data)
+        resolve(cfg)
+    except (json.JSONDecodeError, ConfigError) as e:
+        return _ai_context(request, text=text, error=str(e))
+    return _redirect_to_config({k: v for k, v in _as_query(cfg).items() if k != "seed"})
+
+
 @app.get("/member")
 async def placeholder_page(request: Request):
     lang = _lang(request)

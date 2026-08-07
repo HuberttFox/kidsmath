@@ -708,3 +708,5 @@ details#advanced[open] > summary { margin-bottom: .9em; }
   font-variant-numeric: tabular-nums; margin: .3em 0; }
 body.time-up .placeholder-title { animation: timeflash 1s steps(2) infinite; }
 @keyframes timeflash { 50% { color: var(--accent); } }
+
+.ai-area { min-height: 160px; width: 100%; }
