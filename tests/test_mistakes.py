@@ -102,3 +102,13 @@ def test_member_home_ai_card_links_to_ai_page():
     assert r.status_code == 200
     assert 'href="/member/ai"' in r.text  # AI 卡指向真实页面
     assert client.get("/member/ai").status_code == 200
+
+
+def test_review_all_cards_preview():
+    _login()
+    client.post("/api/mistakes/manual", data={"topic": "arithmetic",
+                "problem": "11-3", "answer": "8"})
+    page = client.get("/member/review").text
+    assert "全部卡片预览" in page
+    assert "11-3" in page
+    assert "待复习" in page

@@ -4,6 +4,20 @@
 <section class="placeholder-hero">
   <h1 class="placeholder-title" data-i18n="review.title">{{ t("review.title", lang) }}</h1>
 </section>
+{% if all_cards %}
+<section class="placeholder-hero">
+  <h2 data-i18n="review.all_cards">{{ t("review.all_cards", lang) }}</h2>
+</section>
+<nav class="placeholder-grid">
+  {% for c in all_cards %}
+  <details class="placeholder-card">
+    <summary>{{ c.problem }} · <span class="review-badge review-{{ c.status }}" data-i18n="review.status_{{ c.status }}">{{ t("review.status_" ~ c.status, lang) }}</span> · {{ c.due }}</summary>
+    <p>答案：{{ c.answer }}</p>
+  </details>
+  {% endfor %}
+</nav>
+{% endif %}
+
 {% if cards %}
 {% for card in cards %}
 <article class="review-card" id="reviewCard" data-total="{{ card.total }}">

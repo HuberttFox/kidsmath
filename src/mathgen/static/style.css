@@ -846,3 +846,33 @@ html[data-theme="dark"] .landing-hero {
   overflow: hidden;
 }
 .workbench-stage iframe { width: 100%; height: 100%; border: 0; display: block; }
+
+.workbench-stage iframe { transition: opacity .18s ease; }
+
+/* ---- 错题本手动录入卡限宽 ---- */
+.member-errors-manual { max-width: 480px; margin: 0 auto 1em; }
+
+/* ---- AI 输入框优化 ---- */
+.ai-area {
+  min-height: 180px; width: 100%;
+  padding: 12px 14px; font-size: 1em; line-height: 1.6;
+  border: 1.5px solid var(--input-border);
+  border-radius: var(--radius-md);
+  background: var(--input-bg); color: var(--text);
+  resize: vertical;
+  transition: border-color var(--dur) ease, box-shadow var(--dur) ease;
+}
+.ai-area::placeholder { color: var(--text-mute); }
+.ai-area:focus { outline: none; border-color: var(--macaron-blue);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--macaron-blue) 22%, transparent); }
+
+/* ---- 顶栏按钮统一 ---- */
+.header-controls .pill-toggle, .header-controls .user-chip {
+  height: 36px; padding: 0 14px; font-size: .85rem; line-height: 1;
+}
+.header-controls .user-chip { box-sizing: border-box; }
+
+.review-badge { font-size: .78rem; font-weight: 700; padding: .15em .5em; border-radius: var(--radius-sm); }
+.review-due { background: var(--yellow-soft); color: var(--yellow); }
+.review-coming { background: var(--blue-soft); color: var(--blue); }
+.review-mastered { background: var(--mint-soft); color: var(--green); }

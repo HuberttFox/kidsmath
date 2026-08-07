@@ -577,3 +577,18 @@ def test_product_tools_intro_no_links():
     assert "product.tools_title" in r.text
     assert 'href="/member' not in r.text  # 无逐个入口
     assert 'data-i18n="product.tools_cta"' in r.text  # 统一 CTA
+
+
+def test_server_side_theme_attribute():
+    c2 = TestClient(app)
+    r = c2.get("/")
+    assert 'data-theme="' not in r.text  # auto 不设
+    c2.cookies.set("mathgen_theme", "dark")
+    assert 'data-theme="dark"' in c2.get("/").text
+    c2.cookies.set("mathgen_theme", "light")
+    assert 'data-theme="light"' in c2.get("/").text
+
+
+def test_nested_iframe_guard_script():
+    r = client.get("/")
+    assert "window.self !== window.top" in r.text  # 嵌套硬防

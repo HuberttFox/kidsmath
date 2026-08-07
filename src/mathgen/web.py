@@ -469,7 +469,8 @@ async def member_review(request: Request, user: dict | None = Depends(current_us
     if not user:
         return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
     lang = _lang(request)
-    due = db_mod.due_mistakes(user["id"], db_mod.now_iso())
+    now_iso = db_mod.now_iso()
+    due = db_mod.due_mistakes(user["id"], now_iso)
     cards = []
     now = datetime.now()
     for i, row in enumerate(due, 1):
@@ -482,8 +483,15 @@ async def member_review(request: Request, user: dict | None = Depends(current_us
         cards.append({
             "id": row["id"], "problem": row["problem"], "answer": row["answer"],
             "days_left": days, "n": i, "total": len(due)})
+    all_cards = []
+    for row in db_mod.list_mistakes(user["id"]):
+        status = "mastered" if row["mastered_at"] else ("due" if row["due_at"] <= now_iso else "coming")
+        all_cards.append({
+            "id": row["id"], "problem": row["problem"], "answer": row["answer"],
+            "due": row["due_at"][:16].replace("T", " "), "status": status,
+            "mastered": bool(row["mastered_at"])})
     return templates.TemplateResponse(request, "member_review.html", {
-        "lang": lang, "ui_json": _UI_JSON, "cards": cards,
+        "lang": lang, "ui_json": _UI_JSON, "cards": cards, "all_cards": all_cards,
         "app_mode": _app_mode(request)})
 
 

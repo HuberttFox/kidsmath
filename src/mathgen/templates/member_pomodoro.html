@@ -8,14 +8,17 @@
   <div class="actions">
     <label class="field-group"><span class="field-label" data-i18n="pomodoro.focus">{{ t("pomodoro.focus", lang) }}</span>
       <input type="number" id="focusMin" value="25" min="0"></label>
-    <label class="field-group"><span class="field-label">测试秒覆盖</span>
-      <input type="number" id="focusSec" value="" min="0" data-testid="focusSec"></label>
+    <label class="field-group"><span class="field-label" data-i18n="pomodoro.break">{{ t("pomodoro.break", lang) }}</span>
+      <input type="number" id="breakMin" value="5" min="0"></label>
+    <label class="field-group"><span class="field-label" data-i18n="timer.seconds">{{ t("timer.seconds", lang) }}</span>
+      <input type="number" id="focusSec" value="" min="0" max="59"></label>
   </div>
   <p class="timer-display" id="timerDisplay">25:00</p>
   <div class="actions">
     <button class="btn" type="button" id="pomodoroStart" data-i18n="pomodoro.start" onclick="startFocus()">{{ t("pomodoro.start", lang) }}</button>
+    <button class="btn btn-secondary" type="button" id="pomodoroStartBreak" data-i18n="pomodoro.start_break" onclick="startBreak()">{{ t("pomodoro.start_break", lang) }}</button>
     <button class="btn btn-secondary" type="button" id="pomodoroPause" data-i18n="pomodoro.pause" onclick="window.Timer.pause()">{{ t("pomodoro.pause", lang) }}</button>
-    <button class="btn btn-secondary" type="button" id="pomodoroReset" data-i18n="pomodoro.reset" onclick="window.Timer.reset()">{{ t("pomodoro.reset", lang) }}</button>
+    <button class="btn btn-secondary" type="button" id="pomodoroReset" data-i18n="pomodoro.reset" onclick="resetPomodoro()">{{ t("pomodoro.reset", lang) }}</button>
   </div>
 </section>
 <script src="/static/timer.js"></script>
@@ -24,7 +27,9 @@
 (function () {
   var display = document.getElementById('timerDisplay');
   var focusMin = document.getElementById('focusMin');
+  var breakMin = document.getElementById('breakMin');
   var focusSec = document.getElementById('focusSec');
+  var state = 'idle';
   function fmt(sec) {
     var m = Math.floor(sec / 60), s = sec % 60;
     return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
@@ -36,13 +41,31 @@
   window.startFocus = function () {
     var sec = seconds();
     if (sec <= 0) sec = 1;
+    state = 'focus';
     document.body.classList.remove('time-up');
     display.textContent = fmt(sec);
     window.Timer.start(sec);
   };
+  window.startBreak = function () {
+    var sec = (parseInt(breakMin.value || '0', 10) || 0) * 60;
+    if (sec <= 0) sec = 60;
+    state = 'break';
+    document.body.classList.remove('time-up');
+    display.textContent = fmt(sec);
+    window.Timer.start(sec);
+  };
+  window.resetPomodoro = function () {
+    window.Timer.reset();
+    state = 'idle';
+    display.textContent = fmt((parseInt(focusMin.value || '0', 10) || 0) * 60);
+    document.body.classList.remove('time-up');
+  };
   window.Timer.init(function (sec) { display.textContent = fmt(sec); },
                    function () {
                      document.body.classList.add('time-up');
+                     if (state === 'focus') {
+                       display.textContent = fmt((parseInt(breakMin.value || '0', 10) || 0) * 60 || 60);
+                     }
                      window.playChime();
                    });
 })();

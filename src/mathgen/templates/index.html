@@ -93,8 +93,13 @@
         location.hash = '#' + path;
         highlight(path);
         setOpen(false);
+        fadeStage();
       });
     });
+    function fadeStage() {
+      stage.style.opacity = '0';
+      setTimeout(function () { stage.style.opacity = '1'; }, 60);
+    }
     function injectEmbed(doc) {
       if (!doc) return;
       doc.querySelectorAll('a[href]').forEach(function (a) {
