@@ -257,8 +257,16 @@
   <p id="preset-hint" class="hint hint-box"></p>
   <div class="actions">
     <button type="submit" class="btn btn-big" id="generateBtn" data-i18n="btn.generate">{{ t("btn.generate", lang) }}</button>
+    <button type="submit" formaction="/api/config/export" class="btn btn-secondary" data-i18n="config.export">{{ t("config.export", lang) }}</button>
   </div>
 </form>
+  <form method="post" action="/api/config/import" enctype="multipart/form-data" class="import-form">
+    <label class="field-group">
+      <span class="field-label" data-i18n="config.import">{{ t("config.import", lang) }}</span>
+      <input type="file" name="file" accept="application/json,.json">
+    </label>
+    <button class="btn btn-secondary btn-small" type="submit" data-i18n="config.import">{{ t("config.import", lang) }}</button>
+  </form>
 {% endblock %}
 
 {% block scripts %}

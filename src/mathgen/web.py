@@ -256,6 +256,37 @@ async def saved_delete(request: Request, sid: int):
     return RedirectResponse("/user/saved", status_code=302)
 
 
+@app.post("/api/config/export")
+async def config_export(request: Request):
+    form = dict(await request.form())
+    cfg = _config_from_form(form)
+    payload = {"version": 1, "config": json.loads(_snapshot_json(cfg))}
+    return Response(json.dumps(payload, ensure_ascii=False), media_type="application/json",
+                    headers={"Content-Disposition": 'attachment; filename="kidsmath-config.json"'})
+
+
+@app.post("/api/config/import", response_class=HTMLResponse)
+async def config_import(request: Request):
+    lang = _lang(request)
+    form = await request.form()
+    file = form.get("file")
+    if file is None or not file.filename:
+        return templates.TemplateResponse(request, "index.html",
+            _index_context({}, t("config.import_format", lang), lang, _app_mode(request)))
+    raw = await file.read()
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+        if payload.get("version") != 1 or not isinstance(payload.get("config"), dict):
+            raise ValueError("bad payload")
+        cfg = _config_from_form(payload["config"])
+        resolve(cfg)
+    except (ValueError, ConfigError, UnicodeDecodeError) as e:
+        msg = str(e)
+        return templates.TemplateResponse(request, "index.html",
+            _index_context({}, t("config.import_error", lang, err=msg), lang, _app_mode(request)))
+    return _redirect_to_config({k: v for k, v in _as_query(cfg).items() if k != "seed"})
+
+
 @app.get("/user/saved", response_class=HTMLResponse)
 async def user_saved(request: Request):
     lang = _lang(request)

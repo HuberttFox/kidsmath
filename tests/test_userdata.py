@@ -102,3 +102,38 @@ def test_saved_rename_delete():
     assert client.post(f"/api/saved/{sid}/delete",
                        follow_redirects=False).status_code == 302
     assert "新名" not in client.get("/user/saved").text
+
+
+def test_export_returns_json_attachment():
+    r = client.post("/api/config/export", data={"grade": "2", "count": "3", "seed": "9"})
+    assert r.status_code == 200
+    assert 'attachment; filename="kidsmath-config.json"' in r.headers["content-disposition"]
+    data = json.loads(r.text)
+    assert data["version"] == 1
+    assert data["config"]["grade"] == "2"
+    assert "seed" not in data["config"]
+
+
+def test_import_roundtrip_and_redirect():
+    r = client.post("/api/config/export", data={"grade": "3", "count": "5",
+                                                "left_factor_range": "10-99"})
+    files = {"file": ("kidsmath-config.json", r.content, "application/json")}
+    r2 = client.post("/api/config/import", files=files, follow_redirects=False)
+    assert r2.status_code == 302
+    assert "grade=3" in r2.headers["location"]
+    assert "left_factor_range=10-99" in r2.headers["location"]
+
+
+def test_import_invalid_json_errors():
+    files = {"file": ("bad.json", b"not json", "application/json")}
+    r = client.post("/api/config/import", files=files)
+    assert r.status_code == 200
+    assert "配置导入失败" in r.text
+
+
+def test_import_invalid_field_errors():
+    import json as _json
+    files = {"file": ("bad.json", _json.dumps({"version": 1,
+            "config": {"grade": "9"}}).encode(), "application/json")}
+    r = client.post("/api/config/import", files=files)
+    assert "年级" in r.text

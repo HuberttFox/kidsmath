@@ -108,7 +108,7 @@ def test_generate_preview_and_download_flow(page):
     page.goto(BASE + "/")
     page.locator('label.grade-btn:has-text("2 年级")').click()
     page.locator('#count').fill("6")
-    page.locator('button[type="submit"]').click()
+    page.locator('#generateBtn').click()
     expect(page.locator('#download')).to_be_visible()
     expect(page.locator('.cell')).to_have_count(6)
     first_batch = page.locator('.cell').all_text_contents()
@@ -127,7 +127,7 @@ def test_preview_per_page_and_jump(page):
     page.goto(BASE + "/")
     page.locator('label.grade-btn:has-text("2 年级")').click()
     page.locator('#count').fill("30")
-    page.locator('button[type="submit"]').click()
+    page.locator('#generateBtn').click()
     expect(page.locator('#pager')).to_be_visible()
     visible = page.locator('.cell:visible')
     expect(visible).to_have_count(12)  # 默认 2 列 × 6 行
@@ -150,7 +150,7 @@ def test_column_major_pagination_continues_counting(page):
     page.locator('#operand_count').dispatch_event("change")
     page.locator('#count').fill("16")
     page.locator('#number_direction').select_option("column")
-    page.locator('button[type="submit"]').click()
+    page.locator('#generateBtn').click()
     expect(page.locator('#pager')).to_be_visible()
     first = page.locator('.cell:visible').first.inner_text()
     assert first.startswith("1."), first
