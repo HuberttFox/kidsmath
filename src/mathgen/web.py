@@ -982,20 +982,10 @@ async def generate_page(request: Request):
     cfg_fields = {k: v for k, v in _as_query(cfg).items() if k != "seed"}
     numbers = {id(q): i for i, q in enumerate(questions, 1)}
     cells = []
-    params_snapshot = json.dumps({k: v for k, v in _as_query(cfg).items()},
-                                 ensure_ascii=False)
-    snaps = {}
-    for idx, q in enumerate(questions):
-        snaps[id(q)] = {
-            "topic": q.topic, "problem": q.statement, "answer": q.answer,
-            "expression": q.expression,
-            "question_json": json.dumps(dataclasses.asdict(q), ensure_ascii=False),
-            "params": params_snapshot, "q_index": idx,
-        }
     for row in arrange(questions, resolved.columns, resolved.number_direction):
         for q in row:
             if q is not None:
-                cells.append((numbers[id(q)], q, snaps[id(q)]))
+                cells.append((numbers[id(q)], q))
     if request.state.user:
         try:
             db_mod.add_history(request.state.user["id"], _snapshot_json(cfg))

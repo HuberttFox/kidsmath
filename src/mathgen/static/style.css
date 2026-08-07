@@ -712,3 +712,5 @@ body.time-up .placeholder-title { animation: timeflash 1s steps(2) infinite; }
 .ai-area { min-height: 160px; width: 100%; }
 
 .import-btn { cursor: pointer; }
+
+.sheet.preview { column-gap: 12px; row-gap: 4px; }
