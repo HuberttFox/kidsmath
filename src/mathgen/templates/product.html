@@ -17,26 +17,32 @@
 <section class="landing-section">
   <div class="features-grid">
     <div class="feature-card">
+      <span class="feature-icon"><img src="/static/icons/calculator.svg" alt="" width="28" height="28"></span>
       <h3 data-i18n="product.f1_title">{{ t("product.f1_title", lang) }}</h3>
       <p data-i18n="product.f1_desc">{{ t("product.f1_desc", lang) }}</p>
     </div>
     <div class="feature-card">
+      <span class="feature-icon"><img src="/static/icons/settings.svg" alt="" width="28" height="28"></span>
       <h3 data-i18n="product.f2_title">{{ t("product.f2_title", lang) }}</h3>
       <p data-i18n="product.f2_desc">{{ t("product.f2_desc", lang) }}</p>
     </div>
     <div class="feature-card">
+      <span class="feature-icon"><img src="/static/icons/print.svg" alt="" width="28" height="28"></span>
       <h3 data-i18n="product.f3_title">{{ t("product.f3_title", lang) }}</h3>
       <p data-i18n="product.f3_desc">{{ t("product.f3_desc", lang) }}</p>
     </div>
     <div class="feature-card">
+      <span class="feature-icon"><img src="/static/icons/language.svg" alt="" width="28" height="28"></span>
       <h3 data-i18n="product.f4_title">{{ t("product.f4_title", lang) }}</h3>
       <p data-i18n="product.f4_desc">{{ t("product.f4_desc", lang) }}</p>
     </div>
     <div class="feature-card">
+      <span class="feature-icon"><img src="/static/icons/theme.svg" alt="" width="28" height="28"></span>
       <h3 data-i18n="product.f5_title">{{ t("product.f5_title", lang) }}</h3>
       <p data-i18n="product.f5_desc">{{ t("product.f5_desc", lang) }}</p>
     </div>
     <div class="feature-card">
+      <span class="feature-icon"><img src="/static/icons/layout.svg" alt="" width="28" height="28"></span>
       <h3 data-i18n="product.f6_title">{{ t("product.f6_title", lang) }}</h3>
       <p data-i18n="product.f6_desc">{{ t("product.f6_desc", lang) }}</p>
     </div>
@@ -86,7 +92,15 @@
 </section>
 
 <section class="landing-section pwa-preview">
+  <div class="download-icon"><img src="/static/math-icon.svg" alt="" width="64" height="64"></div>
   <h2 data-i18n="product.pwa_title">{{ t("product.pwa_title", lang) }}</h2>
-  <p data-i18n="product.pwa_desc">{{ t("product.pwa_desc", lang) }}</p>
+  <p class="download-subtitle" data-i18n="product.pwa_desc">{{ t("product.pwa_desc", lang) }}</p>
+  <div class="download-meta">
+    <span class="meta-badge" data-i18n="product.hero_badge">{{ t("product.hero_badge", lang) }}</span>
+  </div>
+  <div class="actions">
+    <a class="btn btn-download" href="/" data-i18n="product.pwa_install">{{ t("product.pwa_install", lang) }}</a>
+  </div>
+  <p class="download-version">kidsmath v{{ version }}</p>
 </section>
 {% endblock %}

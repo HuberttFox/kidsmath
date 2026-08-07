@@ -445,6 +445,11 @@ def test_product_page():
     assert 'class="feature-card' in r.text
     assert "coming-soon" in r.text
     assert 'href="/"' in r.text  # CTA
+    assert r.text.count('class="feature-icon"') == 6
+    for icon in ("print", "theme", "language"):
+        assert f"/static/icons/{icon}.svg" in r.text
+    assert 'class="btn btn-download"' in r.text
+    assert 'class="download-version"' in r.text
 
 
 def test_pwa_assets():
