@@ -8,7 +8,7 @@ import sys
 import zipfile
 from urllib.parse import urlencode
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -49,6 +49,16 @@ class UserAndCSRFMiddleware(BaseHTTPMiddleware):
 app = FastAPI(title="mathgen")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 app.add_middleware(UserAndCSRFMiddleware)
+
+
+def current_user(request: Request) -> dict | None:
+    token = request.cookies.get(auth.COOKIE_NAME)
+    if not token:
+        return None
+    try:
+        return db_mod.get_user_by_token_hash(hashlib.sha256(token.encode()).hexdigest())
+    except Exception:
+        return None
 templates = Jinja2Templates(directory=BASE / "templates")
 templates.env.globals["t"] = t
 
@@ -321,11 +331,29 @@ async def user_page(request: Request):
         "app_mode": _app_mode(request)})
 
 
+@app.get("/member/errors", response_class=HTMLResponse)
+async def member_errors(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
+    lang = _lang(request)
+    return templates.TemplateResponse(request, "placeholder.html", {
+        "lang": lang, "ui_json": _UI_JSON, "title": t("member.errors", lang),
+        "title_key": "member.errors", "cards": [], "app_mode": _app_mode(request)})
+
+
+@app.get("/member/review", response_class=HTMLResponse)
+async def member_review(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
+    lang = _lang(request)
+    return templates.TemplateResponse(request, "placeholder.html", {
+        "lang": lang, "ui_json": _UI_JSON, "title": t("member.review", lang),
+        "title_key": "member.review", "cards": [], "app_mode": _app_mode(request)})
+
+
 @app.get("/member")
 @app.get("/member/timer")
 @app.get("/member/pomodoro")
-@app.get("/member/errors")
-@app.get("/member/review")
 async def placeholder_page(request: Request):
     lang = _lang(request)
     title_key, cards = PLACEHOLDER_PAGES[request.url.path]
