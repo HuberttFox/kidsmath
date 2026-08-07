@@ -45,7 +45,13 @@ class UserAndCSRFMiddleware(BaseHTTPMiddleware):
                 if urlparse(origin).hostname != request.url.hostname:
                     from fastapi.responses import PlainTextResponse
                     return PlainTextResponse("请求来源不合法", status_code=403)
-        return await call_next(request)
+        response = await call_next(request)
+        if request.query_params.get("embed") and response.status_code == 302:
+            loc = response.headers.get("location", "")
+            if loc and loc.startswith("/") and "embed=1" not in loc:
+                sep = "&" if "?" in loc else "?"
+                response.headers["location"] = f"{loc}{sep}embed=1"
+        return response
 
 
 app = FastAPI(title="Kids Math")
@@ -232,7 +238,7 @@ async def api_saved(request: Request):
         cfg = _config_from_form(data)
         resolve(cfg)
     except ConfigError as e:
-        return templates.TemplateResponse(request, "index.html",
+        return templates.TemplateResponse(request, "form.html",
             _index_context(dict(form), error_text(e.code, e.params, lang), lang, _app_mode(request)))
     db_mod.add_saved(user["id"], name, _snapshot_json(cfg))
     return RedirectResponse("/user/saved", status_code=302)
@@ -283,7 +289,7 @@ async def config_import(request: Request):
     form = await request.form()
     file = form.get("file")
     if file is None or not file.filename:
-        return templates.TemplateResponse(request, "index.html",
+        return templates.TemplateResponse(request, "form.html",
             _index_context({}, t("config.import_format", lang), lang, _app_mode(request)))
     raw = await file.read()
     try:
@@ -294,7 +300,7 @@ async def config_import(request: Request):
         resolve(cfg)
     except (ValueError, ConfigError, UnicodeDecodeError) as e:
         msg = str(e)
-        return templates.TemplateResponse(request, "index.html",
+        return templates.TemplateResponse(request, "form.html",
             _index_context({}, t("config.import_error", lang, err=msg), lang, _app_mode(request)))
     return _redirect_to_config({k: v for k, v in _as_query(cfg).items() if k != "seed"})
 
@@ -979,6 +985,11 @@ async def api_me(request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
+    if request.query_params.get("embed"):
+        lang = _lang(request)
+        form = {k: v for k, v in request.query_params.items() if k != "embed"}
+        return templates.TemplateResponse(request, "form.html",
+            _index_context(form, None, lang, _app_mode(request)))
     lang = _lang(request)
     form = {k: v for k, v in request.query_params.items()}
     return templates.TemplateResponse(
@@ -1011,13 +1022,13 @@ async def generate_page(request: Request):
         cfg = _config_from_form(form)
     except ConfigError as e:
         return templates.TemplateResponse(
-            request, "index.html",
+            request, "form.html",
             _index_context(form, error_text(e.code, e.params, lang), lang, _app_mode(request)))
     try:
         resolved = resolve(cfg)
     except ConfigError as e:
         return templates.TemplateResponse(
-            request, "index.html",
+            request, "form.html",
             _index_context(form, error_text(e.code, e.params, lang), lang, _app_mode(request)))
     if cfg.seed is None:
         cfg.seed = resolved.seed
@@ -1026,7 +1037,7 @@ async def generate_page(request: Request):
         questions = generate(resolved)
     except GenerationError as e:
         return templates.TemplateResponse(
-            request, "index.html",
+            request, "form.html",
             _index_context(form, error_text(e.code, e.params, lang), lang, _app_mode(request)))
     preview = render_text(questions, resolved)
     query = "&".join(f"{k}={v}" for k, v in _as_query(cfg).items())

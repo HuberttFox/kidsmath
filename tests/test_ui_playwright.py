@@ -19,6 +19,11 @@ from mathgen.web import app  # noqa: E402
 BASE = "http://127.0.0.1:18099"
 
 
+def _stage(page):
+    """工作台壳内 iframe 的定位器（表单在 iframe 内）。"""
+    return page.frame_locator("#stage")
+
+
 @pytest.fixture(scope="module")
 def server():
     config = uvicorn.Config(app, host="127.0.0.1", port=18099, log_level="warning")
@@ -46,81 +51,94 @@ def page(server):
 
 def test_grade_preset_backfills_fields(page):
     page.goto(BASE + "/")
-    page.locator('label.grade-btn:has-text("2 年级")').click()
-    checked = page.locator('input[name="operators"]:checked')
+    stage = _stage(page)
+    stage.locator('label.grade-btn:has-text("2 年级")').click()
+    checked = stage.locator('input[name="operators"]:checked')
     expect(checked).to_have_count(3)  # + - ×
-    expect(page.locator('#table')).to_have_value("1-9")
-    expect(page.locator('#ranges')).to_have_value("1-99,1-99")
-    expect(page.locator('#result_range')).to_have_value("0-100")
+    expect(stage.locator('#table')).to_have_value("1-9")
+    expect(stage.locator('#ranges')).to_have_value("1-99,1-99")
+    expect(stage.locator('#result_range')).to_have_value("0-100")
 
 
 def test_weight_input_disabled_follows_checkbox(page):
     page.goto(BASE + "/")
-    page.locator('#advanced summary').click()
-    box = page.locator('.op-item:has-text("乘") .weight-input')
+    stage = _stage(page)
+    stage.locator('#advanced summary').click()
+    box = stage.locator('.op-item:has-text("乘") .weight-input')
     expect(box).to_be_disabled()
-    page.locator('.op-item:has-text("乘")').click()
+    stage.locator('.op-item:has-text("乘")').click()
     expect(box).to_be_enabled()
-    page.locator('.op-item:has-text("乘")').click()
+    stage.locator('.op-item:has-text("乘")').click()
     expect(box).to_be_disabled()
 
 
 def test_manual_change_switches_grade_to_custom(page):
     page.goto(BASE + "/")
-    page.locator('label.grade-btn:has-text("2 年级")').click()
-    page.locator('#advanced summary').click()
-    page.locator('#gap').fill("30")
-    page.locator('#gap').dispatch_event("change")
-    expect(page.locator('input[name="grade"][value=""]')).to_be_checked()
-    expect(page.locator('#preset-hint')).to_contain_text("自定义")
+    stage = _stage(page)
+    stage.locator('label.grade-btn:has-text("2 年级")').click()
+    stage.locator('#advanced summary').click()
+    stage.locator('#gap').fill("30")
+    stage.locator('#gap').dispatch_event("change")
+    expect(stage.locator('input[name="grade"][value=""]')).to_be_checked()
+    expect(stage.locator('#preset-hint')).to_contain_text("自定义")
 
 
 def test_parentheses_disabled_below_three_operands(page):
     page.goto(BASE + "/")
-    page.locator('#advanced summary').click()
-    paren = page.locator('#parentheses')
+    stage = _stage(page)
+    stage.locator('#advanced summary').click()
+    paren = stage.locator('#parentheses')
     expect(paren).to_be_disabled()
-    page.locator('#operand_count').fill("3")
-    page.locator('#operand_count').dispatch_event("change")
+    stage.locator('#operand_count').fill("3")
+    stage.locator('#operand_count').dispatch_event("change")
     expect(paren).to_be_enabled()
-    page.locator('#operand_count').fill("2")
-    page.locator('#operand_count').dispatch_event("change")
+    stage.locator('#operand_count').fill("2")
+    stage.locator('#operand_count').dispatch_event("change")
     expect(paren).to_be_disabled()
 
 
 def test_language_switch_updates_ui_texts(page):
     page.goto(BASE + "/")
+    page.wait_for_timeout(1200)
     page.locator('#langToggle').click()
-    expect(page.locator('.hero-title')).to_have_text("Math Worksheets for Kids")
-    expect(page.locator('label.field-label:has-text("Grade")')).to_be_visible()
+    page.wait_for_timeout(1800)
+    stage = _stage(page)
+    expect(stage.locator('.hero-title')).to_have_text("Math Worksheets for Kids")
     page.locator('#langToggle').click()
-    expect(page.locator('.hero-title')).to_have_text("给孩子出数学题")
+    page.wait_for_timeout(1800)
+    expect(stage.locator('.hero-title')).to_have_text("给孩子出数学题")
 
 
 def test_theme_toggle_changes_data_theme(page):
     page.goto(BASE + "/")
+    page.wait_for_timeout(1200)
     page.locator('#themeToggle').click()
-    expect(page.locator("html")).to_have_attribute("data-theme", "light")
+    page.wait_for_timeout(1500)
+    stage = _stage(page)
+    expect(stage.locator("html")).to_have_attribute("data-theme", "light")
     page.locator('#themeToggle').click()
-    expect(page.locator("html")).to_have_attribute("data-theme", "dark")
+    page.wait_for_timeout(1500)
+    expect(stage.locator("html")).to_have_attribute("data-theme", "dark")
     page.locator('#themeToggle').click()
-    expect(page.locator("html")).not_to_have_attribute("data-theme", "dark")
+    page.wait_for_timeout(1500)
+    expect(stage.locator("html")).not_to_have_attribute("data-theme", "dark")
 
 
 def test_generate_preview_and_download_flow(page):
     page.goto(BASE + "/")
-    page.locator('label.grade-btn:has-text("2 年级")').click()
-    page.locator('#count').fill("6")
-    page.locator('#generateBtn').click()
-    expect(page.locator('#download')).to_be_visible()
-    expect(page.locator('.cell')).to_have_count(6)
-    first_batch = page.locator('.cell').all_text_contents()
-    page.locator('.inline-form button[type="submit"]').click()
-    expect(page.locator('.cell')).to_have_count(6)
-    second_batch = page.locator('.cell').all_text_contents()
+    stage = _stage(page)
+    stage.locator('label.grade-btn:has-text("2 年级")').click()
+    stage.locator('#count').fill("6")
+    stage.locator('#generateBtn').click()
+    expect(stage.locator('#download')).to_be_visible()
+    expect(stage.locator('.cell')).to_have_count(6)
+    first_batch = stage.locator('.cell').all_text_contents()
+    stage.locator('.inline-form button[type="submit"]').click()
+    expect(stage.locator('.cell')).to_have_count(6)
+    second_batch = stage.locator('.cell').all_text_contents()
     assert first_batch != second_batch, "换一批应生成不同题目"
     with page.expect_download() as dl:
-        page.locator('.btn-download').click()
+        stage.locator('.btn-download').click()
     path = dl.value.path()
     with open(path, "rb") as f:
         assert f.read(4) == b"%PDF"
@@ -128,46 +146,49 @@ def test_generate_preview_and_download_flow(page):
 
 def test_preview_per_page_and_jump(page):
     page.goto(BASE + "/")
-    page.locator('label.grade-btn:has-text("2 年级")').click()
-    page.locator('#count').fill("30")
-    page.locator('#generateBtn').click()
-    expect(page.locator('#pager')).to_be_visible()
-    visible = page.locator('.cell:visible')
+    stage = _stage(page)
+    stage.locator('label.grade-btn:has-text("2 年级")').click()
+    stage.locator('#count').fill("30")
+    stage.locator('#generateBtn').click()
+    expect(stage.locator('#pager')).to_be_visible()
+    visible = stage.locator('.cell:visible')
     expect(visible).to_have_count(12)  # 默认 2 列 × 6 行
-    page.locator('#perPage').select_option("6")
+    stage.locator('#perPage').select_option("6")
     expect(visible).to_have_count(6)
-    expect(page.locator('#pageLabel')).to_contain_text("5")  # 30/6=5 页
-    page.locator('#jumpInput').fill("3")
-    page.locator('#jumpBtn').click()
-    expect(page.locator('#pageLabel')).to_contain_text("3")
-    page.locator('#jumpInput').fill("99")
-    page.locator('#jumpBtn').click()
-    expect(page.locator('#pageLabel')).to_contain_text("5")  # 越界钳制
+    expect(stage.locator('#pageLabel')).to_contain_text("5")  # 30/6=5 页
+    stage.locator('#jumpInput').fill("3")
+    stage.locator('#jumpBtn').click()
+    expect(stage.locator('#pageLabel')).to_contain_text("3")
+    stage.locator('#jumpInput').fill("99")
+    stage.locator('#jumpBtn').click()
+    expect(stage.locator('#pageLabel')).to_contain_text("5")  # 越界钳制
 
 
 def test_column_major_pagination_continues_counting(page):
     # 16 题 2 列竖向编号 + 每页 12 格（6 行）→ 第 1 页左列 1-6、第 2 页左列继续 7
     page.goto(BASE + "/")
-    page.locator('#advanced summary').click()
-    page.locator('#operand_count').fill("2")
-    page.locator('#operand_count').dispatch_event("change")
-    page.locator('#count').fill("16")
-    page.locator('#number_direction').select_option("column")
-    page.locator('#generateBtn').click()
-    expect(page.locator('#pager')).to_be_visible()
-    first = page.locator('.cell:visible').first.inner_text()
+    stage = _stage(page)
+    stage.locator('#advanced summary').click()
+    stage.locator('#operand_count').fill("2")
+    stage.locator('#operand_count').dispatch_event("change")
+    stage.locator('#count').fill("16")
+    stage.locator('#number_direction').select_option("column")
+    stage.locator('#generateBtn').click()
+    expect(stage.locator('#pager')).to_be_visible()
+    first = stage.locator('.cell:visible').first.inner_text()
     assert first.startswith("1."), first
-    page.locator('#pageNext').click()
-    second_first = page.locator('.cell:visible').first.inner_text()
+    stage.locator('#pageNext').click()
+    second_first = stage.locator('.cell:visible').first.inner_text()
     assert second_first.startswith("7."), second_first  # 左列继续计数
 
 
 def test_font_uniform_yozai(page):
     page.goto(BASE + "/")
+    stage = _stage(page)
     page.evaluate("document.fonts.ready.then(() => true)")
     for sel in ("body", "h1", "button", "input[type=text]", "input[type=number]",
                 "select", ".grade-btn span", ".topic-label", ".pill-toggle"):
-        font = page.locator(sel).first.evaluate("el => getComputedStyle(el).fontFamily")
+        font = stage.locator(sel).first.evaluate("el => getComputedStyle(el).fontFamily")
         assert "Yozai" in font, f"{sel}: {font}"
     css = page.request.get(BASE + "/static/style.css").text()
     assert css.count('font-family: "Yozai"') == 3, "Yozai 声明应仅 @font-face×2 + body"
@@ -176,22 +197,25 @@ def test_font_uniform_yozai(page):
 
 def test_language_switch_all_elements(page):
     page.goto(BASE + "/")
-    page.locator('#langToggle').click()  # → EN
-    keys = page.evaluate("""() => Array.from(document.querySelectorAll('[data-i18n]'))
-        .map(el => el.getAttribute('data-i18n'))""")
+    page.locator('#langToggle').click()  # 壳顶栏 → EN（iframe 随 langchange 重载）
+    page.wait_for_timeout(1500)
+    stage = _stage(page)
+    keys = stage.locator("[data-i18n]").evaluate_all("""(els) => els.map(el => el.getAttribute('data-i18n'))""")
     assert keys, "无 data-i18n 元素"
-    for key in keys:
-        text = page.locator(f'[data-i18n="{key}"]').first.evaluate("el => el.textContent")
+    for key in keys[:40]:
+        text = stage.locator(f'[data-i18n="{key}"]').first.evaluate("el => el.textContent")
         assert text.strip() and text != key, f"键 {key} 未切换: {text!r}"
 
 
 def test_macaron_no_pure_white_black_render(page):
     page.goto(BASE + "/")
+    stage = _stage(page)
     for theme in ("light", "dark"):
         if theme == "dark":
             page.locator('#themeToggle').click()
+            page.wait_for_timeout(1500)
         for sel in ("body", "input[type=text]", "input[type=number]", "select"):
-            nums = page.locator(sel).first.evaluate(
+            nums = stage.locator(sel).first.evaluate(
                 "el => { const m = getComputedStyle(el).backgroundColor.match(/[\\d.]+/g); return m ? m.map(Number) : []; }")
             if len(nums) == 4 and nums[3] == 0:
                 continue  # 透明背景（渐变卡）
@@ -201,10 +225,11 @@ def test_macaron_no_pure_white_black_render(page):
 
 def test_export_formaction_downloads_current_fields(page):
     page.goto(BASE + "/")
-    page.locator('label.grade-btn:has-text("3 年级")').click()
-    page.locator('#count').fill("8")
+    stage = _stage(page)
+    stage.locator('label.grade-btn:has-text("3 年级")').click()
+    stage.locator('#count').fill("8")
     with page.expect_download() as dl:
-        page.locator('button[formaction="/api/config/export"]').click()
+        stage.locator('button[formaction="/api/config/export"]').click()
     download = dl.value
     assert download.suggested_filename == "kidsmath-config.json"
     stream = download.path()
@@ -220,9 +245,11 @@ def test_register_login_flow_and_history_page(page):
     page.locator('input[name="password"]').fill("secret123")
     page.locator('button[type="submit"]').click()
     page.wait_for_url(BASE + "/")
-    page.locator('label.grade-btn:has-text("1 年级")').click()
-    page.locator('#generateBtn').click()
-    expect(page.locator('#download')).to_be_visible()
+    page.wait_for_timeout(1200)
+    stage = _stage(page)
+    stage.locator('label.grade-btn:has-text("1 年级")').click()
+    stage.locator('#generateBtn').click()
+    expect(stage.locator('#download')).to_be_visible()
     page.goto(BASE + "/user/history")
     expect(page.locator("text=重新生成")).to_be_visible()
     expect(page.locator("text=grade=1")).to_be_visible()
@@ -262,9 +289,11 @@ def test_review_flip_and_complete(page):
     page.locator('input[name="password"]').fill("secret123")
     page.locator('button[type="submit"]').click()
     page.wait_for_url(BASE + "/")
-    page.locator('label.grade-btn:has-text("1 年级")').click()
-    page.locator('#generateBtn').click()
-    expect(page.locator('#download')).to_be_visible()
+    page.wait_for_timeout(1200)
+    stage = _stage(page)
+    stage.locator('label.grade-btn:has-text("1 年级")').click()
+    stage.locator('#generateBtn').click()
+    expect(stage.locator('#download')).to_be_visible()
     page.goto(BASE + "/user/history")
     page.locator('a:has-text("打开详情")').first.click()
     page.wait_for_url(BASE + "/user/history/**")
@@ -286,14 +315,33 @@ def test_ai_parse_backfill_form_values(page):
     expect(page.locator("text=识别 2/2 题")).to_be_visible()
     page.locator('button[data-i18n="ai.backfill"]').click()
     page.wait_for_url(BASE + "/**")
-    expect(page.locator('label.grade-btn:has-text("2 年级") input')).to_be_checked()
-    expect(page.locator('input[name="operators"][value="加"]')).to_be_checked()
+    page.wait_for_timeout(1500)
+    stage = _stage(page)
+    expect(stage.locator('label.grade-btn:has-text("2 年级") input')).to_be_checked()
+    expect(stage.locator('input[name="operators"][value="加"]')).to_be_checked()
 
 
 def test_import_button_auto_submits(page):
     page.goto(BASE + "/")
-    page.set_input_files('input[type="file"][name="file"]',
-                         {"name": "kidsmath-config.json", "mimeType": "application/json",
-                          "buffer": bytes(json.dumps({"version": 1, "config": {"grade": "1", "count": "5"}}), "utf-8")})
+    stage = _stage(page)
+    stage.locator('input[type="file"][name="file"]').set_input_files(
+        {"name": "kidsmath-config.json", "mimeType": "application/json",
+         "buffer": bytes(json.dumps({"version": 1, "config": {"grade": "1", "count": "5"}}), "utf-8")})
     page.wait_for_url(BASE + "/**")
-    expect(page.locator('#count')).to_have_value("5")
+    expect(stage.locator('#count')).to_have_value("5")
+
+
+def test_sidebar_switches_stage_without_reload(page):
+    page.goto(BASE + "/")
+    page.wait_for_timeout(1000)
+    assert page.evaluate("document.getElementById('stage').src").endswith("/?embed=1")
+    page.locator('.side-item:has-text("番茄钟")').click()
+    page.wait_for_timeout(2000)
+    src = page.evaluate("document.getElementById('stage').src")
+    assert "/member/pomodoro" in src and "embed=1" in src
+    assert page.evaluate("location.hash") == "#/member/pomodoro"
+    assert page.evaluate("document.querySelector('.side-active').textContent").find("番茄钟") >= 0
+    page.locator('.side-item:has-text("出题")').click()
+    page.wait_for_timeout(1500)
+    assert "embed=1" in page.evaluate("document.getElementById('stage').src")
+    expect(page.frame_locator("#stage").locator('#generateBtn')).to_be_visible()

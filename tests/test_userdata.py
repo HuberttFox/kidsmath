@@ -63,7 +63,7 @@ def test_history_db_failure_does_not_break_generate(monkeypatch):
 
 def test_save_from_main_form():
     _login()
-    r = client.get("/")
+    r = client.get("/?embed=1")
     assert 'formaction="/api/saved"' in r.text  # 主表单保存按钮
     r2 = client.post("/api/saved", data={"grade": "2", "count": "3", "name": "卷A"},
                      follow_redirects=False)
@@ -72,7 +72,7 @@ def test_save_from_main_form():
 
 
 def test_import_single_button_auto_submit():
-    r = client.get("/")
+    r = client.get("/?embed=1")
     assert 'import-btn' in r.text
     assert 'accept="application/json,.json"' in r.text
     assert 'onchange="this.form.submit()"' in r.text

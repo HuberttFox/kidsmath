@@ -42,275 +42,108 @@
     <a class="side-item" href="/member/ai">
       <span class="side-dot" aria-hidden="true"></span><span data-i18n="ai.title">{{ t("ai.title", lang) }}</span>
     </a>
+    {% if request.state.user %}
+    <a class="side-item" href="/user">
+      <span class="side-dot" aria-hidden="true"></span><span data-i18n="user.title">{{ t("user.title", lang) }}</span>
+    </a>
+    {% endif %}
   </nav>
 </aside>
 <div class="side-backdrop" id="sideBackdrop" hidden></div>
 <div class="workbench-main">
-<section class="hero">
-  <div class="hero-badge" data-i18n="hero.badge">{{ t("hero.badge", lang) }}</div>
-  <h1 class="hero-title" data-i18n="hero.title">{{ t("hero.title", lang) }}</h1>
-  <p class="hero-tagline" data-i18n="hero.tagline">{{ t("hero.tagline", lang) }}</p>
-</section>
-
-{% if error %}<p class="error" role="alert">{{ error }}</p>{% endif %}
-
-<form method="post" action="/generate" class="sheet-form" id="form">
-  <input type="hidden" name="lang" value="{{ lang }}">
-  <fieldset class="card card-mint">
-    <legend><span class="legend-icon icon-mint" aria-hidden="true"><img src="/static/icons/settings.svg" alt="" width="20" height="20"></span><span data-i18n="f.base">{{ t("f.base", lang) }}</span></legend>
-    <div class="form-grid">
-      <div class="field-group">
-        <label class="field-label" for="grade">
-          <span data-i18n="f.grade">{{ t("f.grade", lang) }}</span>{{ tip("tip.grade") }}
-        </label>
-        <div class="grade-group" id="grade" role="radiogroup" aria-label="{{ t('f.grade', lang) }}">
-          {% for value, label in grades %}
-          <label class="grade-btn">
-            <input type="radio" name="grade" value="{{ value }}"{% if form.get("grade", "") == value %} checked{% endif %}>
-            {% if value %}<span data-i18n="grade.x" data-i18n-params='{"g": "{{ value }}"}'>{{ label }}</span>
-            {% else %}<span data-i18n="grade.custom">{{ label }}</span>{% endif %}
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-      <div class="field-group">
-        <label class="field-label" for="topic">
-          <span data-i18n="f.topic">{{ t("f.topic", lang) }}</span>{{ tip("tip.topic") }}
-        </label>
-        <div class="topic-group" id="topic" role="radiogroup" aria-label="{{ t('f.topic', lang) }}">
-          {% for value, label in topics %}
-          <label class="topic-card">
-            <input type="radio" name="topic" value="{{ value }}"{% if form.get("topic", "arithmetic") == value %} checked{% endif %}>
-            <span class="topic-icon">{{ topic_icons[value] }}</span>
-            <span class="topic-label" data-i18n="{{ topic_keys[value] }}">{{ label }}</span>
-          </label>
-          {% endfor %}
-        </div>
-      </div>
-      <label class="field-group" for="count">
-        <span class="field-label" data-i18n="f.count">{{ t("f.count", lang) }}</span>
-        {{ input("count", form, "20", "number", min="1") }}
-      </label>
-    </div>
-  </fieldset>
-
-  <details id="advanced">
-    <summary><span data-i18n="f.advanced">{{ t("f.advanced", lang) }}</span></summary>
-    <fieldset class="card card-pink">
-      <legend><span class="legend-icon icon-pink" aria-hidden="true"><img src="/static/icons/calculator.svg" alt="" width="20" height="20"></span><span data-i18n="f.numeric">{{ t("f.numeric", lang) }}</span></legend>
-      <div class="form-grid">
-        <div class="field-group">
-          <span class="field-label">
-            <span data-i18n="f.operators">{{ t("f.operators", lang) }}</span>{{ tip("tip.operators") }}{{ tip("tip.weights") }}
-          </span>
-          <div class="op-checkboxes" id="operators">
-            {% for op in ["加", "减", "乘", "除"] %}
-            <label class="op-item">
-              <input type="checkbox" name="operators" value="{{ op }}"{% if op in form.get("operators", "") %} checked{% endif %}>
-              <span>{{ op }}</span>
-              <input class="weight-input" type="number" name="w_{{ op }}" min="0"
-                     value="{{ form.get('w_' + op, '') }}" aria-label="{{ op }}"
-                     {% if op not in form.get("operators", "") %}disabled{% endif %}>
-            </label>
-            {% endfor %}
-          </div>
-          <small class="hint" data-i18n="hint.operators">{{ t("hint.operators", lang) }}</small>
-        </div>
-        <label class="field-group" for="operand_count">
-          <span class="field-label">
-            <span data-i18n="f.operand_count">{{ t("f.operand_count", lang) }}</span>{{ tip("tip.operand_count") }}
-          </span>
-          {{ input("operand_count", form, "2", "number", min="2", max="4") }}
-        </label>
-        <div class="field-group">
-          <label class="toggle-line" for="parentheses">
-            <input id="parentheses" type="checkbox" name="parentheses" value="1"{% if form.get("parentheses") %} checked{% endif %}{% if form.get("operand_count", "2")|int < 3 %} disabled{% endif %}>
-            <span data-i18n="f.parentheses">{{ t("f.parentheses", lang) }}</span>{{ tip("tip.parentheses") }}
-          </label>
-        </div>
-        <label class="field-group" for="paren_weight">
-          <span class="field-label">
-            <span data-i18n="f.paren_weight">{{ t("f.paren_weight", lang) }}</span>{{ tip("tip.paren_weight") }}
-          </span>
-          {{ input("paren_weight", form, "5", "number", min="1", max="10") }}
-        </label>
-        <label class="field-group" for="ranges">
-          <span class="field-label">
-            <span data-i18n="f.ranges">{{ t("f.ranges", lang) }}</span>{{ tip("tip.ranges") }}
-          </span>
-          {{ input("ranges", form, placeholder="10-99,2-9") }}
-          <small class="hint" data-i18n="hint.ranges">{{ t("hint.ranges", lang) }}</small>
-        </label>
-        <label class="field-group" for="result_range">
-          <span class="field-label">
-            <span data-i18n="f.result_range">{{ t("f.result_range", lang) }}</span>{{ tip("tip.result_range") }}
-          </span>
-          {{ input("result_range", form, placeholder="0-100") }}
-        </label>
-        <label class="field-group" for="carry">
-          <span class="field-label">
-            <span data-i18n="f.carry">{{ t("f.carry", lang) }}</span>{{ tip("tip.carry") }}
-          </span>
-          <select id="carry" name="carry">
-            <option value=""{% if form.get("carry", "") == "" %} selected{% endif %} data-i18n="opt.any">{{ t("opt.any", lang) }}</option>
-            <option value="yes"{% if form.get("carry") == "yes" %} selected{% endif %} data-i18n="opt.carry_yes">{{ t("opt.carry_yes", lang) }}</option>
-            <option value="no"{% if form.get("carry") == "no" %} selected{% endif %} data-i18n="opt.carry_no">{{ t("opt.carry_no", lang) }}</option>
-          </select>
-        </label>
-        <label class="field-group" for="borrow">
-          <span class="field-label">
-            <span data-i18n="f.borrow">{{ t("f.borrow", lang) }}</span>{{ tip("tip.borrow") }}
-          </span>
-          <select id="borrow" name="borrow">
-            <option value=""{% if form.get("borrow", "") == "" %} selected{% endif %} data-i18n="opt.any">{{ t("opt.any", lang) }}</option>
-            <option value="yes"{% if form.get("borrow") == "yes" %} selected{% endif %} data-i18n="opt.borrow_yes">{{ t("opt.borrow_yes", lang) }}</option>
-            <option value="no"{% if form.get("borrow") == "no" %} selected{% endif %} data-i18n="opt.borrow_no">{{ t("opt.borrow_no", lang) }}</option>
-          </select>
-        </label>
-        <label class="field-group" for="divisor_range">
-          <span class="field-label">
-            <span data-i18n="f.divisor_range">{{ t("f.divisor_range", lang) }}</span>{{ tip("tip.divisor_range") }}
-          </span>
-          {{ input("divisor_range", form, placeholder="2-9") }}
-        </label>
-        <label class="field-group" for="dividend_range">
-          <span class="field-label">
-            <span data-i18n="f.dividend_range">{{ t("f.dividend_range", lang) }}</span>{{ tip("tip.dividend_range") }}
-          </span>
-          {{ input("dividend_range", form, placeholder="10-99") }}
-        </label>
-        <div class="field-group">
-          <label class="toggle-line" for="remainder">{{ checkbox("remainder", form) }}<span data-i18n="f.remainder">{{ t("f.remainder", lang) }}</span>{{ tip("tip.remainder") }}</label>
-        </div>
-        <label class="field-group" for="table">
-          <span class="field-label">
-            <span data-i18n="f.table">{{ t("f.table", lang) }}</span>{{ tip("tip.table") }}
-          </span>
-          {{ input("table", form, placeholder="1-9") }}
-        </label>
-        <label class="field-group" for="left_factor_range">
-          <span class="field-label">
-            <span data-i18n="f.left_factor">{{ t("f.left_factor", lang) }}</span>{{ tip("tip.left_factor") }}
-          </span>
-          {{ input("left_factor_range", form, placeholder="10-99") }}
-        </label>
-        <label class="field-group" for="right_factor_range">
-          <span class="field-label">
-            <span data-i18n="f.right_factor">{{ t("f.right_factor", lang) }}</span>{{ tip("tip.right_factor") }}
-          </span>
-          {{ input("right_factor_range", form, placeholder="2-9") }}
-        </label>
-      </div>
-    </fieldset>
-    <fieldset class="card card-yellow">
-      <legend><span class="legend-icon icon-yellow" aria-hidden="true"><img src="/static/icons/layout.svg" alt="" width="20" height="20"></span><span data-i18n="f.layout">{{ t("f.layout", lang) }}</span></legend>
-      <div class="form-grid">
-        <label class="field-group" for="columns">
-          <span class="field-label">
-            <span data-i18n="f.columns">{{ t("f.columns", lang) }}</span>{{ tip("tip.columns") }}
-          </span>
-          <select id="columns" name="columns">
-            <option value="1"{% if form.get("columns", "2") == "1" %} selected{% endif %}>1</option>
-            <option value="2"{% if form.get("columns", "2") == "2" %} selected{% endif %}>2</option>
-            <option value="3"{% if form.get("columns", "2") == "3" %} selected{% endif %}>3</option>
-          </select>
-        </label>
-        <label class="field-group" for="gap">
-          <span class="field-label">
-            <span data-i18n="f.gap">{{ t("f.gap", lang) }}</span>{{ tip("tip.gap") }}
-          </span>
-          {{ input("gap", form, "16", "number", min="0") }}
-        </label>
-        <label class="field-group" for="answer_lines">
-          <span class="field-label">
-            <span data-i18n="f.answer_lines">{{ t("f.answer_lines", lang) }}</span>{{ tip("tip.answer_lines") }}
-          </span>
-          {{ input("answer_lines", form, "0", "number", min="0") }}
-        </label>
-        <label class="field-group" for="answer_page">
-          <span class="field-label">
-            <span data-i18n="f.answer_page">{{ t("f.answer_page", lang) }}</span>{{ tip("tip.answer_page") }}
-          </span>
-          <select id="answer_page" name="answer_page">
-            <option value="on"{% if form.get("answer_page", "on") == "on" %} selected{% endif %} data-i18n="opt.yes">{{ t("opt.yes", lang) }}</option>
-            <option value="off"{% if form.get("answer_page", "on") == "off" %} selected{% endif %} data-i18n="opt.no">{{ t("opt.no", lang) }}</option>
-          </select>
-        </label>
-        <div class="field-group">
-          <input type="hidden" name="show_numbers" value="0">
-          <label class="toggle-line" for="show_numbers">
-            <input id="show_numbers" type="checkbox" name="show_numbers" value="1"{% if form.get("show_numbers", "1") != "0" %} checked{% endif %}>
-            <span data-i18n="f.show_numbers">{{ t("f.show_numbers", lang) }}</span>{{ tip("tip.show_numbers") }}
-          </label>
-        </div>
-        <label class="field-group" for="number_direction">
-          <span class="field-label">
-            <span data-i18n="f.number_direction">{{ t("f.number_direction", lang) }}</span>{{ tip("tip.number_direction") }}
-          </span>
-          <select id="number_direction" name="number_direction">
-            <option value="row"{% if form.get("number_direction", "row") == "row" %} selected{% endif %} data-i18n="opt.row">{{ t("opt.row", lang) }}</option>
-            <option value="column"{% if form.get("number_direction", "row") == "column" %} selected{% endif %} data-i18n="opt.column">{{ t("opt.column", lang) }}</option>
-          </select>
-        </label>
-        <label class="field-group" for="title">
-          <span class="field-label">
-            <span data-i18n="f.title">{{ t("f.title", lang) }}</span>{{ tip("tip.title") }}
-          </span>
-          {{ input("title", form) }}
-        </label>
-        <label class="field-group" for="header">
-          <span class="field-label">
-            <span data-i18n="f.header">{{ t("f.header", lang) }}</span>{{ tip("tip.header") }}
-          </span>
-          {{ input("header", form) }}
-        </label>
-      </div>
-    </fieldset>
-    <fieldset class="card card-blue">
-      <legend><span class="legend-icon icon-blue" aria-hidden="true"><img src="/static/icons/batch.svg" alt="" width="20" height="20"></span><span data-i18n="f.batch">{{ t("f.batch", lang) }}</span></legend>
-      <div class="form-grid">
-        <label class="field-group" for="sheets">
-          <span class="field-label">
-            <span data-i18n="f.sheets">{{ t("f.sheets", lang) }}</span>{{ tip("tip.sheets") }}
-          </span>
-          {{ input("sheets", form, "1", "number", min="1") }}
-        </label>
-      </div>
-    </fieldset>
-  </details>
-
-  <p id="preset-hint" class="hint hint-box"></p>
-  <div class="actions">
-    <button type="submit" class="btn btn-big" id="generateBtn" data-i18n="btn.generate">{{ t("btn.generate", lang) }}</button>
-    <input type="text" name="name" placeholder="{{ t('saved.name', lang) }}" class="save-name">
-    <button type="submit" formaction="/api/saved" class="btn btn-secondary" data-i18n="saved.save">{{ t("saved.save", lang) }}</button>
-    <button type="submit" formaction="/api/config/export" class="btn btn-secondary" data-i18n="config.export">{{ t("config.export", lang) }}</button>
-    <label class="btn btn-secondary import-btn" form="import-form"
-           onclick="document.querySelector('#import-form input[type=file]').click()">
-      <span data-i18n="config.import">{{ t("config.import", lang) }}</span>
-    </label>
+  <div class="workbench-stage">
+    <iframe id="stage" name="stage" title="工作台"
+            src="/?embed=1" allow="autoplay"></iframe>
   </div>
-</form>
-  <form method="post" action="/api/config/import" id="import-form" enctype="multipart/form-data" hidden>
-    <input type="file" name="file" accept="application/json,.json"
-           onchange="this.form.submit()">
-  </form>
-</div>
 </div>
 <script>
   (function () {
     var rail = document.getElementById('sideRail');
     var toggle = document.getElementById('sideToggle');
     var backdrop = document.getElementById('sideBackdrop');
+    var stage = document.getElementById('stage');
+    var items = Array.prototype.slice.call(document.querySelectorAll('.side-item'));
+    var routes = {};
+
+    function hashPath() {
+      return (location.hash || '#/').replace(/^#/, '') || '/';
+    }
     function setOpen(open) {
       rail.classList.toggle('side-open', open);
       backdrop.hidden = !open;
       toggle.setAttribute('aria-expanded', String(open));
     }
+    function highlight(path) {
+      items.forEach(function (it) {
+        var h = it.getAttribute('data-path') || it.getAttribute('href');
+        it.classList.toggle('side-active', h === path);
+      });
+    }
+    items.forEach(function (it) {
+      var path = it.getAttribute('href');
+      it.setAttribute('data-path', path);
+      routes[path] = it;
+      it.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (stage.src.indexOf('?embed') === -1) {
+          stage.src = path + (path.indexOf('?') === -1 ? '?' : '&') + 'embed=1';
+        } else {
+          stage.src = path.split('?')[0] + '?embed=1';
+        }
+        location.hash = '#' + path;
+        highlight(path);
+        setOpen(false);
+      });
+    });
+    function injectEmbed(doc) {
+      if (!doc) return;
+      doc.querySelectorAll('a[href]').forEach(function (a) {
+        var href = a.getAttribute('href') || '';
+        if (href.startsWith('/') && href.indexOf('embed=1') === -1) {
+          a.setAttribute('href', href + (href.indexOf('?') === -1 ? '?' : '&') + 'embed=1');
+        }
+      });
+      doc.querySelectorAll('form').forEach(function (f) {
+        var action = f.getAttribute('action') || '';
+        if (action.startsWith('/') && action.indexOf('embed=1') === -1) {
+          f.setAttribute('action', action + (action.indexOf('?') === -1 ? '?' : '&') + 'embed=1');
+        }
+      });
+    }
+    stage.addEventListener('load', function () {
+      try {
+        injectEmbed(stage.contentDocument);
+        var p = stage.contentWindow.location.pathname;
+        var h = hashPath();
+        if (h === '/') highlight('/');
+        else if (routes[p]) highlight(p);
+      } catch (e) { /* 跨域不可读，忽略 */ }
+    });
+    window.addEventListener('hashchange', function () {
+      var h = hashPath();
+      if (routes[h]) {
+        stage.src = h + '?embed=1';
+        highlight(h);
+      }
+    });
+    if (hashPath() !== '/' && routes[hashPath()]) {
+      stage.src = hashPath() + '?embed=1';
+    }
+    var q = location.search;
+    if (q) {  // 外部 302 回填（AI/历史重生成）→ 透传给 iframe 表单
+      stage.src = '/' + q + (q.indexOf('embed') === -1 ? '&embed=1' : '');
+    }
+    highlight('/');
     toggle.addEventListener('click', function () {
       setOpen(!rail.classList.contains('side-open'));
     });
     backdrop.addEventListener('click', function () { setOpen(false); });
+    document.addEventListener('langchange', function () {
+      if (stage && stage.src) stage.src = stage.src;
+    });
+    document.addEventListener('themechange', function () {
+      if (stage && stage.src) stage.src = stage.src;
+    });
   })();
 </script>
 {% block scripts %}

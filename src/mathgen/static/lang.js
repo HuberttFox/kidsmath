@@ -75,6 +75,7 @@
     setCookie('mathgen_theme', theme);
     var label = document.getElementById('themeLabel');
     if (label) label.textContent = theme === 'auto' ? '🌓' : theme === 'light' ? '☀️' : '🌙';
+    document.dispatchEvent(new CustomEvent('themechange', { detail: { theme: theme } }));
   }
 
   var langBtn = document.getElementById('langToggle');

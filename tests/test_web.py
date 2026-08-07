@@ -135,7 +135,7 @@ def test_preview_shows_columns_grid():
 
 
 def test_index_has_semantic_structure():
-    r = client.get("/")
+    r = client.get("/?embed=1")
     assert '<fieldset' in r.text
     assert '<legend>' in r.text
     assert 'name="viewport"' in r.text
@@ -143,7 +143,7 @@ def test_index_has_semantic_structure():
 
 
 def test_index_round_font_and_hero():
-    r = client.get("/")
+    r = client.get("/?embed=1")
     assert "fonts.googleapis.com" not in r.text  # 已本地托管，无外链
     assert 'class="hero"' in r.text
     css = client.get("/static/style.css").text
@@ -163,7 +163,7 @@ def test_healthz_endpoint():
 
 
 def test_index_grade_and_topic_radio_groups():
-    r = client.get("/")
+    r = client.get("/?embed=1")
     html = r.text
     assert 'type="radio" name="grade"' in html
     assert 'type="radio" name="topic"' in html
@@ -181,7 +181,7 @@ def test_error_backfills_grade_topic_radios():
 
 
 def test_index_query_prefill():
-    r = client.get("/", params={"grade": "2", "count": "7", "topic": "vertical"})
+    r = client.get("/", params={"embed": "1", "grade": "2", "count": "7", "topic": "vertical"})
     assert r.status_code == 200
     html = r.text
     assert 'value="7"' in html
@@ -291,7 +291,7 @@ def test_refactor_download_cta_section():
 
 
 def test_refactor_index_hero_nav_footer():
-    r = client.get("/")
+    r = client.get("/?embed=1")
     html = r.text
     assert 'class="hero-badge"' in html
     assert 'id="form"' in html
@@ -322,7 +322,7 @@ def test_numbering_options_roundtrip():
 
 
 def test_index_has_numbering_form_controls():
-    r = client.get("/")
+    r = client.get("/?embed=1")
     html = r.text
     assert 'name="show_numbers"' in html
     assert 'name="number_direction"' in html
@@ -330,7 +330,7 @@ def test_index_has_numbering_form_controls():
 
 
 def test_weight_input_disabled_when_op_unchecked():
-    r = client.get("/")
+    r = client.get("/?embed=1")
     html = r.text
     assert 'name="w_加"' in html and "disabled" in html
     # 勾选后权重框可用（回显场景）
@@ -346,7 +346,7 @@ def test_weight_input_disabled_when_op_unchecked():
 
 
 def test_parentheses_disabled_below_three_operands():
-    r = client.get("/")
+    r = client.get("/?embed=1")
     assert 'name="parentheses"' in r.text
     r2 = client.post("/generate", data={"grade": "1", "count": "x", "operand_count": "2"})
     assert r2.status_code == 200
@@ -358,7 +358,7 @@ def test_parentheses_disabled_below_three_operands():
 
 
 def test_lang_swap_attributes_present():
-    r = client.get("/")
+    r = client.get("/?embed=1")
     html = r.text
     assert 'data-i18n="grade.x"' in html and 'data-i18n-params' in html
     assert 'data-i18n="grade.custom"' in html
@@ -417,7 +417,7 @@ def test_section_icons_exist_and_used():
         r = client.get(f"/static/icons/{name}.svg")
         assert r.status_code == 200, name
         assert r.text.startswith("<svg")
-    r2 = client.get("/")
+    r2 = client.get("/?embed=1")
     assert "/static/icons/settings.svg" in r2.text
     assert "/static/icons/calculator.svg" in r2.text
     assert "/static/icons/layout.svg" in r2.text
