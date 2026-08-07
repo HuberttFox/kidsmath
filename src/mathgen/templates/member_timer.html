@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ t("timer.title", lang) }} - mathgen{% endblock %}
+{% block content %}
+<section class="placeholder-hero">
+  <h1 class="placeholder-title" data-i18n="timer.title">{{ t("timer.title", lang) }}</h1>
+</section>
+<section class="review-card">
+  <p class="timer-display" id="timerDisplay">05:00</p>
+  <div class="actions">
+    <button class="btn" type="button" id="timerStart" data-i18n="timer.start" onclick="startTimer()">{{ t("timer.start", lang) }}</button>
+    <button class="btn btn-secondary" type="button" id="timerPause" data-i18n="timer.pause" onclick="window.Timer.pause()">{{ t("timer.pause", lang) }}</button>
+    <button class="btn btn-secondary" type="button" id="timerReset" data-i18n="timer.reset" onclick="resetTimer()">{{ t("timer.reset", lang) }}</button>
+  </div>
+</section>
+<script src="/static/timer.js"></script>
+<script src="/static/audio.js"></script>
+<script>
+(function () {
+  var DURATION = 5 * 60;
+  var display = document.getElementById('timerDisplay');
+  function fmt(sec) {
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+  }
+  window.startTimer = function () {
+    document.body.classList.remove('time-up');
+    window.Timer.start(DURATION);
+  };
+  window.resetTimer = function () {
+    window.Timer.reset();
+    display.textContent = fmt(DURATION);
+    document.body.classList.remove('time-up');
+  };
+  window.Timer.init(function (sec) { display.textContent = fmt(sec); },
+                   function () {
+                     document.body.classList.add('time-up');
+                     window.playChime();
+                   });
+})();
+</script>
+{% endblock %}

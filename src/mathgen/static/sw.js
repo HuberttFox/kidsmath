@@ -1,6 +1,6 @@
 const CACHE = 'kidsmath-v3';
 const ASSETS = [
-  '/', '/static/style.css', '/static/lang.js', '/static/math-icon.svg',
+  '/', '/static/style.css', '/static/lang.js', '/static/timer.js', '/static/audio.js', '/static/math-icon.svg',
   '/static/icons/settings.svg', '/static/icons/calculator.svg',
   '/static/icons/layout.svg', '/static/icons/batch.svg',
   '/static/fonts/yozai-400.woff2', '/static/fonts/yozai-700.woff2'

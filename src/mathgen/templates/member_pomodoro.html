@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}{{ t("pomodoro.title", lang) }} - mathgen{% endblock %}
+{% block content %}
+<section class="placeholder-hero">
+  <h1 class="placeholder-title" data-i18n="pomodoro.title">{{ t("pomodoro.title", lang) }}</h1>
+</section>
+<section class="review-card">
+  <div class="actions">
+    <label class="field-group"><span class="field-label" data-i18n="pomodoro.focus">{{ t("pomodoro.focus", lang) }}</span>
+      <input type="number" id="focusMin" value="25" min="0"></label>
+    <label class="field-group"><span class="field-label">测试秒覆盖</span>
+      <input type="number" id="focusSec" value="" min="0" data-testid="focusSec"></label>
+  </div>
+  <p class="timer-display" id="timerDisplay">25:00</p>
+  <div class="actions">
+    <button class="btn" type="button" id="pomodoroStart" data-i18n="pomodoro.start" onclick="startFocus()">{{ t("pomodoro.start", lang) }}</button>
+    <button class="btn btn-secondary" type="button" id="pomodoroPause" data-i18n="pomodoro.pause" onclick="window.Timer.pause()">{{ t("pomodoro.pause", lang) }}</button>
+    <button class="btn btn-secondary" type="button" id="pomodoroReset" data-i18n="pomodoro.reset" onclick="window.Timer.reset()">{{ t("pomodoro.reset", lang) }}</button>
+  </div>
+</section>
+<script src="/static/timer.js"></script>
+<script src="/static/audio.js"></script>
+<script>
+(function () {
+  var display = document.getElementById('timerDisplay');
+  var focusMin = document.getElementById('focusMin');
+  var focusSec = document.getElementById('focusSec');
+  function fmt(sec) {
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+  }
+  function seconds() {
+    var extra = parseInt(focusSec.value || '0', 10) || 0;
+    return (parseInt(focusMin.value || '0', 10) || 0) * 60 + extra;
+  }
+  window.startFocus = function () {
+    var sec = seconds();
+    if (sec <= 0) sec = 1;
+    document.body.classList.remove('time-up');
+    display.textContent = fmt(sec);
+    window.Timer.start(sec);
+  };
+  window.Timer.init(function (sec) { display.textContent = fmt(sec); },
+                   function () {
+                     document.body.classList.add('time-up');
+                     window.playChime();
+                   });
+})();
+</script>
+{% endblock %}

@@ -227,3 +227,29 @@ def test_register_login_flow_and_history_page(page):
     expect(page.locator("text=grade=1")).to_be_visible()
     page.goto(BASE + "/user/saved")
     expect(page.locator("text=还没有保存的配置")).to_be_visible()
+
+
+def test_timer_start_pause_reset(page):
+    page.goto(BASE + "/member/timer")
+    page.locator("#timerStart").click()
+    page.wait_for_timeout(1200)
+    sec = int(page.locator("#timerDisplay").inner_text().split(":")[1])
+    assert 0 < sec <= 59
+    page.locator("#timerPause").click()
+    frozen = page.locator("#timerDisplay").inner_text()
+    page.wait_for_timeout(1200)
+    assert page.locator("#timerDisplay").inner_text() == frozen
+    page.locator("#timerReset").click()
+    assert page.locator("#timerDisplay").inner_text() == "05:00"
+
+
+def test_pomodoro_chime_and_title_flash(page):
+    page.goto(BASE + "/member/pomodoro")
+    page.evaluate("window.__chimeCalled = false; "
+                  "window.playChime = function () { window.__chimeCalled = true; };")
+    page.locator("#focusMin").fill("0")
+    page.locator("#focusSec").fill("1")
+    page.locator("#pomodoroStart").click()
+    page.wait_for_timeout(2500)
+    assert page.evaluate("window.__chimeCalled")
+    assert "time-up" in page.locator("body").get_attribute("class")

@@ -531,9 +531,21 @@ async def mistakes_export_batch(request: Request,
                        form.get("title") or None)
 
 
+@app.get("/member/timer", response_class=HTMLResponse)
+async def member_timer(request: Request):
+    lang = _lang(request)
+    return templates.TemplateResponse(request, "member_timer.html", {
+        "lang": lang, "ui_json": _UI_JSON, "app_mode": _app_mode(request)})
+
+
+@app.get("/member/pomodoro", response_class=HTMLResponse)
+async def member_pomodoro(request: Request):
+    lang = _lang(request)
+    return templates.TemplateResponse(request, "member_pomodoro.html", {
+        "lang": lang, "ui_json": _UI_JSON, "app_mode": _app_mode(request)})
+
+
 @app.get("/member")
-@app.get("/member/timer")
-@app.get("/member/pomodoro")
 async def placeholder_page(request: Request):
     lang = _lang(request)
     title_key, cards = PLACEHOLDER_PAGES[request.url.path]

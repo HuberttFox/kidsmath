@@ -467,10 +467,10 @@ def test_pwa_assets():
 
 
 def test_placeholder_pages():
-    for path in ("/member", "/member/timer", "/member/pomodoro"):
-        r = client.get(path)
-        assert r.status_code == 200, path
-        assert "coming-soon" in r.text, path
+    r = client.get("/member")
+    assert r.status_code == 200 and "coming-soon" in r.text
+    for path in ("/member/timer", "/member/pomodoro"):
+        assert client.get(path).status_code == 200  # 真实页
     # /member/errors、/member/review 已真实化：未登录 → 跳登录
     for path in ("/member/errors", "/member/review"):
         r = client.get(path, follow_redirects=False)
