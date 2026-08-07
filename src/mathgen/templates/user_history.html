@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ t("history.title", lang) }} - mathgen{% endblock %}
+{% block nav %}<a href="/user" data-i18n="user.title">{{ t("user.title", lang) }}</a>{% endblock %}
+{% block content %}
+<section class="placeholder-hero">
+  <h1 class="placeholder-title" data-i18n="history.title">{{ t("history.title", lang) }}</h1>
+</section>
+<section class="placeholder-grid">
+  {% for item in items %}
+  <div class="placeholder-card">
+    <h2>{{ item.summary }}</h2>
+    <p>{{ item.time }}</p>
+    <form method="post" action="/api/history/{{ item.id }}/regenerate" class="inline-form">
+      <button class="btn btn-secondary btn-small" type="submit" data-i18n="history.regenerate">{{ t("history.regenerate", lang) }}</button>
+    </form>
+    <form method="post" action="/api/history/{{ item.id }}/delete" class="inline-form"
+          onsubmit="return confirm('{{ t("history.confirm_delete", lang) }}')">
+      <button class="btn btn-secondary btn-small" type="submit" data-i18n="history.delete">{{ t("history.delete", lang) }}</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="hint" style="text-align:center" data-i18n="history.empty">{{ t("history.empty", lang) }}</p>
+  {% endfor %}
+</section>
+{% endblock %}

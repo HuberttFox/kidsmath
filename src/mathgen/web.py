@@ -6,6 +6,7 @@ import io
 import json
 import sys
 import zipfile
+from urllib.parse import urlencode
 
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
@@ -163,9 +164,50 @@ def _placeholder_context(lang: str, title_key: str, cards) -> dict:
         "title_key": title_key, "cards": cards_i18n}
 
 
+@app.get("/user/history", response_class=HTMLResponse)
+async def user_history(request: Request):
+    lang = _lang(request)
+    user = request.state.user
+    if not user:
+        return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
+    rows = db_mod.list_history(user["id"])
+    items = []
+    for row in rows:
+        try:
+            cfg = json.loads(row["config_json"])
+        except Exception:
+            cfg = {}
+        items.append({
+            "id": row["id"],
+            "time": row["created_at"][:16].replace("T", " "),
+            "summary": ", ".join(f"{k}={v}" for k, v in list(cfg.items())[:6]),
+        })
+    return templates.TemplateResponse(request, "user_history.html", {
+        "lang": lang, "ui_json": _UI_JSON, "items": items,
+        "app_mode": _app_mode(request)})
+
+
+@app.post("/api/history/{hid}/regenerate")
+async def history_regenerate(request: Request, hid: int):
+    user = request.state.user
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    row = db_mod.get_history(user["id"], hid)
+    if not row:
+        return RedirectResponse("/user/history", status_code=302)
+    return _redirect_to_config(json.loads(row["config_json"]))
+
+
+@app.post("/api/history/{hid}/delete")
+async def history_delete(request: Request, hid: int):
+    user = request.state.user
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    db_mod.delete_history(user["id"], hid)
+    return RedirectResponse("/user/history", status_code=302)
+
+
 @app.get("/user")
-@app.get("/user/history")
-@app.get("/user/saved")
 async def user_page(request: Request):
     user = request.state.user
     if not user:
@@ -186,6 +228,15 @@ async def placeholder_page(request: Request):
     title_key, cards = PLACEHOLDER_PAGES[request.url.path]
     return templates.TemplateResponse(
         request, "placeholder.html", _placeholder_context(lang, title_key, cards))
+
+
+def _snapshot_json(cfg: Config) -> str:
+    q = {k: v for k, v in _as_query(cfg).items() if k != "seed"}
+    return json.dumps(q, ensure_ascii=False)
+
+
+def _redirect_to_config(snapshot: dict) -> RedirectResponse:
+    return RedirectResponse("/?" + urlencode(snapshot), status_code=302)
 
 
 def _app_mode(request: Request) -> bool:
@@ -512,6 +563,11 @@ async def generate_page(request: Request):
         for q in row:
             if q is not None:
                 cells.append((numbers[id(q)], q))
+    if request.state.user:
+        try:
+            db_mod.add_history(request.state.user["id"], _snapshot_json(cfg))
+        except Exception:
+            pass
     return templates.TemplateResponse(request, "preview.html", {
         "preview": preview, "query": query, "lang": lang, "ui_json": _UI_JSON,
         "app_mode": _app_mode(request),
