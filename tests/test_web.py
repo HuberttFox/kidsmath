@@ -500,3 +500,28 @@ def test_all_data_i18n_keys_exist_in_both_langs():
         for m in _re.finditer(r'data-summary="([^"]+)"', html):
             d = _json.loads(unescape(m.group(1)))
             assert d["topic"] in ("arithmetic", "vertical", "word_problem"), d
+
+
+def test_pwa_manifest_id_and_png_icons():
+    r = client.get("/static/manifest.webmanifest")
+    assert '"id": "/"' in r.text
+    assert "icon-192.png" in r.text and "icon-512.png" in r.text
+    assert "icon-maskable-512.png" in r.text
+
+
+def test_app_mode_hides_product_nav():
+    r = client.get("/")
+    assert 'href="/product"' in r.text
+    r2 = client.get("/?app=1")
+    assert 'href="/product"' not in r2.text
+    assert 'href="#form"' in r2.text
+
+
+def test_android_assets_exist():
+    import pathlib as _pl
+    root = _pl.Path(__file__).resolve().parent.parent
+    assert (root / "android" / "twa-manifest.json").exists()
+    assert (root / "scripts" / "build_android.sh").exists()
+    assert (root / "docs" / "android.md").exists()
+    for s in (192, 512):
+        assert client.get(f"/static/icons/icon-{s}.png").status_code == 200

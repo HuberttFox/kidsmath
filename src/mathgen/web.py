@@ -152,8 +152,12 @@ async def placeholder_page(request: Request):
         request, "placeholder.html", _placeholder_context(lang, title_key, cards))
 
 
+def _app_mode(request: Request) -> bool:
+    return request.query_params.get("app") == "1"
+
+
 def _index_context(form: dict | None = None, error: str | None = None,
-                   lang: str = "zh") -> dict:
+                   lang: str = "zh", app_mode: bool = False) -> dict:
     return {
         "form": form or {},
         "error": error,
@@ -164,6 +168,7 @@ def _index_context(form: dict | None = None, error: str | None = None,
         "topics": _topic_options(lang),
         "topic_icons": _TOPIC_ICONS,
         "topic_keys": _TOPIC_KEYS,
+        "app_mode": app_mode,
     }
 
 
@@ -318,7 +323,8 @@ async def index(request: Request):
     lang = _lang(request)
     form = {k: v for k, v in request.query_params.items()}
     return templates.TemplateResponse(
-        request, "index.html", _index_context(form, None, lang))
+        request, "index.html",
+        _index_context(form, None, lang, _app_mode(request)))
 
 
 @app.get("/product", response_class=HTMLResponse)
@@ -326,7 +332,8 @@ async def product_page(request: Request):
     lang = _lang(request)
     return templates.TemplateResponse(
         request, "product.html",
-        {"lang": lang, "ui_json": _UI_JSON, "version": __version__})
+        {"lang": lang, "ui_json": _UI_JSON, "version": __version__,
+         "app_mode": _app_mode(request)})
 
 
 @app.get("/healthz")
@@ -345,12 +352,14 @@ async def generate_page(request: Request):
         cfg = _config_from_form(form)
     except ConfigError as e:
         return templates.TemplateResponse(
-            request, "index.html", _index_context(form, error_text(e.code, e.params, lang), lang))
+            request, "index.html",
+            _index_context(form, error_text(e.code, e.params, lang), lang, _app_mode(request)))
     try:
         resolved = resolve(cfg)
     except ConfigError as e:
         return templates.TemplateResponse(
-            request, "index.html", _index_context(form, error_text(e.code, e.params, lang), lang))
+            request, "index.html",
+            _index_context(form, error_text(e.code, e.params, lang), lang, _app_mode(request)))
     if cfg.seed is None:
         cfg.seed = resolved.seed
         form["seed"] = str(resolved.seed)
@@ -358,7 +367,8 @@ async def generate_page(request: Request):
         questions = generate(resolved)
     except GenerationError as e:
         return templates.TemplateResponse(
-            request, "index.html", _index_context(form, error_text(e.code, e.params, lang), lang))
+            request, "index.html",
+            _index_context(form, error_text(e.code, e.params, lang), lang, _app_mode(request)))
     preview = render_text(questions, resolved)
     query = "&".join(f"{k}={v}" for k, v in _as_query(cfg).items())
     grade_label = t("grade.x", lang, g=cfg.grade) if cfg.grade else t("grade.custom", lang)
@@ -377,6 +387,7 @@ async def generate_page(request: Request):
                 cells.append((numbers[id(q)], q))
     return templates.TemplateResponse(request, "preview.html", {
         "preview": preview, "query": query, "lang": lang, "ui_json": _UI_JSON,
+        "app_mode": _app_mode(request),
         "sheets": resolved.sheets, "summary": summary, "summary_data": summary_data,
         "ncols": resolved.columns, "cfg_fields": cfg_fields,
         "meta_count": len(questions), "meta_sheets": resolved.sheets,

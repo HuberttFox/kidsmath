@@ -1,0 +1,21 @@
+{
+  "packageId": "com.huberttfox.kidsmath",
+  "host": "kidsmath.example.com",
+  "name": "kidsmath 数学出题",
+  "launcherName": "kidsmath",
+  "display": "standalone",
+  "themeColor": "#a8e6cf",
+  "navigationColor": "#fffdf7",
+  "backgroundColor": "#fffdf7",
+  "startUrl": "/?app=1",
+  "appVersionName": "1.0.0",
+  "appVersionCode": 1,
+  "shortcuts": [],
+  "iconUrl": "https://kidsmath.example.com/static/icons/icon-maskable-512.png",
+  "maskableIconUrl": "https://kidsmath.example.com/static/icons/icon-maskable-512.png",
+  "splashScreenFadeOutDuration": 300,
+  "signingKey": {
+    "path": "./android.keystore",
+    "alias": "kidsmath"
+  }
+}

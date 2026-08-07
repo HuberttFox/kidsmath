@@ -51,3 +51,10 @@ TODO：生成 192/512 PNG 安装图标（当前 manifest 仅 SVG 图标，iOS �
 ## 许可
 
 字体使用 SIL OFL 1.1 许可，见 src/mathgen/assets/font/OFL.txt。
+
+
+## 安卓 App（联网版 TWA）
+
+- 方案与构建步骤：`docs/android.md`
+- App 内通过 `?app=1` 隐藏产品页导航
+- PNG 图标：`scripts/generate_icons.py`（Pillow，192/512 + maskable），manifest 已引用

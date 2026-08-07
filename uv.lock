@@ -491,6 +491,7 @@ dev = [
 [package.dev-dependencies]
 dev = [
     { name = "httpx" },
+    { name = "pillow" },
     { name = "playwright" },
     { name = "pypdf" },
     { name = "pytest" },
@@ -513,6 +514,7 @@ provides-extras = ["dev"]
 [package.metadata.requires-dev]
 dev = [
     { name = "httpx", specifier = ">=0.27" },
+    { name = "pillow", specifier = ">=12.3.0" },
     { name = "playwright", specifier = ">=1.62.0" },
     { name = "pypdf", specifier = ">=6.15.0" },
     { name = "pytest", specifier = ">=8.0" },

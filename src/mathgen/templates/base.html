@@ -20,7 +20,7 @@
         <span class="logo-text">mathgen</span>
       </a>
       <nav class="nav" aria-label="导航">
-        <a href="/product" data-i18n="product.title">{{ t("product.title", lang) }}</a>
+        {% if not app_mode %}<a href="/product" data-i18n="product.title">{{ t("product.title", lang) }}</a>{% endif %}
         {% block nav %}{% endblock %}
       </nav>
       <div class="header-controls">
