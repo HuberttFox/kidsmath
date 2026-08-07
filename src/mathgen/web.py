@@ -331,14 +331,71 @@ async def user_page(request: Request):
         "app_mode": _app_mode(request)})
 
 
+TOPIC_ALIASES = {"口算": "arithmetic", "竖式": "vertical", "应用题": "word_problem"}
+
+
+def _normalize_topic(raw: str | None) -> str:
+    t = (raw or "").strip()
+    return TOPIC_ALIASES.get(t, t)
+
+
+def _mistake_card(row: dict, lang: str) -> dict:
+    due = row["due_at"][:16].replace("T", " ")
+    return {
+        "id": row["id"], "topic": row["topic"], "problem": row["problem"],
+        "answer": row["answer"], "note": row["note"],
+        "wrong_at": row["wrong_at"][:16].replace("T", " "),
+        "due_at": due, "mastered": bool(row["mastered_at"]),
+        "has_variant": bool(row["params"]),
+    }
+
+
+def _render_errors(request: Request, user: dict, f: str) -> HTMLResponse:
+    lang = _lang(request)
+    rows = db_mod.list_mistakes(user["id"])
+    if f == "due":
+        rows = [r for r in rows if not r["mastered_at"]]
+    elif f == "mastered":
+        rows = [r for r in rows if r["mastered_at"]]
+    cards = [_mistake_card(r, lang) for r in rows]
+    return templates.TemplateResponse(request, "member_errors.html", {
+        "lang": lang, "ui_json": _UI_JSON, "items": cards, "filter": f,
+        "app_mode": _app_mode(request)})
+
+
 @app.get("/member/errors", response_class=HTMLResponse)
 async def member_errors(request: Request, user: dict | None = Depends(current_user)):
     if not user:
         return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
-    lang = _lang(request)
-    return templates.TemplateResponse(request, "placeholder.html", {
-        "lang": lang, "ui_json": _UI_JSON, "title": t("member.errors", lang),
-        "title_key": "member.errors", "cards": [], "app_mode": _app_mode(request)})
+    return _render_errors(request, user, request.query_params.get("f", "all"))
+
+
+@app.post("/api/mistakes")
+async def api_mistakes(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    form = await request.form()
+    db_mod.add_mistake(
+        user["id"], "sheet", _normalize_topic(form.get("topic")),
+        form.get("problem", ""), form.get("answer", ""),
+        form.get("expression") or None, form.get("question_json") or None,
+        form.get("params") or None,
+        int(form["q_index"]) if form.get("q_index") else None,
+        form.get("note") or None)
+    return RedirectResponse("/member/errors", status_code=302)
+
+
+@app.post("/api/mistakes/manual")
+async def api_mistakes_manual(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    form = await request.form()
+    db_mod.add_mistake(
+        user["id"], "manual", _normalize_topic(form.get("topic")),
+        form.get("problem", ""), form.get("answer", ""),
+        form.get("expression") or None, None, None, None,
+        form.get("note") or None)
+    return RedirectResponse("/member/errors", status_code=302)
 
 
 @app.get("/member/review", response_class=HTMLResponse)

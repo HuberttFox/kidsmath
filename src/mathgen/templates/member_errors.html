@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}{{ t("mistake.title", lang) }} - mathgen{% endblock %}
+{% block content %}
+<section class="placeholder-hero">
+  <h1 class="placeholder-title" data-i18n="mistake.title">{{ t("mistake.title", lang) }}</h1>
+</section>
+<section class="card card-mint">
+  <h2 data-i18n="mistake.manual_title">{{ t("mistake.manual_title", lang) }}</h2>
+  <form method="post" action="/api/mistakes/manual" class="form-grid">
+    <label class="field-group"><span class="field-label" data-i18n="mistake.topic">{{ t("mistake.topic", lang) }}</span>
+      <select name="topic">
+        <option value="arithmetic">{{ t("mistake.topic.arithmetic", lang) }}</option>
+        <option value="vertical">{{ t("mistake.topic.vertical", lang) }}</option>
+        <option value="word_problem">{{ t("mistake.topic.word_problem", lang) }}</option>
+      </select></label>
+    <label class="field-group"><span class="field-label" data-i18n="mistake.problem">{{ t("mistake.problem", lang) }}</span>
+      <input type="text" name="problem" required></label>
+    <label class="field-group"><span class="field-label" data-i18n="mistake.answer">{{ t("mistake.answer", lang) }}</span>
+      <input type="text" name="answer" required></label>
+    <label class="field-group"><span class="field-label" data-i18n="mistake.expression">{{ t("mistake.expression", lang) }}</span>
+      <input type="text" name="expression"></label>
+    <label class="field-group"><span class="field-label" data-i18n="mistake.note">{{ t("mistake.note", lang) }}</span>
+      <input type="text" name="note"></label>
+    <div class="actions"><button class="btn" type="submit" data-i18n="mistake.add">{{ t("mistake.add", lang) }}</button></div>
+  </form>
+</section>
+<nav class="actions">
+  <a class="pill-toggle{% if filter == 'all' %} pill-on{% endif %}" href="/member/errors?f=all" data-i18n="mistake.all">{{ t("mistake.all", lang) }}</a>
+  <a class="pill-toggle{% if filter == 'due' %} pill-on{% endif %}" href="/member/errors?f=due" data-i18n="mistake.due">{{ t("mistake.due", lang) }}</a>
+  <a class="pill-toggle{% if filter == 'mastered' %} pill-on{% endif %}" href="/member/errors?f=mastered" data-i18n="mistake.mastered">{{ t("mistake.mastered", lang) }}</a>
+</nav>
+<form method="post" action="/api/mistakes/export-batch" class="batch-form">
+  <input type="hidden" name="mode" value="original">
+  <nav class="placeholder-grid">
+    {% for item in items %}
+    <div class="placeholder-card">
+      <label class="checkbox-label"><input type="checkbox" name="ids" value="{{ item.id }}"></label>
+      <h2>{{ item.problem }}</h2>
+      <p>{{ t("mistake.topic." ~ item.topic, lang) }} · 答案 {{ item.answer }}</p>
+      {% if item.note %}<p>{{ item.note }}</p>{% endif %}
+      <p class="hint">{{ t("mistake.wrong_at", lang, t=item.wrong_at) }} · {{ t("mistake.next_due", lang, t=item.due_at) }}</p>
+      <div class="actions">
+        <form method="post" action="/api/mistakes/{{ item.id }}/export" class="inline-form">
+          <input type="hidden" name="mode" value="original">
+          <button class="btn btn-secondary btn-small" type="submit" data-i18n="mistake.redo">{{ t("mistake.redo", lang) }}</button>
+        </form>
+        {% if item.has_variant %}
+        <form method="post" action="/api/mistakes/{{ item.id }}/export" class="inline-form">
+          <input type="hidden" name="mode" value="variant">
+          <button class="btn btn-secondary btn-small" type="submit" data-i18n="mistake.variant">{{ t("mistake.variant", lang) }}</button>
+        </form>
+        {% endif %}
+        <form method="post" action="/api/mistakes/{{ item.id }}/mastered" class="inline-form">
+          <button class="btn btn-secondary btn-small" type="submit" data-i18n="{% if item.mastered %}mistake.unmark_mastered{% else %}mistake.mark_mastered{% endif %}">{{ t("mistake.mark_mastered" if not item.mastered else "mistake.unmark_mastered", lang) }}</button>
+        </form>
+        <form method="post" action="/api/mistakes/{{ item.id }}/delete" class="inline-form"
+              onsubmit="return confirm('{{ t("mistake.confirm_delete", lang) }}')">
+          <button class="btn btn-secondary btn-small" type="submit" data-i18n="mistake.delete">{{ t("mistake.delete", lang) }}</button>
+        </form>
+      </div>
+    </div>
+    {% else %}
+    <p class="hint" style="text-align:center" data-i18n="mistake.empty">{{ t("mistake.empty", lang) }}</p>
+    {% endfor %}
+  </nav>
+  <div class="actions">
+    <select name="mode">
+      <option value="original" data-i18n="mistake.batch_original">{{ t("mistake.batch_original", lang) }}</option>
+      <option value="variant" data-i18n="mistake.batch_variant">{{ t("mistake.batch_variant", lang) }}</option>
+    </select>
+    <button class="btn" type="submit" data-i18n="mistake.batch_make">{{ t("mistake.batch_make", lang) }}</button>
+  </div>
+</form>
+{% endblock %}
