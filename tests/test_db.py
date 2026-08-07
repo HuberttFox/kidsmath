@@ -88,7 +88,7 @@ def test_mistake_crud_and_scoping():
     assert db.set_mastered(uid1, mid, "2099-01-01")
     assert db.due_mistakes(uid1, "2100-01-01") == []
     assert db.set_mastered(uid1, mid, None)
-    assert db.due_mistakes(uid1, "2100-01-01") == []
+    assert [r["id"] for r in db.due_mistakes(uid1, "2100-01-01")] == [mid]
     assert db.delete_mistake(uid1, mid)
     assert not db.delete_mistake(uid2, mid)
 
