@@ -475,9 +475,10 @@ def test_placeholder_pages():
     r = client.get("/user/history", follow_redirects=False)
     assert r.status_code == 302 and "/login" in r.headers["location"]
     r = client.get("/")
-    assert 'href="/user"' in r.text  # header 用户入口
+    assert 'href="/login"' in r.text  # 未登录 header 显示登录入口
     assert 'href="/member/timer"' in client.get("/member").text
-    assert 'href="/user/history"' in client.get("/user").text
+    client.post("/api/register", data={"username": "tt", "password": "secret123"})
+    assert "用户中心" in client.get("/user").text  # 登录后可访问
     assert 'href="即将上线"' not in client.get("/member").text
     assert 'href="Coming soon"' not in client.get("/member").text
 
