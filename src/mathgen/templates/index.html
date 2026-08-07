@@ -16,9 +16,6 @@
 
 {% block title %}{{ t("brand", lang) }} - {% if lang == "en" %}Generate worksheets{% else %}生成练习卷{% endif %}{% endblock %}
 
-{% block nav %}
-<a href="#form" data-i18n="nav.generate">{{ t("nav.generate", lang) }}</a>
-{% endblock %}
 
 {% block content %}
 <section class="hero">
@@ -260,14 +257,15 @@
     <input type="text" name="name" placeholder="{{ t('saved.name', lang) }}" class="save-name">
     <button type="submit" formaction="/api/saved" class="btn btn-secondary" data-i18n="saved.save">{{ t("saved.save", lang) }}</button>
     <button type="submit" formaction="/api/config/export" class="btn btn-secondary" data-i18n="config.export">{{ t("config.export", lang) }}</button>
+    <label class="btn btn-secondary import-btn" form="import-form"
+           onclick="document.querySelector('#import-form input[type=file]').click()">
+      <span data-i18n="config.import">{{ t("config.import", lang) }}</span>
+    </label>
   </div>
 </form>
-  <form method="post" action="/api/config/import" enctype="multipart/form-data" class="inline-form import-form">
-    <label class="btn btn-secondary import-btn">
-      <span data-i18n="config.import">{{ t("config.import", lang) }}</span>
-      <input type="file" name="file" accept="application/json,.json" hidden
-             onchange="this.form.submit()">
-    </label>
+  <form method="post" action="/api/config/import" id="import-form" enctype="multipart/form-data" hidden>
+    <input type="file" name="file" accept="application/json,.json"
+           onchange="this.form.submit()">
   </form>
 {% endblock %}
 

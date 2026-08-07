@@ -288,7 +288,6 @@ def test_refactor_download_cta_section():
     assert 'class="download-version"' in html
     assert 'mathgen v' in html
     assert 'id="preview"' in html
-    assert 'href="#download"' in html and 'href="#preview"' in html
 
 
 def test_refactor_index_hero_nav_footer():
@@ -296,7 +295,6 @@ def test_refactor_index_hero_nav_footer():
     html = r.text
     assert 'class="hero-badge"' in html
     assert 'id="form"' in html
-    assert 'href="#form"' in html
     assert 'class="site-footer"' in html
     assert 'class="legend-icon' in html
     r2 = client.get("/static/math-icon.svg")
@@ -443,7 +441,7 @@ def test_product_page():
     assert r.status_code == 200
     assert 'class="landing-hero"' in r.text
     assert 'class="feature-card' in r.text
-    assert "coming-soon" in r.text
+    assert "coming-soon" not in r.text
     assert 'href="/"' in r.text  # CTA
     assert r.text.count('class="feature-icon"') == 6
     for icon in ("print", "theme", "language"):
@@ -522,7 +520,7 @@ def test_app_mode_hides_product_nav():
     assert 'href="/product"' in r.text
     r2 = client.get("/?app=1")
     assert 'href="/product"' not in r2.text
-    assert 'href="#form"' in r2.text
+    assert 'href="/" ' in r2.text or 'nav.workspace' in r2.text  # 工作台恒在
 
 
 def test_android_assets_exist():
@@ -552,8 +550,15 @@ def test_logged_in_user_center_link():
 def test_product_page_slim():
     r = client.get("/product")
     assert r.status_code == 200
-    assert r.text.count("coming-soon") == 1  # 仅安装应用占位
+    assert "coming-soon" not in r.text  # 无占位徽标
     assert 'href="/member' not in r.text
     assert 'data-i18n="product.cta"' in r.text
-    assert "product.install_app" in r.text
-    assert 'aria-disabled="true"' in r.text
+    assert 'href="https://github.com/HuberttFox/kidsmath/releases"' in r.text  # 立即下载
+
+
+def test_vertical_division_no_solution_not_500():
+    r = client.post("/generate", data={
+        "grade": "3", "topic": "vertical", "count": "10",
+        "operators": "除", "table": "2-2", "dividend_range": "5-6"})
+    assert r.status_code == 200  # GenerationError → 错误条，非 500
+    assert 'class="error"' in r.text

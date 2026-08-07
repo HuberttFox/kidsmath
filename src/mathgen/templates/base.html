@@ -22,7 +22,6 @@
       <nav class="nav" aria-label="导航">
         {% if not app_mode %}<a href="/product" data-i18n="nav.home">{{ t("nav.home", lang) }}</a>{% endif %}
         <a href="/" data-i18n="nav.workspace">{{ t("nav.workspace", lang) }}</a>
-        {% block nav %}{% endblock %}
       </nav>
       <div class="header-controls">
         {% if request.state.user %}
@@ -43,7 +42,8 @@
   </main>
   <footer class="site-footer">
     <div class="container footer-inner">
-      <p class="footer-copy" data-i18n="footer.copyright">{{ t("footer.copyright", lang, year=2026) }}</p>
+      <p class="footer-copy" data-i18n="footer.copyright"
+         data-i18n-params='{"year": "2026"}'>{{ t("footer.copyright", lang, year=2026) }}</p>
       <p class="footer-made" data-i18n="footer.made">{{ t("footer.made", lang) }}</p>
     </div>
   </footer>

@@ -4,9 +4,10 @@ from __future__ import annotations
 import random
 
 from mathgen.config import ResolvedConfig
-from mathgen.core.engine import (check_result, gen_operand, gen_pair, gen_result,
-                                 pick_op, divisor_range, left_factor_range,
-                                 quotient_range, right_factor_range)
+from mathgen.core.engine import (GenerationError, check_result, gen_operand,
+                                 gen_pair, gen_result, pick_op, divisor_range,
+                                 left_factor_range, quotient_range,
+                                 right_factor_range)
 from mathgen.core.question import Question
 
 

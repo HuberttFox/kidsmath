@@ -2,9 +2,6 @@
 
 {% block title %}{{ t("brand", lang) }} - {{ t("product.title", lang) }}{% endblock %}
 
-{% block nav %}
-<a href="/" data-i18n="nav.generate">{{ t("nav.generate", lang) }}</a>
-{% endblock %}
 
 {% block content %}
 <section class="landing-hero">
@@ -77,8 +74,8 @@
     <span class="meta-badge" data-i18n="product.hero_badge">{{ t("product.hero_badge", lang) }}</span>
   </div>
   <div class="actions">
-    <span class="btn btn-download" aria-disabled="true" data-i18n="product.install_app">{{ t("product.install_app", lang) }}</span>
-    <span class="coming-soon" data-i18n="coming_soon">{{ t("coming_soon", lang) }}</span>
+    <a class="btn btn-download" href="https://github.com/HuberttFox/kidsmath/releases"
+       target="_blank" rel="noopener" data-i18n="product.install_app">{{ t("product.install_app", lang) }}</a>
   </div>
   <p class="download-subtitle" data-i18n="product.install_desc">{{ t("product.install_desc", lang) }}</p>
   <p class="download-version">kidsmath v{{ version }}</p>
