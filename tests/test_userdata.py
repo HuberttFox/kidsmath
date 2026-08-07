@@ -59,3 +59,46 @@ def test_history_db_failure_does_not_break_generate(monkeypatch):
     monkeypatch.setattr(db, "add_history", boom)
     r = client.post("/generate", data={"grade": "1", "count": "3"})
     assert r.status_code == 200  # 出题主流程不受影响
+
+
+def test_save_from_preview_and_apply():
+    _login()
+    r = client.post("/generate", data={"grade": "2", "count": "3"})
+    assert r.status_code == 200
+    # 预览页保存表单（登录态渲染）
+    assert 'action="/api/saved"' in r.text
+    r2 = client.post("/api/saved", data={"grade": "2", "count": "3", "name": "卷A"},
+                     follow_redirects=False)
+    assert r2.status_code == 302 and "/user/saved" in r2.headers["location"]
+    assert "卷A" in client.get("/user/saved").text
+
+
+def test_saved_apply_redirects():
+    _login()
+    client.post("/api/saved", data={"grade": "3", "count": "5", "name": "卷B"})
+    page = client.get("/user/saved")
+    m = re.search(r'action="/api/saved/(\d+)/apply"', page.text)
+    assert m
+    r = client.post(f"/api/saved/{m.group(1)}/apply", follow_redirects=False)
+    assert r.status_code == 302 and "grade=3" in r.headers["location"]
+    assert "seed" not in r.headers["location"]
+
+
+def test_saved_anonymous_redirects_login():
+    client.post("/api/logout")
+    r = client.post("/api/saved", data={"grade": "1", "name": "x"},
+                    follow_redirects=False)
+    assert r.status_code == 302 and "/login" in r.headers["location"]
+
+
+def test_saved_rename_delete():
+    _login()
+    client.post("/api/saved", data={"grade": "1", "name": "旧名"})
+    page = client.get("/user/saved")
+    m = re.search(r'action="/api/saved/(\d+)/rename"', page.text)
+    sid = m.group(1)
+    client.post(f"/api/saved/{sid}/rename", data={"name": "新名"})
+    assert "新名" in client.get("/user/saved").text
+    assert client.post(f"/api/saved/{sid}/delete",
+                       follow_redirects=False).status_code == 302
+    assert "新名" not in client.get("/user/saved").text

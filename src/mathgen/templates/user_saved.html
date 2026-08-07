@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block title %}{{ t("saved.title", lang) }} - mathgen{% endblock %}
+{% block nav %}<a href="/user" data-i18n="user.title">{{ t("user.title", lang) }}</a>{% endblock %}
+{% block content %}
+<section class="placeholder-hero">
+  <h1 class="placeholder-title" data-i18n="saved.title">{{ t("saved.title", lang) }}</h1>
+</section>
+<section class="placeholder-grid">
+  {% for item in items %}
+  <div class="placeholder-card">
+    <h2>{{ item.name }}</h2>
+    <p>{{ item.summary }} · {{ item.time }}</p>
+    <form method="post" action="/api/saved/{{ item.id }}/apply" class="inline-form">
+      <button class="btn btn-secondary btn-small" type="submit" data-i18n="saved.apply">{{ t("saved.apply", lang) }}</button>
+    </form>
+    <form method="post" action="/api/saved/{{ item.id }}/rename" class="inline-form">
+      <input type="text" name="name" value="{{ item.name }}" class="save-name">
+      <button class="btn btn-secondary btn-small" type="submit" data-i18n="saved.rename">{{ t("saved.rename", lang) }}</button>
+    </form>
+    <form method="post" action="/api/saved/{{ item.id }}/delete" class="inline-form"
+          onsubmit="return confirm('{{ t("saved.confirm_delete", lang) }}')">
+      <button class="btn btn-secondary btn-small" type="submit" data-i18n="saved.delete">{{ t("saved.delete", lang) }}</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="hint" style="text-align:center" data-i18n="saved.empty">{{ t("saved.empty", lang) }}</p>
+  {% endfor %}
+</section>
+{% endblock %}

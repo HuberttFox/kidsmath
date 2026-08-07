@@ -207,15 +207,87 @@ async def history_delete(request: Request, hid: int):
     return RedirectResponse("/user/history", status_code=302)
 
 
+@app.post("/api/saved")
+async def api_saved(request: Request):
+    user = request.state.user
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    lang = _lang(request)
+    form = await request.form()
+    data = {k: v for k, v in form.items() if k != "name"}
+    name = (form.get("name") or "").strip() or "未命名"
+    try:
+        cfg = _config_from_form(data)
+        resolve(cfg)
+    except ConfigError as e:
+        return templates.TemplateResponse(request, "index.html",
+            _index_context(dict(form), error_text(e.code, e.params, lang), lang, _app_mode(request)))
+    db_mod.add_saved(user["id"], name, _snapshot_json(cfg))
+    return RedirectResponse("/user/saved", status_code=302)
+
+
+@app.post("/api/saved/{sid}/apply")
+async def saved_apply(request: Request, sid: int):
+    user = request.state.user
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    row = db_mod.get_saved(user["id"], sid)
+    if not row:
+        return RedirectResponse("/user/saved", status_code=302)
+    return _redirect_to_config(json.loads(row["config_json"]))
+
+
+@app.post("/api/saved/{sid}/rename")
+async def saved_rename(request: Request, sid: int):
+    user = request.state.user
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    form = await request.form()
+    db_mod.rename_saved(user["id"], sid, (form.get("name") or "").strip() or "未命名")
+    return RedirectResponse("/user/saved", status_code=302)
+
+
+@app.post("/api/saved/{sid}/delete")
+async def saved_delete(request: Request, sid: int):
+    user = request.state.user
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    db_mod.delete_saved(user["id"], sid)
+    return RedirectResponse("/user/saved", status_code=302)
+
+
+@app.get("/user/saved", response_class=HTMLResponse)
+async def user_saved(request: Request):
+    lang = _lang(request)
+    user = request.state.user
+    if not user:
+        return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
+    rows = db_mod.list_saved(user["id"])
+    items = []
+    for row in rows:
+        try:
+            cfg = json.loads(row["config_json"])
+        except Exception:
+            cfg = {}
+        items.append({
+            "id": row["id"], "name": row["name"],
+            "time": row["created_at"][:16].replace("T", " "),
+            "summary": ", ".join(f"{k}={v}" for k, v in list(cfg.items())[:6]),
+        })
+    return templates.TemplateResponse(request, "user_saved.html", {
+        "lang": lang, "ui_json": _UI_JSON, "items": items,
+        "app_mode": _app_mode(request)})
+
+
 @app.get("/user")
 async def user_page(request: Request):
     user = request.state.user
     if not user:
         return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
     lang = _lang(request)
-    return templates.TemplateResponse(request, "placeholder.html", {
-        "lang": lang, "ui_json": _UI_JSON, "title": t("user.title", lang),
-        "title_key": "user.title", "cards": [], "app_mode": _app_mode(request)})
+    return templates.TemplateResponse(request, "user.html", {
+        "lang": lang, "ui_json": _UI_JSON, "username": user["username"],
+        "app_mode": _app_mode(request)})
 
 
 @app.get("/member")

@@ -689,3 +689,7 @@ details#advanced[open] > summary { margin-bottom: .9em; }
 .user-chip { display: inline-flex; align-items: center; padding: .4em 1em;
   border-radius: var(--radius-md); background: var(--mint-soft);
   font-weight: 700; color: var(--text); }
+
+.save-name { padding: .4em .6em; border: 1.5px solid var(--input-border);
+  border-radius: var(--radius-sm); background: var(--input-bg);
+  font: inherit; color: var(--text); width: 120px; }

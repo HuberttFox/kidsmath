@@ -53,6 +53,15 @@
     <input id="jumpInput" type="number" min="1" placeholder="{{ t('preview.jump_placeholder', lang) }}">
     <button type="button" class="btn btn-secondary" id="jumpBtn" data-i18n="preview.jump">{{ t("preview.jump", lang) }}</button>
   </div>
+  {% if request.state.user %}
+  <nav class="actions" aria-label="保存配置">
+    <form method="post" action="/api/saved" class="inline-form">
+      {% for k, v in cfg_fields.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
+      <input type="text" name="name" placeholder="{{ t('saved.name', lang) }}" class="save-name">
+      <button type="submit" class="btn btn-secondary btn-small" data-i18n="saved.save">{{ t("saved.save", lang) }}</button>
+    </form>
+  </nav>
+  {% endif %}
   <nav class="actions" aria-label="重新出题">
     <form method="post" action="/generate" class="inline-form">
       {% for k, v in cfg_fields.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
