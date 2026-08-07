@@ -1,15 +1,20 @@
 """FastAPI 网页入口：表单 → 预览 → PDF/zip 下载；中英双语 + 明暗主题。"""
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import sys
 import zipfile
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.middleware.base import BaseHTTPMiddleware
+
+import mathgen.auth as auth
+from mathgen import db as db_mod
 from pathlib import Path
 
 from mathgen import __version__
@@ -20,8 +25,29 @@ from mathgen.output.pdf import render_pdf
 from mathgen.output.text import arrange, render_text
 
 BASE = Path(__file__).resolve().parent
+class UserAndCSRFMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        request.state.user = None
+        token = request.cookies.get(auth.COOKIE_NAME)
+        if token:
+            try:
+                request.state.user = db_mod.get_user_by_token_hash(
+                    hashlib.sha256(token.encode()).hexdigest())
+            except Exception:
+                request.state.user = None
+        if request.method not in ("GET", "HEAD", "OPTIONS"):
+            origin = request.headers.get("origin")
+            if origin:
+                from urllib.parse import urlparse
+                if urlparse(origin).hostname != request.url.hostname:
+                    from fastapi.responses import PlainTextResponse
+                    return PlainTextResponse("请求来源不合法", status_code=403)
+        return await call_next(request)
+
+
 app = FastAPI(title="mathgen")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
+app.add_middleware(UserAndCSRFMiddleware)
 templates = Jinja2Templates(directory=BASE / "templates")
 templates.env.globals["t"] = t
 
