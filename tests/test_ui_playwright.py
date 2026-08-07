@@ -140,3 +140,20 @@ def test_preview_per_page_and_jump(page):
     page.locator('#jumpInput').fill("99")
     page.locator('#jumpBtn').click()
     expect(page.locator('#pageLabel')).to_contain_text("5")  # 越界钳制
+
+
+def test_column_major_pagination_continues_counting(page):
+    # 16 题 2 列竖向编号 + 每页 12 格（6 行）→ 第 1 页左列 1-6、第 2 页左列继续 7
+    page.goto(BASE + "/")
+    page.locator('#advanced summary').click()
+    page.locator('#operand_count').fill("2")
+    page.locator('#operand_count').dispatch_event("change")
+    page.locator('#count').fill("16")
+    page.locator('#number_direction').select_option("column")
+    page.locator('button[type="submit"]').click()
+    expect(page.locator('#pager')).to_be_visible()
+    first = page.locator('.cell:visible').first.inner_text()
+    assert first.startswith("1."), first
+    page.locator('#pageNext').click()
+    second_first = page.locator('.cell:visible').first.inner_text()
+    assert second_first.startswith("7."), second_first  # 左列继续计数

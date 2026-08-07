@@ -5,6 +5,7 @@ from io import BytesIO
 
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
+from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfgen import canvas
 
 from mathgen.config import ResolvedConfig
@@ -17,6 +18,26 @@ MARGIN = 18 * mm
 LINE_GAP = 16
 GUTTER = 26  # 编号与竖式题内容之间的固定间距 (pt)，保证列内数字对齐
 SIZE = 13
+LINE_H = 14
+
+
+def _wrap_text(text: str, font: str, size: int, max_w: float) -> list[str]:
+    """逐词换行：按字体宽度把 text 拆为不超过 max_w 的多行。"""
+    if pdfmetrics.stringWidth(text, font, size) <= max_w:
+        return [text]
+    lines: list[str] = []
+    cur = ""
+    for word in text.split(" "):
+        trial = (cur + " " + word).strip()
+        if pdfmetrics.stringWidth(trial, font, size) <= max_w:
+            cur = trial
+        else:
+            if cur:
+                lines.append(cur)
+            cur = word
+    if cur:
+        lines.append(cur)
+    return lines or [text]
 
 
 def _draw_vertical(c, x, y, layout, font, size) -> float:
@@ -52,17 +73,27 @@ def _draw_vertical(c, x, y, layout, font, size) -> float:
     return y - line_y + LINE_GAP
 
 
-def _item_base(q: Question, size: int) -> float:
+def _text_lines(q: Question, text: str, font: str, size: int, col_w: float) -> list[str] | None:
+    """文字题的换行行列表；竖式返回 None。单行超宽（长单词）降 12pt 再换行。"""
     if q.layout and q.layout.get("kind") == "vertical":
+        return None
+    lines = _wrap_text(text, font, size, col_w - GUTTER)
+    if len(lines) == 1 and pdfmetrics.stringWidth(text, font, size) > col_w - GUTTER:
+        lines = _wrap_text(text, font, 12, col_w - GUTTER)
+    return lines
+
+
+def _item_height(q: Question, lines: list[str] | None, size: int) -> float:
+    if lines is None:
         return 4 * size + LINE_GAP
-    return 22
+    return len(lines) * LINE_H + 8
 
 
 def _answer_area(cfg: ResolvedConfig) -> float:
     return 14 * cfg.answer_lines + 6 if cfg.answer_lines > 0 else 0
 
 
-def _draw_item(c, x, top, row_h, idx, q, cfg, font, size, col_w) -> None:
+def _draw_item(c, x, top, row_h, idx, q, cfg, font, size, col_w, lines) -> None:
     if q.layout and q.layout.get("kind") == "vertical":
         c.setFont(font, size)
         if cfg.show_numbers:
@@ -71,12 +102,11 @@ def _draw_item(c, x, top, row_h, idx, q, cfg, font, size, col_w) -> None:
         else:
             _draw_vertical(c, x, top - 2, q.layout, font, size)
     else:
-        text = f"{idx}. {q.statement}" if cfg.show_numbers else q.statement
-        fs = size
-        if c.stringWidth(text, font, size) > col_w - GUTTER:
-            fs = 12
+        fs = 12 if (len(lines) > 1 and pdfmetrics.stringWidth(
+            lines[0], font, size) > col_w - GUTTER) else size
         c.setFont(font, fs)
-        c.drawString(x, top - 4, text)
+        for li, line in enumerate(lines):
+            c.drawString(x, top - 4 - li * LINE_H, line)
         c.setFont(font, size)
     if cfg.answer_lines > 0:
         for i in range(cfg.answer_lines):
@@ -117,18 +147,23 @@ def render_pdf(questions: list[Question], cfg: ResolvedConfig) -> bytes:
 
     rows = arrange(questions, ncols, cfg.number_direction)
     numbers = {id(q): i for i, q in enumerate(questions, 1)}
+    lines_map = {}
+    for q in questions:
+        text = f"{numbers[id(q)]}. {q.statement}" if cfg.show_numbers else q.statement
+        lines_map[id(q)] = _text_lines(q, text, font, SIZE, col_w)
     for row in rows:
         items = [q for q in row if q is not None]
         if not items:
             continue
-        row_h = max(_item_base(q, SIZE) for q in items) + _answer_area(cfg)
+        row_h = max(_item_height(q, lines_map[id(q)], SIZE) for q in items) + _answer_area(cfg)
         if top - row_h < MARGIN:
             ensure_space(row_h)
         for j, q in enumerate(row):
             if q is None:
                 continue
             x = MARGIN + j * col_w
-            _draw_item(c, x, top, row_h, numbers[id(q)], q, cfg, font, SIZE, col_w)
+            _draw_item(c, x, top, row_h, numbers[id(q)], q, cfg, font, SIZE, col_w,
+                       lines_map[id(q)])
         top -= row_h + cfg.gap
 
     if cfg.answer_page:
