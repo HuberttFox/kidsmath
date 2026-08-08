@@ -223,19 +223,22 @@ def test_macaron_no_pure_white_black_render(page):
             assert not (nums[0] <= 5 and nums[1] <= 5 and nums[2] <= 5), f"{theme}/{sel}: 纯黑 {nums}"
 
 
-def test_export_formaction_downloads_current_fields(page):
-    page.goto(BASE + "/")
-    stage = _stage(page)
-    stage.locator('label.grade-btn:has-text("3 年级")').click()
-    stage.locator('#count').fill("8")
+def test_settings_export_downloads_full_backup_zip(page):
+    # 导出设置已移到用户页，导出为全量备份 zip（含 settings.json）
+    page.goto(BASE + "/register")
+    page.locator('input[name="username"]').fill("备份用户")
+    page.locator('input[name="password"]').fill("secret123")
+    page.locator('button[type="submit"]').click()
+    page.wait_for_url(BASE + "/")
+    page.goto(BASE + "/user")
     with page.expect_download() as dl:
-        stage.locator('button[formaction="/api/config/export"]').click()
+        page.locator('a[href="/api/settings/export"]').click()
     download = dl.value
-    assert download.suggested_filename == "kidsmath-config.json"
-    stream = download.path()
-    data = json.load(open(stream, encoding="utf-8"))
-    assert data["version"] == 1
-    assert data["config"]["grade"] == "3" and data["config"]["count"] == "8"
+    assert download.suggested_filename.startswith("kidsmath-settings-")
+    import zipfile
+    with zipfile.ZipFile(download.path()) as z:
+        data = json.loads(z.read("settings.json"))
+        assert data["version"] == 2
 
 
 def test_register_login_flow_and_history_page(page):
@@ -320,14 +323,61 @@ def test_ai_parse_backfill_form_values(page):
     expect(stage.locator('input[name="operators"][value="加"]')).to_be_checked()
 
 
-def test_import_button_auto_submits(page):
+def test_settings_import_restores_backup(page):
+    # 导入设置移到用户页；上传合法 zip → 覆盖还原 → ?restored=1
+    page.goto(BASE + "/register")
+    page.locator('input[name="username"]').fill("导入用户")
+    page.locator('input[name="password"]').fill("secret123")
+    page.locator('button[type="submit"]').click()
+    page.wait_for_url(BASE + "/")
+    page.goto(BASE + "/user")
+    import io
+    import zipfile
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr("settings.json", json.dumps({
+            "version": 2, "exported_at": "2026-01-01T00:00:00", "data": {}}))
+    page.locator('form[action="/api/settings/import"] input[type="file"]').set_input_files(
+        {"name": "backup.zip", "mimeType": "application/zip", "buffer": buf.getvalue()})
+    page.wait_for_url(BASE + "/user?restored=1")
+
+
+def test_topbar_nav_and_content_pages(page):
     page.goto(BASE + "/")
-    stage = _stage(page)
-    stage.locator('input[type="file"][name="file"]').set_input_files(
-        {"name": "kidsmath-config.json", "mimeType": "application/json",
-         "buffer": bytes(json.dumps({"version": 1, "config": {"grade": "1", "count": "5"}}), "utf-8")})
-    page.wait_for_url(BASE + "/**")
-    expect(stage.locator('#count')).to_have_value("5")
+    for label in ("产品介绍", "功能使用", "会员介绍", "文档说明"):
+        expect(page.locator(f'header nav a:has-text("{label}")')).to_be_visible()
+    expect(page.locator('header nav a:has-text("用户信息")')).to_have_count(0)  # 未登录隐藏
+    for path in ("/guide", "/docs", "/member"):
+        page.goto(BASE + path)
+        expect(page.locator("main")).to_be_visible()
+        assert "Kids Math" in page.title()
+
+
+def test_change_password_then_login_with_new(page):
+    page.goto(BASE + "/register")
+    page.locator('input[name="username"]').fill("改密用户")
+    page.locator('input[name="password"]').fill("secret123")
+    page.locator('button[type="submit"]').click()
+    page.wait_for_url(BASE + "/")
+    page.goto(BASE + "/user")
+    page.locator('#pwForm input[name="old"]').fill("secret123")
+    page.locator('#pwForm input[name="new"]').fill("newpass456")
+    page.locator('#pwForm input[name="confirm"]').fill("newpass456")
+    page.locator('#pwForm button[type="submit"]').click()
+    page.wait_for_url(BASE + "/user?pw=ok")
+    # 清会话后新旧密码
+    page.context.clear_cookies()
+    page.goto(BASE + "/login")
+    page.locator('input[name="username"]').fill("改密用户")
+    page.locator('input[name="password"]').fill("secret123")  # 旧密码应失败
+    page.locator('button[type="submit"]').click()
+    page.wait_for_timeout(1500)
+    expect(page.locator('.error')).to_contain_text("用户名或密码错误")  # 失败提示
+    page.locator('input[name="username"]').fill("改密用户")  # 失败重渲染会清空表单
+    page.locator('input[name="password"]').fill("newpass456")  # 新密码成功
+    page.locator('button[type="submit"]').click()
+    page.wait_for_url(BASE + "/")
+    expect(page.locator('.user-chip:has-text("改密用户")')).to_be_visible()
 
 
 def test_sidebar_switches_stage_without_reload(page):
@@ -412,3 +462,32 @@ def test_worksheet_practice_and_mistakes(page):
         page.wait_for_timeout(50)  # 等 2 个错题 POST 落库后再跳转
     page.goto(BASE + "/member/errors")
     expect(page.locator("body")).to_contain_text(cell2_problem)
+
+
+def test_worksheet_steps_reveal(page):
+    # 在线答题卷：每题有「解题步骤」按钮可展开；交卷后错题步骤自动显示
+    page.goto(BASE + "/register")
+    page.locator('input[name="username"]').fill("步骤用户")
+    page.locator('input[name="password"]').fill("secret123")
+    page.locator('button[type="submit"]').click()
+    page.wait_for_url(BASE + "/")
+    page.goto(BASE + "/member/worksheet")
+    page.locator('input[name="count"]').fill("3")
+    page.locator('button[data-i18n="ws.generate"]').click()
+    expect(page.locator('#wsSheet')).to_be_visible()
+    cells = page.locator('.ws-sheet .cell')
+    expect(cells).to_have_count(3)
+    expect(page.locator('.ws-steps-btn')).to_have_count(3)
+    # 手动展开第一题步骤
+    page.locator('.ws-steps-btn').first.click()
+    first_steps = page.locator('.cell').nth(0).locator('.q-steps')
+    expect(first_steps).to_be_visible()
+    assert first_steps.inner_text().strip(), "步骤文本不应为空"
+    # 填对一题、填错一题；交卷后错题步骤自动显示且含答案文本
+    inputs = page.locator('.ws-sheet .cell input.ans')
+    inputs.nth(0).fill(inputs.nth(0).get_attribute("data-answer"))
+    inputs.nth(1).fill("99999")
+    page.locator('#wsSubmit').click()
+    bad_steps = page.locator('.cell').nth(1).locator('.q-steps')
+    expect(bad_steps).to_be_visible()
+    expect(bad_steps).to_contain_text("结果")

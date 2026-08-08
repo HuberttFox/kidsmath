@@ -257,17 +257,8 @@
     <button type="submit" class="btn btn-big" id="generateBtn" data-i18n="btn.generate">{{ t("btn.generate", lang) }}</button>
     <input type="text" name="name" placeholder="{{ t('saved.name', lang) }}" class="save-name">
     <button type="submit" formaction="/api/saved" class="btn btn-secondary" data-i18n="saved.save">{{ t("saved.save", lang) }}</button>
-    <button type="submit" formaction="/api/config/export" class="btn btn-secondary" data-i18n="config.export">{{ t("config.export", lang) }}</button>
-    <label class="btn btn-secondary import-btn" form="import-form"
-           onclick="document.querySelector('#import-form input[type=file]').click()">
-      <span data-i18n="config.import">{{ t("config.import", lang) }}</span>
-    </label>
   </div>
 </form>
-  <form method="post" action="/api/config/import" id="import-form" enctype="multipart/form-data" hidden>
-    <input type="file" name="file" accept="application/json,.json"
-           onchange="this.form.submit()">
-  </form>
 {% endblock %}
 
 {% block scripts %}

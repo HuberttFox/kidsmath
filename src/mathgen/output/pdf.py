@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from io import BytesIO
 
+from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
@@ -19,6 +20,10 @@ LINE_GAP = 16
 GUTTER = 26  # 编号与竖式题内容之间的固定间距 (pt)，保证列内数字对齐
 SIZE = 13
 LINE_H = 14
+STEP_SIZE = 8.5     # 答案页解题步骤字号
+STEP_LEADING = 10   # 解题步骤行距（尽量让整页答案不因步骤翻页）
+STEPS_INDENT = 18   # 解题步骤相对答案行的缩进
+STEPS_COLOR = colors.Color(0.42, 0.38, 0.33)  # 答案页步骤的柔和棕灰色
 
 
 def _wrap_text(text: str, font: str, size: int, max_w: float) -> list[str]:
@@ -168,16 +173,37 @@ def render_pdf(questions: list[Question], cfg: ResolvedConfig) -> bytes:
 
     if cfg.answer_page:
         c.showPage()
-        c.setFont(font, 16)
-        c.drawCentredString(width / 2, height - MARGIN, "Answers" if cfg.lang == "en" else "参考答案")
-        c.setFont(font, SIZE)
+
+        def answer_header() -> None:
+            c.setFont(font, 16)
+            c.drawCentredString(width / 2, height - MARGIN,
+                                "Answers" if cfg.lang == "en" else "参考答案")
+            c.setFont(font, SIZE)
+
+        answer_header()
         y = height - MARGIN - 40
-        for i, line in enumerate(answer_lines(questions), 1):
+        lines = answer_lines(questions)
+        for i, line in enumerate(lines, 1):
             if y < MARGIN:
                 c.showPage()
-                c.setFont(font, SIZE)
-                y = height - MARGIN
+                answer_header()
+                y = height - MARGIN - 40
             c.drawString(MARGIN, y, f"{i}. {line}")
             y -= 22
+            q = questions[i - 1]
+            if q.steps:
+                c.setFont(font, STEP_SIZE)
+                c.setFillColor(STEPS_COLOR)
+                for s in q.steps:
+                    if y - STEP_LEADING < MARGIN:
+                        c.showPage()
+                        answer_header()
+                        c.setFont(font, STEP_SIZE)
+                        c.setFillColor(STEPS_COLOR)
+                        y = height - MARGIN - 40
+                    c.drawString(MARGIN + STEPS_INDENT, y, s)
+                    y -= STEP_LEADING
+                c.setFont(font, SIZE)
+                c.setFillColor(colors.black)
     c.save()
     return buf.getvalue()

@@ -6,12 +6,16 @@ from datetime import datetime, timedelta
 import hashlib
 import io
 import json
+import mimetypes
+import os
 import sys
 import zipfile
 from urllib.parse import quote, urlencode
+from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.responses import (FileResponse, HTMLResponse, JSONResponse,
+                               RedirectResponse, Response, StreamingResponse)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -51,10 +55,26 @@ class UserAndCSRFMiddleware(BaseHTTPMiddleware):
             if loc and loc.startswith("/") and "embed=1" not in loc:
                 sep = "&" if "?" in loc else "?"
                 response.headers["location"] = f"{loc}{sep}embed=1"
+        # 登录用户缺语言/主题 cookie 时，用 DB 偏好补齐（跨设备跟随）
+        user = request.state.user
+        if user:
+            try:
+                if not request.cookies.get("mathgen_lang"):
+                    v = db_mod.get_setting(user["id"], "lang")
+                    if v in LANGS:
+                        response.set_cookie("mathgen_lang", v, path="/",
+                                            max_age=60 * 60 * 24 * 365, samesite="lax")
+                if not request.cookies.get("mathgen_theme"):
+                    v = db_mod.get_setting(user["id"], "theme")
+                    if v in ("light", "dark"):
+                        response.set_cookie("mathgen_theme", v, path="/",
+                                            max_age=60 * 60 * 24 * 365, samesite="lax")
+            except Exception:
+                pass  # 设置查询失败不影响响应
         return response
 
 
-app = FastAPI(title="Kids Math")
+app = FastAPI(title="Kids Math", docs_url="/api/docs")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 app.add_middleware(UserAndCSRFMiddleware)
 
@@ -87,6 +107,15 @@ def _lang(request: Request) -> str:
     cookie = request.cookies.get("mathgen_lang")
     if cookie in LANGS:
         return cookie
+    # 登录用户无有效 cookie 时回退到 DB 偏好（跨设备跟随）
+    user = getattr(request.state, "user", None)
+    if user:
+        try:
+            v = db_mod.get_setting(user["id"], "lang")
+            if v in LANGS:
+                return v
+        except Exception:
+            pass
     accept = request.headers.get("accept-language", "")
     if accept.lower().startswith("en"):
         return "en"
@@ -157,15 +186,7 @@ PLACEHOLDER_PAGES = {
     ]),
     "/user/history": ("user.history", [("📜", "user.history", "coming_soon", None)]),
     "/user/saved": ("user.saved", [("⭐", "user.saved", "coming_soon", None)]),
-    "/member": ("member.title", [
-        ("🤖", "member.ai", "member.ai_desc", "/member/ai"),
-        ("⏱️", "member.timer", "member.timer_desc", "/member/timer"),
-        ("🍅", "member.pomodoro", "member.pomodoro_desc", "/member/pomodoro"),
-        ("📄", "member.worksheet", "member.worksheet_desc", "/member/worksheet"),
-        ("❌", "member.errors", "member.errors_desc", "/member/errors"),
-        ("🔁", "member.review", "member.review_desc", "/member/review"),
-    ]),
-    "/member/timer": ("member.timer", [("⏱️", "member.timer", "member.timer_desc", None)]),
+    "/member/timer": ("member.timer", [("🕐", "member.timer", "member.timer_desc", None)]),
     "/member/pomodoro": ("member.pomodoro", [("🍅", "member.pomodoro", "member.pomodoro_desc", None)]),
     "/member/worksheet": ("member.worksheet", [("📄", "member.worksheet", "member.worksheet_desc", None)]),
     "/member/errors": ("member.errors", [("❌", "member.errors", "member.errors_desc", None)]),
@@ -394,9 +415,274 @@ async def user_page(request: Request):
     if not user:
         return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
     lang = _lang(request)
+    uid = user["id"]
+    ms = _mistake_stats(db_mod.list_mistakes(uid))
+    focus = [r for r in db_mod.list_pomodoro_sessions(uid) if r["kind"] == "focus"]
+    stats = {
+        "gen": len(db_mod.list_history(uid)),
+        "mistakes_total": ms["total"],
+        "mistakes_due": ms["due"],
+        "mistakes_mastered": ms["mastered"],
+        "pomodoro": len(focus),
+        "pomodoro_sec": sum(r["planned_sec"] or 0 for r in focus),
+        "saved": len(db_mod.list_saved(uid)),
+    }
+    prefs = {
+        "theme": db_mod.get_setting(uid, "theme") or "",
+        "lang": db_mod.get_setting(uid, "lang") or "",
+    }
+    pw = request.query_params.get("pw")
+    pw_msg = None
+    if pw == "ok":
+        pw_msg = "user.password_ok"
+    elif pw in ("fail", "old"):
+        pw_msg = "user.password_fail"
     return templates.TemplateResponse(request, "user.html", {
         "lang": lang, "ui_json": _UI_JSON, "username": user["username"],
+        "member_badge": "user.member_status", "stats": stats, "prefs": prefs,
+        "pw_msg": pw_msg, "restored": request.query_params.get("restored"),
         "app_mode": _app_mode(request)})
+
+
+@app.post("/api/user/password")
+async def api_user_password(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    form = await request.form()
+    old = form.get("old") or ""
+    new = form.get("new") or ""
+    if not auth.verify_password(old, user["password_hash"]) or len(new) < 6:
+        return RedirectResponse("/user?pw=fail", status_code=302)
+    db_mod.change_password(user["id"], auth.hash_password(new))
+    return RedirectResponse("/user?pw=ok", status_code=302)
+
+
+@app.post("/api/user/delete")
+async def api_user_delete(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    for old in db_mod.delete_user(user["id"]):
+        try:
+            if os.path.exists(old):
+                os.unlink(old)
+        except OSError:
+            pass
+    resp = RedirectResponse("/", status_code=302)
+    resp.delete_cookie(auth.COOKIE_NAME)
+    resp.delete_cookie("mathgen_lang")
+    resp.delete_cookie("mathgen_theme")
+    return resp
+
+
+@app.post("/api/user/prefs")
+async def api_user_prefs(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    form = await request.form()
+    theme = form.get("theme") or ""
+    lang = form.get("lang") or ""
+    if theme in ("", "light", "dark"):
+        db_mod.set_setting(user["id"], "theme", theme)
+    if lang in LANGS:
+        db_mod.set_setting(user["id"], "lang", lang)
+    return JSONResponse({"ok": True})
+
+
+# ---- 用户音频（登录后音乐歌单走服务器存储）----
+AUDIO_EXT_WHITELIST = {".mp3", ".wav", ".ogg", ".m4a", ".flac", ".aac", ".opus"}
+AUDIO_MAX_BYTES = 20 * 1024 * 1024
+SETTINGS_ZIP_MAX_BYTES = 100 * 1024 * 1024
+
+
+def _audio_ext(filename: str) -> str:
+    ext = Path(filename or "").suffix.lower()
+    return ext if ext in AUDIO_EXT_WHITELIST else ".bin"
+
+
+def _audio_media_type(path: str) -> str:
+    return mimetypes.guess_type(path)[0] or "application/octet-stream"
+
+
+@app.post("/api/audio/upload")
+async def audio_upload(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    form = await request.form()
+    file = form.get("file")
+    if file is None or not getattr(file, "filename", None):
+        return JSONResponse({"error": "缺少文件"}, status_code=400)
+    if not (file.content_type or "").startswith("audio/"):
+        return JSONResponse({"error": "仅支持音频文件"}, status_code=400)
+    try:
+        await file.seek(0)
+        raw = await file.read()
+    except Exception:
+        return JSONResponse({"error": "读取文件失败"}, status_code=400)
+    if len(raw) > AUDIO_MAX_BYTES:
+        return JSONResponse({"error": "文件超过 20MB"}, status_code=400)
+    audio_dir = db_mod.user_audio_dir(user["id"])
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    stored = audio_dir / f"{uuid4().hex}{_audio_ext(file.filename)}"
+    try:
+        stored.write_bytes(raw)
+    except OSError:
+        return JSONResponse({"error": "写入失败"}, status_code=500)
+    aid = db_mod.add_audio(user["id"], file.filename, str(stored))
+    return {"id": aid, "name": file.filename}
+
+
+@app.get("/api/audio/list")
+async def audio_list(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    return [{"id": r["id"], "name": r["name"]} for r in db_mod.list_audio(user["id"])]
+
+
+@app.get("/api/audio/{aid}")
+async def audio_serve(request: Request, aid: int, user: dict | None = Depends(current_user)):
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    row = db_mod.get_audio(user["id"], aid)
+    if not row or not os.path.exists(row["path"]):
+        return JSONResponse({"error": "not found"}, status_code=404)
+    return FileResponse(row["path"], media_type=_audio_media_type(row["path"]))
+
+
+@app.post("/api/audio/{aid}/delete")
+async def audio_delete(request: Request, aid: int, user: dict | None = Depends(current_user)):
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    path = db_mod.delete_audio(user["id"], aid)
+    if path and os.path.exists(path):
+        try:
+            os.unlink(path)
+        except OSError:
+            pass
+    return {"ok": True}
+
+
+# ---- 设置整体备份（zip 导出/导入）----
+@app.get("/api/settings/export")
+async def settings_export(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return JSONResponse({"error": "unauthorized"}, status_code=401)
+    data = db_mod.export_all(user["id"])
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        payload = {"version": 2, "exported_at": db_mod.now_iso(), "data": data}
+        z.writestr("settings.json", json.dumps(payload, ensure_ascii=False))
+        for entry in data.get("audio", []):
+            path = entry.get("path")
+            if not path or not os.path.exists(path):
+                continue
+            try:
+                z.write(path, f"audio/{entry['name']}")
+            except OSError:
+                continue
+    fname = f"kidsmath-settings-{user['id']}-{datetime.now():%Y%m%d}.zip"
+    disp = f'attachment; filename="{fname}"'
+    return StreamingResponse(iter([buf.getvalue()]), media_type="application/zip",
+                             headers={"Content-Disposition": disp})
+
+
+_NOT_NULL_COLS = {
+    "config_history": ("config_json", "created_at"),
+    "saved_configs": ("name", "config_json", "created_at"),
+    "mistakes": ("kind", "topic", "problem", "answer", "wrong_at",
+                 "ease", "interval", "reps", "due_at"),
+    "pomodoro_sessions": ("kind", "planned_sec", "completed_at"),
+    "user_settings": ("key", "value"),
+}
+
+
+def _validate_settings_data(data: dict) -> bool:
+    """结构校验 settings.json 的 data：每个表键须为列表、行须含导入白名单全字段、
+    NOT NULL 列不得为 None、audio 条目须为带 name 的对象。
+    校验失败返回 False（调用方不得清空用户数据）。"""
+    for table, cols in db_mod._IMPORT_COLS.items():
+        rows = data.get(table)
+        if rows is None:
+            continue
+        if not isinstance(rows, list):
+            return False
+        required = set(cols) - {"user_id"}
+        not_null = set(_NOT_NULL_COLS.get(table, ()))
+        for row in rows:
+            if not isinstance(row, dict):
+                return False
+            for c in required:
+                if c not in row or (c in not_null and row[c] is None):
+                    return False
+    audio = data.get("audio")
+    if audio is not None:
+        if not isinstance(audio, list):
+            return False
+        for entry in audio:
+            if not isinstance(entry, dict) or not isinstance(entry.get("name"), str):
+                return False
+    return True
+
+
+@app.post("/api/settings/import")
+async def settings_import(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse("/login", status_code=302)
+    form = await request.form()
+    file = form.get("file")
+    if file is None or not getattr(file, "filename", None):
+        return RedirectResponse("/user?restored=0", status_code=302)
+    try:
+        raw = await file.read()
+    except Exception:
+        return RedirectResponse("/user?restored=0", status_code=302)
+    if len(raw) > SETTINGS_ZIP_MAX_BYTES:
+        return RedirectResponse("/user?restored=0", status_code=302)
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(raw))
+        info = zf.getinfo("settings.json")
+        payload = json.loads(zf.read(info).decode("utf-8"))
+        if payload.get("version") != 2 or not isinstance(payload.get("data"), dict):
+            return RedirectResponse("/user?restored=0", status_code=302)
+        data = payload["data"]
+    except (KeyError, ValueError, zipfile.BadZipFile, OSError):
+        return RedirectResponse("/user?restored=0", status_code=302)
+    # 先完整校验（坏行在清空前拒绝），校验通过才清空并恢复
+    if not _validate_settings_data(data):
+        return RedirectResponse("/user?restored=0", status_code=302)
+    for old in db_mod.clear_user_data(user["id"]):
+        try:
+            if os.path.exists(old):
+                os.unlink(old)
+        except OSError:
+            pass
+    try:
+        db_mod.import_all(user["id"], data)
+    except Exception:
+        return RedirectResponse("/user?restored=0", status_code=302)
+    # 恢复音频文件（zip 中缺失的条目跳过，不阻塞整体导入）
+    audio_dir = db_mod.user_audio_dir(user["id"])
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    for entry in data.get("audio", []) or []:
+        name = entry.get("name")
+        if not name:
+            continue
+        try:
+            info = zf.getinfo(f"audio/{name}")
+        except KeyError:
+            continue
+        try:
+            raw = zf.read(info)
+        except OSError:
+            continue
+        if len(raw) > AUDIO_MAX_BYTES:
+            continue
+        stored = audio_dir / f"{uuid4().hex}{_audio_ext(name)}"
+        try:
+            stored.write_bytes(raw)
+            db_mod.add_audio(user["id"], name, str(stored))
+        except OSError:
+            continue
+    return RedirectResponse("/user?restored=1", status_code=302)
 
 
 TOPIC_ALIASES = {"口算": "arithmetic", "竖式": "vertical", "应用题": "word_problem"}
@@ -477,7 +763,8 @@ def _worksheet_cells(questions) -> list[dict]:
             text = ('<span class="q-text">%s</span>'
                     '<input class="ans" data-answer="%s">' % (st, ans))
         out.append({"i": i, "text": text, "problem": st, "answer": q.answer or "",
-                    "topic": q.topic, "layout_kind": (q.layout or {}).get("kind", "")})
+                    "topic": q.topic, "layout_kind": (q.layout or {}).get("kind", ""),
+                    "steps": q.steps})
     return out
 
 
@@ -486,7 +773,8 @@ async def member_worksheet(request: Request, user: dict | None = Depends(current
     if not user:
         return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
     lang = _lang(request)
-    qp = request.query_params
+    qp = dict(request.query_params)
+    qp.setdefault("lang", lang)  # 步骤语言跟随界面语言，缺失时按请求语言
     cells = None
     try:
         cfg = _config_from_form(qp)
@@ -673,7 +961,7 @@ def _mistake_question(row: dict, mode: str) -> Question | None:
             if row["question_json"]:
                 data = json.loads(row["question_json"])
                 return Q(**{k: data[k] for k in
-                            ("topic", "statement", "answer", "expression", "layout")
+                            ("topic", "statement", "answer", "expression", "layout", "steps")
                             if k in data})
             return Q(row["topic"], row["problem"], row["answer"],
                      row["expression"] or row["problem"], None)
@@ -978,14 +1266,6 @@ async def ai_backfill(request: Request):
     return _redirect_to_config({k: v for k, v in _as_query(cfg).items() if k != "seed"})
 
 
-@app.get("/member")
-async def placeholder_page(request: Request):
-    lang = _lang(request)
-    title_key, cards = PLACEHOLDER_PAGES[request.url.path]
-    return templates.TemplateResponse(
-        request, "placeholder.html", _placeholder_context(lang, title_key, cards))
-
-
 def _snapshot_json(cfg: Config) -> str:
     q = {k: v for k, v in _as_query(cfg).items() if k != "seed"}
     return json.dumps(q, ensure_ascii=False)
@@ -1283,6 +1563,30 @@ async def product_page(request: Request):
         request, "product.html",
         {"lang": lang, "ui_json": _UI_JSON, "version": __version__,
          "app_mode": _app_mode(request)})
+
+
+@app.get("/guide", response_class=HTMLResponse)
+async def guide_page(request: Request):
+    lang = _lang(request)
+    return templates.TemplateResponse(
+        request, "guide.html",
+        {"lang": lang, "ui_json": _UI_JSON, "app_mode": _app_mode(request)})
+
+
+@app.get("/docs", response_class=HTMLResponse)
+async def docs_page(request: Request):
+    lang = _lang(request)
+    return templates.TemplateResponse(
+        request, "docs.html",
+        {"lang": lang, "ui_json": _UI_JSON, "app_mode": _app_mode(request)})
+
+
+@app.get("/member", response_class=HTMLResponse)
+async def member_page(request: Request):
+    lang = _lang(request)
+    return templates.TemplateResponse(
+        request, "member.html",
+        {"lang": lang, "ui_json": _UI_JSON, "app_mode": _app_mode(request)})
 
 
 @app.get("/healthz")

@@ -12,3 +12,4 @@ class Question:
     answer: str
     expression: str
     layout: dict | None = field(default=None)
+    steps: list[str] | None = field(default=None)

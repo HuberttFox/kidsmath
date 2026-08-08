@@ -9,6 +9,7 @@ from mathgen.core.engine import (GenerationError, check_result, gen_operand,
                                  left_factor_range, quotient_range,
                                  right_factor_range)
 from mathgen.core.question import Question
+from mathgen.topics.steps import vertical_steps
 
 
 def _stmt_add(op: str, a: int, b: int) -> str:
@@ -30,7 +31,8 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
         a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
         layout = {"kind": "vertical", "op": op, "numbers": [str(a), str(b)]}
         return Question("vertical", _stmt_add(op, a, b), str(result),
-                        f"{a} {op} {b}", layout)
+                        f"{a} {op} {b}", layout,
+                        steps=vertical_steps(op, layout, cfg.lang, result=result))
     if op == "×":
         lo0, hi0 = left_factor_range(cfg)
         lo1, hi1 = right_factor_range(cfg)
@@ -43,7 +45,8 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
         a, b, result = gen_result(make, lambda t: check_result(cfg)(t[2]), *cfg.result_range)
         layout = {"kind": "vertical", "op": "×", "numbers": [str(a), str(b)]}
         return Question("vertical", _stmt_add("×", a, b), str(a * b),
-                        f"{a} × {b}", layout)
+                        f"{a} × {b}", layout,
+                        steps=vertical_steps("×", layout, cfg.lang, result=result))
     # ÷
     lo0, hi0 = cfg.operand_ranges[0]
     d_lo, d_hi = divisor_range(cfg)
@@ -90,4 +93,5 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
               "remainder": str(remainder)}
     answer = str(quotient) if remainder == 0 else f"{quotient} {"R" if cfg.lang == "en" else "余"} {remainder}"
     stmt = f"{dividend} ÷ {divisor} = ____"
-    return Question("vertical", stmt, answer, f"{dividend} ÷ {divisor}", layout)
+    return Question("vertical", stmt, answer, f"{dividend} ÷ {divisor}", layout,
+                    steps=vertical_steps("÷", layout, cfg.lang))

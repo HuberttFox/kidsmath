@@ -6,6 +6,7 @@
   var musicLoaded = false, musicPaused = false;
   var playlist = [];
   var playlistIndex = -1;
+  var serverMode = false; // 登录用户：歌单存储于服务器（/api/audio/*）
   var musicVolume = 0.5;
   var noiseBuffer = { white: null, pink: null, brown: null };
 
@@ -117,12 +118,21 @@
       if (!musicAudio && playlist.length > 0) playIndex(0);
       return added;
     },
+    addTrack: function (entry) {
+      // 追加一条已构建好的歌单条目（服务器模式上传成功后使用），无播放时立即播放
+      try {
+        playlist.push({ url: entry.url, name: entry.name || ('song ' + (playlist.length + 1)), id: entry.id });
+      } catch (e) { return -1; }
+      if (!musicAudio) playIndex(playlist.length - 1);
+      return playlist.length - 1;
+    },
     next: function () { playIndex(playlistIndex + 1); },
     prev: function () { playIndex(playlistIndex - 1); },
     playCurrent: function () { if (!playlist.length) return; playIndex(playlistIndex >= 0 ? playlistIndex : 0); },
     hasCurrent: function () { return musicAudio !== null; },
     removeAt: function (i) {
       if (i < 0 || i >= playlist.length) return;
+      var removed = playlist[i];
       var wasCurrent = (i === playlistIndex);
       var wasPlaying = wasCurrent && musicAudio && !musicPaused;
       if (wasCurrent && musicAudio) {
@@ -144,6 +154,10 @@
         musicAudio = null;
       } else if (wasCurrent && wasPlaying) {
         playIndex(playlistIndex);
+      }
+      // 服务器条目：静默删除服务器文件
+      if (removed && removed.id) {
+        try { fetch('/api/audio/' + removed.id + '/delete', { method: 'POST' }); } catch (e) {}
       }
     },
     getPlaylist: function () {
@@ -305,11 +319,45 @@
     if (file) {
       file.addEventListener('change', function () {
         if (file.files && file.files.length) {
-          window.Sound.addTracks(file.files);
-          renderPlaylist();
-          syncMusicLabel();
+          if (serverMode) {
+            // 服务器模式：逐首上传，成功后追加进歌单
+            Array.prototype.forEach.call(file.files, function (f) {
+              var fd = new FormData();
+              fd.append('file', f);
+              fetch('/api/audio/upload', { method: 'POST', body: fd })
+                .then(function (r) { return r.ok ? r.json() : null; })
+                .then(function (data) {
+                  if (data && data.id) {
+                    window.Sound.addTrack({ id: data.id, name: data.name, url: '/api/audio/' + data.id });
+                    renderPlaylist();
+                    syncMusicLabel();
+                  }
+                })
+                .catch(function () {});
+            });
+          } else {
+            window.Sound.addTracks(file.files);
+            renderPlaylist();
+            syncMusicLabel();
+          }
         }
       });
+    }
+    // 登录用户：加载服务器端歌单（只填充列表，不自动播放）
+    if (document.body && document.body.getAttribute('data-logged-in') === '1') {
+      fetch('/api/audio/list')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (items) {
+          if (Array.isArray(items)) {
+            serverMode = true;
+            items.forEach(function (it) {
+              playlist.push({ id: it.id, name: it.name, url: '/api/audio/' + it.id });
+            });
+            renderPlaylist();
+            syncMusicLabel();
+          }
+        })
+        .catch(function () {});
     }
   }
 

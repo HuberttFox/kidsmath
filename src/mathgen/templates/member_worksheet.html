@@ -16,7 +16,8 @@
 </section>
 <section class="preview-wrap">
   <div class="sheet preview ws-sheet" style="grid-template-columns: repeat({{ ncols }}, minmax(0, 1fr));" id="wsSheet">
-    {% for c in cells %}<div class="cell" data-topic="{{ c.topic }}" data-problem="{{ c.problem|safe }}">{{ c.text | safe }}</div>{% endfor %}
+    {% for c in cells %}<div class="cell" data-topic="{{ c.topic }}" data-problem="{{ c.problem|safe }}">{{ c.text | safe }}{% if c.steps %}<button class="btn btn-secondary btn-small ws-steps-btn" type="button" data-i18n="ws.steps">{{ t("ws.steps", lang) }}</button>
+      <div class="q-steps" hidden>{% for s in c.steps %}<p>{{ s }}</p>{% endfor %}</div>{% endif %}</div>{% endfor %}
   </div>
 </section>
 {% else %}
@@ -72,6 +73,8 @@
         if (!inp) return;
         if (checkCell(c)) correct++; else wrong.push(c);
       });
+      // 交卷后自动展示错题的解题步骤
+      wrong.forEach(function (c) { var qs = c.querySelector('.q-steps'); if (qs) qs.hidden = false; });
       if (resultText && resultText.dataset.scoreFmt) {
         var m = Math.floor((performance.now()-started)/1000/60), s = Math.floor((performance.now()-started)/1000)%60;
         resultText.textContent = resultText.dataset.scoreFmt
@@ -96,6 +99,12 @@
       });
     }
     if (submitBtn) submitBtn.addEventListener('click', submit);
+    if (sheet) sheet.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('.ws-steps-btn') : null;
+      if (!btn) return;
+      var qs = btn.parentNode.querySelector('.q-steps');
+      if (qs) qs.hidden = !qs.hidden;
+    });
     if (resetBtn) resetBtn.addEventListener('click', function () {
       submitted = false; clearInterval(interval); started = performance.now(); interval = setInterval(tick, 500);
       if (timer) timer.textContent = '00:00';

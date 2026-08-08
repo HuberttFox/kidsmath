@@ -16,7 +16,10 @@ EMOJI_RE = re.compile(r"[\U0001F000-\U0001FAFF\u2700-\u27BF\u2B50\uFE0F]")
 
 def _source_chars() -> set[str]:
     chars: set[str] = set()
-    for pat in ("i18n.py", "templates/*.html", "static/lang.js", "static/style.css"):
+    # 与 scripts/download_ui_font.py 的扫描清单保持一致：含运行时渲染的
+    # topics/*.py（解题步骤等），确保 Yozai 子集覆盖 PDF 之外的网页文案。
+    for pat in ("i18n.py", "templates/*.html", "static/*.js", "static/*.css",
+                "topics/*.py"):
         for p in SRC.glob(pat):
             chars |= {c for c in p.read_text(encoding="utf-8") if ord(c) > 127}
     return {c for c in chars if not EMOJI_RE.match(c)}

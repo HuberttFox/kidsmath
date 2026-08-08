@@ -5,17 +5,129 @@
   <h1 class="placeholder-title" data-i18n="user.center">{{ t("user.center", lang) }}</h1>
   <p class="hint" data-i18n="user.hi"
      data-i18n-params='{"name": "{{ username }}"}'>{{ t("user.hi", lang, name=username) }}</p>
+  <span class="member-badge" data-i18n="{{ member_badge }}">{{ t(member_badge, lang) }}</span>
+  <p class="hint user-stats-title" data-i18n="user.stats_title">{{ t("user.stats_title", lang) }}</p>
+  <div class="user-stats">
+    <span class="stat-pill"><b>{{ stats.gen }}</b><span data-i18n="user.stats_gen"
+      data-i18n-params='{"n": "{{ stats.gen }}"}'>{{ t("user.stats_gen", lang, n=stats.gen) }}</span></span>
+    <span class="stat-pill"><b>{{ stats.mistakes_total }}</b><span data-i18n="user.stats_mistakes"
+      data-i18n-params='{"n": "{{ stats.mistakes_total }}"}'>{{ t("user.stats_mistakes", lang, n=stats.mistakes_total) }}</span></span>
+    <span class="stat-pill"><b>{{ stats.pomodoro }}</b><span data-i18n="user.stats_pomodoro"
+      data-i18n-params='{"n": "{{ stats.pomodoro }}"}'>{{ t("user.stats_pomodoro", lang, n=stats.pomodoro) }}</span></span>
+  </div>
 </section>
 <section class="placeholder-grid">
-  <a class="placeholder-card" href="/user/history" style="text-decoration:none">
+  <a class="placeholder-card tool-card" href="/user/history">
     <span class="placeholder-icon">📜</span>
     <h2 data-i18n="history.title">{{ t("history.title", lang) }}</h2>
-    <p data-i18n="user.history_go">{{ t("user.history_go", lang) }}</p>
+    <p data-i18n="user.history_desc">{{ t("user.history_desc", lang) }}</p>
   </a>
-  <a class="placeholder-card" href="/user/saved" style="text-decoration:none">
+  <a class="placeholder-card tool-card" href="/user/saved">
     <span class="placeholder-icon">⭐</span>
     <h2 data-i18n="saved.title">{{ t("saved.title", lang) }}</h2>
-    <p data-i18n="user.saved_go">{{ t("user.saved_go", lang) }}</p>
+    <p data-i18n="user.saved_desc">{{ t("user.saved_desc", lang) }}</p>
   </a>
+  <div class="placeholder-card settings-card">
+    <h2 data-i18n="user.prefs">{{ t("user.prefs", lang) }}</h2>
+    <form class="prefs-form" id="prefsForm" onsubmit="return savePrefs(event)">
+      <label class="field-group">
+        <span class="field-label" data-i18n="user.theme">{{ t("user.theme", lang) }}</span>
+        <select id="prefTheme" name="theme">
+          <option value="auto"{% if prefs.theme in ("", "auto") %} selected{% endif %} data-i18n="theme.auto">{{ t("theme.auto", lang) }}</option>
+          <option value="light"{% if prefs.theme == "light" %} selected{% endif %} data-i18n="theme.light">{{ t("theme.light", lang) }}</option>
+          <option value="dark"{% if prefs.theme == "dark" %} selected{% endif %} data-i18n="theme.dark">{{ t("theme.dark", lang) }}</option>
+        </select>
+      </label>
+      <label class="field-group">
+        <span class="field-label" data-i18n="user.lang">{{ t("user.lang", lang) }}</span>
+        <select id="prefLang" name="lang">
+          <option value="zh"{% if prefs.lang != "en" %} selected{% endif %}>中文</option>
+          <option value="en"{% if prefs.lang == "en" %} selected{% endif %}>English</option>
+        </select>
+      </label>
+      <div class="actions">
+        <button class="btn btn-secondary btn-small" type="submit" data-i18n="user.save">{{ t("user.save", lang) }}</button>
+        <span class="hint" id="prefsSaved" hidden data-i18n="user.saved_ok">{{ t("user.saved_ok", lang) }}</span>
+      </div>
+    </form>
+  </div>
+  <div class="placeholder-card settings-card backup-card">
+    <h2 data-i18n="settings.backup_title">{{ t("settings.backup_title", lang) }}</h2>
+    <p class="hint" data-i18n="settings.backup_hint">{{ t("settings.backup_hint", lang) }}</p>
+    <form method="post" action="/api/settings/import" enctype="multipart/form-data" class="inline-form">
+      <div class="actions backup-actions">
+        <a class="btn btn-secondary btn-small" href="/api/settings/export" data-i18n="settings.export">{{ t("settings.export", lang) }}</a>
+        <label class="btn btn-secondary btn-small import-btn" for="settingsFile" data-i18n="settings.import">{{ t("settings.import", lang) }}</label>
+        <input type="file" id="settingsFile" name="file" accept=".zip" hidden onchange="this.form.submit()">
+      </div>
+    </form>
+    {% if restored == "1" %}
+    <p class="hint pw-msg" data-i18n="settings.imported_ok">{{ t("settings.imported_ok", lang) }}</p>
+    {% elif restored == "0" %}
+    <p class="hint backup-fail" data-i18n="settings.imported_fail">{{ t("settings.imported_fail", lang) }}</p>
+    {% endif %}
+  </div>
+  <div class="placeholder-card settings-card">
+    <h2 data-i18n="user.security">{{ t("user.security", lang) }}</h2>
+    <form class="prefs-form" method="post" action="/api/user/password" id="pwForm" onsubmit="return submitPwForm(this)">
+      <label class="field-group">
+        <span class="field-label" data-i18n="user.password_old">{{ t("user.password_old", lang) }}</span>
+        <input type="password" name="old" required autocomplete="current-password">
+      </label>
+      <label class="field-group">
+        <span class="field-label" data-i18n="user.password_new">{{ t("user.password_new", lang) }}</span>
+        <input type="password" name="new" required minlength="6" autocomplete="new-password">
+      </label>
+      <label class="field-group">
+        <span class="field-label" data-i18n="user.password_confirm">{{ t("user.password_confirm", lang) }}</span>
+        <input type="password" name="confirm" required autocomplete="new-password">
+      </label>
+      <div class="actions">
+        <button class="btn btn-secondary btn-small" type="submit" data-i18n="user.password_btn">{{ t("user.password_btn", lang) }}</button>
+      </div>
+      <p class="hint" id="pwMismatch" hidden data-i18n="user.password_mismatch">{{ t("user.password_mismatch", lang) }}</p>
+      {% if pw_msg %}<p class="hint pw-msg" data-i18n="{{ pw_msg }}">{{ t(pw_msg, lang) }}</p>{% endif %}
+    </form>
+  </div>
+  <div class="placeholder-card danger-card card-wide">
+    <h2 data-i18n="user.danger">{{ t("user.danger", lang) }}</h2>
+    <p class="hint" data-i18n="user.danger_hint">{{ t("user.danger_hint", lang) }}</p>
+    <form method="post" action="/api/user/delete" class="inline-form"
+          onsubmit="return confirm('{{ t("user.delete_confirm", lang) }}')">
+      <button class="btn btn-danger btn-small" type="submit" data-i18n="user.delete_account">{{ t("user.delete_account", lang) }}</button>
+    </form>
+  </div>
 </section>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.savePrefs = function (ev) {
+    if (ev) ev.preventDefault();
+    var theme = document.getElementById('prefTheme').value;
+    var lang = document.getElementById('prefLang').value;
+    var saved = document.getElementById('prefsSaved');
+    try {
+      fetch('/api/user/prefs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'theme=' + encodeURIComponent(theme) + '&lang=' + encodeURIComponent(lang),
+        redirect: 'manual'
+      }).then(function (r) {
+        if (!r.ok) return;
+        saved.hidden = false;
+        setTimeout(function () { saved.hidden = true; }, 2200);
+      }).catch(function () {});
+    } catch (e) {}
+    return false;
+  };
+  window.submitPwForm = function (form) {
+    var hint = document.getElementById('pwMismatch');
+    if (form.new.value !== form.confirm.value) {
+      hint.hidden = false;
+      form.confirm.focus();
+      return false;
+    }
+    return true;
+  };
+</script>
 {% endblock %}

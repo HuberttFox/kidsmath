@@ -28,7 +28,10 @@ def _fetch(url: str, dest: Path) -> None:
 def _chars() -> set[str]:
     root = Path(__file__).resolve().parent.parent / "src" / "mathgen"
     texts: list[str] = [BASE_ASCII]
-    for pat in ("i18n.py", "templates/*.html", "static/lang.js", "static/style.css"):
+    # 扫描所有会以 Yozai 渲染的文案源：i18n 字典、模板、静态 js/css、
+    # 以及运行时拼进步骤/题面/答案页的 topics/*.py 字符串。
+    for pat in ("i18n.py", "templates/*.html", "static/*.js", "static/*.css",
+                "topics/*.py"):
         for p in root.glob(pat):
             texts.append(p.read_text(encoding="utf-8"))
     return {c for t in texts for c in t if ord(c) > 31}

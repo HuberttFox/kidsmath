@@ -457,7 +457,7 @@ def test_pwa_assets():
     assert r.headers.get("content-type", "").startswith("application/manifest")
     r2 = client.get("/static/sw.js")
     assert r2.status_code == 200
-    assert "kidsmath-v7" in r2.text
+    assert "kidsmath-v9" in r2.text
     assert "startsWith('/static/')" in r2.text  # v3 白名单：仅缓存 /、/product、/static/*
     r3 = client.get("/")
     assert 'rel="manifest"' in r3.text
@@ -466,7 +466,7 @@ def test_pwa_assets():
 
 def test_placeholder_pages():
     r = client.get("/member")
-    assert r.status_code == 200 and "coming-soon" in r.text
+    assert r.status_code == 200 and 'data-i18n="member.title"' in r.text  # 真实会员介绍页
     for path in ("/member/timer", "/member/pomodoro"):
         assert client.get(path).status_code == 200  # 真实页
     # /member/errors、/member/review 已真实化：未登录 → 跳登录
@@ -552,7 +552,7 @@ def test_product_page_slim():
     r = client.get("/product")
     assert r.status_code == 200
     assert "coming-soon" not in r.text  # 无占位徽标
-    assert 'href="/member' not in r.text
+    assert 'href="/member/timer' not in r.text  # 产品页不逐个列工具入口（顶栏有 /member 导航）
     assert 'data-i18n="product.cta"' in r.text
     assert 'href="https://github.com/HuberttFox/kidsmath/releases"' in r.text  # 立即下载
 
@@ -575,7 +575,7 @@ def test_workspace_tool_entries():
 def test_product_tools_intro_no_links():
     r = client.get("/product")
     assert "product.tools_title" in r.text
-    assert 'href="/member' not in r.text  # 无逐个入口
+    assert 'href="/member/timer' not in r.text  # 无逐个入口（顶栏统一导航）
     assert 'data-i18n="product.tools_cta"' in r.text  # 统一 CTA
 
 

@@ -69,6 +69,18 @@
     return THEMES.indexOf(t) !== -1 ? t : 'auto';
   }
 
+  // 切换后把偏好同步到账号设置（跨设备）；redirect:'manual' 避免匿名用户跳到 /login
+  function persistPrefs() {
+    try {
+      fetch('/api/user/prefs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'theme=' + encodeURIComponent(currentTheme()) + '&lang=' + encodeURIComponent(currentLang()),
+        redirect: 'manual'
+      });
+    } catch (e) {}
+  }
+
   function applyTheme(theme) {
     document.documentElement.removeAttribute('data-theme');
     if (theme !== 'auto') document.documentElement.setAttribute('data-theme', theme);
@@ -84,6 +96,7 @@
       var next = currentLang() === 'zh' ? 'en' : 'zh';
       setCookie('mathgen_lang', next);
       applyLang(next);
+      persistPrefs();
     });
   }
   var themeBtn = document.getElementById('themeToggle');
@@ -91,6 +104,7 @@
     themeBtn.addEventListener('click', function () {
       var idx = THEMES.indexOf(currentTheme());
       applyTheme(THEMES[(idx + 1) % THEMES.length]);
+      persistPrefs();
     });
   }
   // 响应父壳转发（工作台内 iframe 不重载切换主题/语言，避免清空表单）

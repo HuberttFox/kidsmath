@@ -10,6 +10,7 @@ from mathgen.core.engine import (GenerationError, check_result, gen_operand,
                                  left_factor_range, quotient_range,
                                  right_factor_range)
 from mathgen.core.question import Question
+from mathgen.topics.steps import arith_steps, multi_steps
 
 
 def _pick_ops(rng: random.Random, cfg, n: int) -> list[str]:
@@ -92,11 +93,15 @@ def _gen_two(cfg: ResolvedConfig, rng: random.Random) -> Question:
         if cfg.allow_remainder:
             rword = "R" if cfg.lang == "en" else "余"
             return Question("arithmetic", f"{dividend} ÷ {divisor} = ____",
-                            f"{quotient} {rword} {remainder}", f"{dividend} ÷ {divisor}", None)
+                            f"{quotient} {rword} {remainder}", f"{dividend} ÷ {divisor}", None,
+                            steps=arith_steps("÷", dividend, divisor, quotient, cfg.lang,
+                                              remainder=remainder))
         return Question("arithmetic", f"{dividend} ÷ {divisor} = ____",
-                        str(quotient), f"{dividend} ÷ {divisor}", None)
+                        str(quotient), f"{dividend} ÷ {divisor}", None,
+                        steps=arith_steps("÷", dividend, divisor, quotient, cfg.lang))
     expr = f"{a} {op} {b}"
-    return Question("arithmetic", f"{expr} = ____", str(result), expr, None)
+    return Question("arithmetic", f"{expr} = ____", str(result), expr, None,
+                    steps=arith_steps(op, a, b, result, cfg.lang))
 
 
 def _eval_precedence(tokens: list[str]) -> int | None:
@@ -213,7 +218,8 @@ def _gen_multi(cfg: ResolvedConfig, rng: random.Random, n: int) -> Question:
             continue
         expr = " ".join(tokens)
         statement = expr.replace("(", "( ").replace(")", " )") + " = ____"
-        return Question("arithmetic", statement, str(result), expr, None)
+        return Question("arithmetic", statement, str(result), expr, None,
+                        steps=multi_steps(tokens, result, cfg.lang))
     raise GenerationError("multi_no_solution", n=n)
 
 

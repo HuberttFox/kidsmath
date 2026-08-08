@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("brand", lang) }} - {{ t("guide.title", lang) }}{% endblock %}
+
+
+{% block content %}
+<section class="landing-hero">
+  <div class="hero-badge" data-i18n="guide.title">{{ t("guide.title", lang) }}</div>
+  <h1 class="hero-title" data-i18n="guide.tagline">{{ t("guide.tagline", lang) }}</h1>
+</section>
+
+<section class="content-section">
+  <div class="content-card">
+    <h2 data-i18n="guide.steps">{{ t("guide.steps", lang) }}</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-number" aria-hidden="true">1</div>
+        <h3 data-i18n="guide.step1_t">{{ t("guide.step1_t", lang) }}</h3>
+        <p data-i18n="guide.step1_d">{{ t("guide.step1_d", lang) }}</p>
+      </div>
+      <div class="step">
+        <div class="step-number" aria-hidden="true">2</div>
+        <h3 data-i18n="guide.step2_t">{{ t("guide.step2_t", lang) }}</h3>
+        <p data-i18n="guide.step2_d">{{ t("guide.step2_d", lang) }}</p>
+      </div>
+      <div class="step">
+        <div class="step-number" aria-hidden="true">3</div>
+        <h3 data-i18n="guide.step3_t">{{ t("guide.step3_t", lang) }}</h3>
+        <p data-i18n="guide.step3_d">{{ t("guide.step3_d", lang) }}</p>
+      </div>
+      <div class="step">
+        <div class="step-number" aria-hidden="true">4</div>
+        <h3 data-i18n="guide.step4_t">{{ t("guide.step4_t", lang) }}</h3>
+        <p data-i18n="guide.step4_d">{{ t("guide.step4_d", lang) }}</p>
+      </div>
+      <div class="step">
+        <div class="step-number" aria-hidden="true">5</div>
+        <h3 data-i18n="guide.step5_t">{{ t("guide.step5_t", lang) }}</h3>
+        <p data-i18n="guide.step5_d">{{ t("guide.step5_d", lang) }}</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="content-card">
+    <h2 data-i18n="guide.workbench">{{ t("guide.workbench", lang) }}</h2>
+    <p class="guide-lead" data-i18n="guide.workbench_d">{{ t("guide.workbench_d", lang) }}</p>
+    <div class="tool-links">
+      <a class="tool-link" href="/member/timer">
+        <span class="tool-emoji" aria-hidden="true">🕐</span>
+        <span class="tool-name" data-i18n="member.timer">{{ t("member.timer", lang) }}</span>
+        <span class="tool-desc" data-i18n="member.timer_desc">{{ t("member.timer_desc", lang) }}</span>
+      </a>
+      <a class="tool-link" href="/member/pomodoro">
+        <span class="tool-emoji" aria-hidden="true">🍅</span>
+        <span class="tool-name" data-i18n="member.pomodoro">{{ t("member.pomodoro", lang) }}</span>
+        <span class="tool-desc" data-i18n="member.pomodoro_desc">{{ t("member.pomodoro_desc", lang) }}</span>
+      </a>
+      <a class="tool-link" href="/member/errors">
+        <span class="tool-emoji" aria-hidden="true">❌</span>
+        <span class="tool-name" data-i18n="member.errors">{{ t("member.errors", lang) }}</span>
+        <span class="tool-desc" data-i18n="member.errors_desc">{{ t("member.errors_desc", lang) }}</span>
+      </a>
+      <a class="tool-link" href="/member/review">
+        <span class="tool-emoji" aria-hidden="true">🔁</span>
+        <span class="tool-name" data-i18n="member.review">{{ t("member.review", lang) }}</span>
+        <span class="tool-desc" data-i18n="member.review_desc">{{ t("member.review_desc", lang) }}</span>
+      </a>
+      <a class="tool-link" href="/member/worksheet">
+        <span class="tool-emoji" aria-hidden="true">📄</span>
+        <span class="tool-name" data-i18n="member.worksheet">{{ t("member.worksheet", lang) }}</span>
+        <span class="tool-desc" data-i18n="member.worksheet_desc">{{ t("member.worksheet_desc", lang) }}</span>
+      </a>
+      <a class="tool-link" href="/member/ai">
+        <span class="tool-emoji" aria-hidden="true">🤖</span>
+        <span class="tool-name" data-i18n="member.ai">{{ t("member.ai", lang) }}</span>
+        <span class="tool-desc" data-i18n="member.ai_desc">{{ t("member.ai_desc", lang) }}</span>
+      </a>
+    </div>
+    <div class="actions">
+      <a class="btn" href="/member" data-i18n="nav.member">{{ t("nav.member", lang) }}</a>
+      <a class="btn btn-secondary" href="/" data-i18n="guide.cta">{{ t("guide.cta", lang) }}</a>
+    </div>
+  </div>
+
+  <div class="content-card">
+    <h2 data-i18n="guide.mistakes">{{ t("guide.mistakes", lang) }}</h2>
+    <p class="guide-lead" data-i18n="guide.mistakes_d">{{ t("guide.mistakes_d", lang) }}</p>
+  </div>
+
+  <div class="content-card">
+    <h2 data-i18n="guide.worksheet">{{ t("guide.worksheet", lang) }}</h2>
+    <p class="guide-lead" data-i18n="guide.worksheet_d">{{ t("guide.worksheet_d", lang) }}</p>
+  </div>
+
+  <div class="content-card">
+    <h2 data-i18n="guide.sound">{{ t("guide.sound", lang) }}</h2>
+    <p class="guide-lead" data-i18n="guide.sound_d">{{ t("guide.sound_d", lang) }}</p>
+  </div>
+</section>
+{% endblock %}

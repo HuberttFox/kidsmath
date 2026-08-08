@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("brand", lang) }} - {{ t("docs.title", lang) }}{% endblock %}
+
+
+{% block content %}
+<section class="landing-hero">
+  <div class="hero-badge" data-i18n="docs.title">{{ t("docs.title", lang) }}</div>
+  <h1 class="hero-title" data-i18n="docs.tagline">{{ t("docs.tagline", lang) }}</h1>
+</section>
+
+<section class="content-section">
+  <div class="content-card">
+    <h2 data-i18n="docs.params">{{ t("docs.params", lang) }}</h2>
+    <p class="guide-lead" data-i18n="docs.params_d">{{ t("docs.params_d", lang) }}</p>
+  </div>
+
+  <div class="content-card">
+    <h2 data-i18n="docs.output">{{ t("docs.output", lang) }}</h2>
+    <p class="guide-lead" data-i18n="docs.output_d">{{ t("docs.output_d", lang) }}</p>
+  </div>
+
+  <div class="content-card">
+    <h2 data-i18n="docs.privacy">{{ t("docs.privacy", lang) }}</h2>
+    <p class="guide-lead" data-i18n="docs.privacy_d">{{ t("docs.privacy_d", lang) }}</p>
+  </div>
+
+  <div class="content-card">
+    <h2 data-i18n="docs.faq">{{ t("docs.faq", lang) }}</h2>
+    <div class="faq">
+      <details class="faq-item">
+        <summary data-i18n="docs.faq1_q">{{ t("docs.faq1_q", lang) }}</summary>
+        <p data-i18n="docs.faq1_a">{{ t("docs.faq1_a", lang) }}</p>
+      </details>
+      <details class="faq-item">
+        <summary data-i18n="docs.faq2_q">{{ t("docs.faq2_q", lang) }}</summary>
+        <p data-i18n="docs.faq2_a">{{ t("docs.faq2_a", lang) }}</p>
+      </details>
+      <details class="faq-item">
+        <summary data-i18n="docs.faq3_q">{{ t("docs.faq3_q", lang) }}</summary>
+        <p data-i18n="docs.faq3_a">{{ t("docs.faq3_a", lang) }}</p>
+      </details>
+      <details class="faq-item">
+        <summary data-i18n="docs.faq4_q">{{ t("docs.faq4_q", lang) }}</summary>
+        <p data-i18n="docs.faq4_a">{{ t("docs.faq4_a", lang) }}</p>
+      </details>
+    </div>
+  </div>
+</section>
+{% endblock %}

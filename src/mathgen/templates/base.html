@@ -25,18 +25,23 @@
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body{% if request.query_params.get("embed") %} class="embed"{% endif %}>
+<body{% if request.query_params.get("embed") %} class="embed"{% endif %}{% if request.state.user %} data-logged-in="1"{% endif %}>
   <header class="site-header">
     <div class="container header-inner">
       <a class="logo" href="{% if app_mode %}/{% else %}/product{% endif %}">
         <img class="logo-icon" src="/static/math-icon.svg" alt="" width="36" height="36">
         <span class="logo-text">Kids Math</span>
       </a>
-      {% if request.url.path == "/product" %}
+      {% set _path = request.url.path %}
       <nav class="nav" aria-label="导航">
-        <a href="/" data-i18n="nav.workspace">{{ t("nav.workspace", lang) }}</a>
+        <a href="/product"{% if _path == '/product' %} aria-current="page"{% endif %} data-i18n="nav.product">{{ t("nav.product", lang) }}</a>
+        <a href="/guide"{% if _path == '/guide' %} aria-current="page"{% endif %} data-i18n="nav.guide">{{ t("nav.guide", lang) }}</a>
+        {% if request.state.user %}
+        <a href="/user"{% if _path == '/user' %} aria-current="page"{% endif %} data-i18n="nav.user">{{ t("nav.user", lang) }}</a>
+        {% endif %}
+        <a href="/member"{% if _path == '/member' or _path.startswith('/member/') %} aria-current="page"{% endif %} data-i18n="nav.member">{{ t("nav.member", lang) }}</a>
+        <a href="/docs"{% if _path == '/docs' %} aria-current="page"{% endif %} data-i18n="nav.docs">{{ t("nav.docs", lang) }}</a>
       </nav>
-      {% endif %}
       <div class="header-controls">
         {% if request.state.user %}
       <a class="user-chip" href="/user">{{ request.state.user.username }}</a>

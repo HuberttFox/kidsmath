@@ -6,6 +6,7 @@ import random
 from mathgen.config import ResolvedConfig
 from mathgen.core.engine import check_result, gen_pair, gen_result
 from mathgen.core.question import Question
+from mathgen.topics.steps import word_steps
 
 # (模板, 运算)；槽位 a、b 即运算式 "a op b" 的两个数
 TEMPLATES = [
@@ -80,4 +81,5 @@ def gen(cfg: ResolvedConfig, rng: random.Random) -> Question:
         result = quotient
     statement = template.format(a=a, b=b)
     expr = f"{a} {op} {b}"
-    return Question("word_problem", statement, str(result), expr, None)
+    return Question("word_problem", statement, str(result), expr, None,
+                    steps=word_steps(op, a, b, result, cfg.lang))

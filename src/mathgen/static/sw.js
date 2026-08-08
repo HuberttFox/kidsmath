@@ -1,6 +1,6 @@
-const CACHE = 'kidsmath-v7';
+const CACHE = 'kidsmath-v9';
 const ASSETS = [
-  '/', '/static/style.css', '/static/lang.js', '/static/timer.js', '/static/audio.js', '/static/sound.js', '/static/math-icon.svg',
+  '/', '/product', '/guide', '/docs', '/static/style.css', '/static/lang.js', '/static/timer.js', '/static/audio.js', '/static/sound.js', '/static/math-icon.svg',
   '/static/icons/settings.svg', '/static/icons/calculator.svg',
   '/static/icons/layout.svg', '/static/icons/batch.svg',
   '/static/fonts/yozai-400.woff2', '/static/fonts/yozai-700.woff2'
@@ -16,6 +16,7 @@ self.addEventListener('activate', (e) => {
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url);
   const allow = url.pathname === '/' || url.pathname === '/product' ||
+                 url.pathname === '/guide' || url.pathname === '/docs' ||
                  url.pathname.startsWith('/static/');
   if (e.request.method !== 'GET' || url.origin !== location.origin || !allow) return;
   e.respondWith(

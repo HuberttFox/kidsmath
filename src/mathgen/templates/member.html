@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}{{ t("brand", lang) }} - {{ t("member.title", lang) }}{% endblock %}
+
+
+{% block content %}
+<section class="landing-hero">
+  <div class="hero-badge" data-i18n="member.title">{{ t("member.title", lang) }}</div>
+  <h1 class="hero-title" data-i18n="member.intro">{{ t("member.intro", lang) }}</h1>
+  <p class="hero-tagline" data-i18n="member.free">{{ t("member.free", lang) }}</p>
+</section>
+
+<div class="placeholder-grid member-tools">
+  <a class="placeholder-card tool-card" href="/member/timer">
+    <span class="placeholder-icon" aria-hidden="true">🕐</span>
+    <h2 data-i18n="member.timer">{{ t("member.timer", lang) }}</h2>
+    <p data-i18n="member.timer_desc">{{ t("member.timer_desc", lang) }}</p>
+  </a>
+  <a class="placeholder-card tool-card" href="/member/pomodoro">
+    <span class="placeholder-icon" aria-hidden="true">🍅</span>
+    <h2 data-i18n="member.pomodoro">{{ t("member.pomodoro", lang) }}</h2>
+    <p data-i18n="member.pomodoro_desc">{{ t("member.pomodoro_desc", lang) }}</p>
+  </a>
+  <a class="placeholder-card tool-card" href="/member/errors">
+    <span class="placeholder-icon" aria-hidden="true">❌</span>
+    <h2 data-i18n="member.errors">{{ t("member.errors", lang) }}</h2>
+    <p data-i18n="member.errors_desc">{{ t("member.errors_desc", lang) }}</p>
+  </a>
+  <a class="placeholder-card tool-card" href="/member/review">
+    <span class="placeholder-icon" aria-hidden="true">🔁</span>
+    <h2 data-i18n="member.review">{{ t("member.review", lang) }}</h2>
+    <p data-i18n="member.review_desc">{{ t("member.review_desc", lang) }}</p>
+  </a>
+  <a class="placeholder-card tool-card" href="/member/worksheet">
+    <span class="placeholder-icon" aria-hidden="true">📄</span>
+    <h2 data-i18n="member.worksheet">{{ t("member.worksheet", lang) }}</h2>
+    <p data-i18n="member.worksheet_desc">{{ t("member.worksheet_desc", lang) }}</p>
+  </a>
+  <a class="placeholder-card tool-card" href="/member/ai">
+    <span class="placeholder-icon" aria-hidden="true">🤖</span>
+    <h2 data-i18n="member.ai">{{ t("member.ai", lang) }}</h2>
+    <p data-i18n="member.ai_desc">{{ t("member.ai_desc", lang) }}</p>
+  </a>
+</div>
+
+<div class="actions content-cta">
+  <a class="btn btn-big" href="/" data-i18n="guide.cta">{{ t("guide.cta", lang) }}</a>
+</div>
+{% endblock %}

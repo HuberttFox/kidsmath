@@ -159,6 +159,7 @@
     });
   })();
 </script>
+{% endblock %}
 {% block scripts %}
 <script type="application/json" id="preset-hints">{{ presets_json | safe }}</script>
 <script>
@@ -220,6 +221,7 @@
     }
 
     function updateHint() {
+      if (!hintEl) return;  // 壳页无表单提示元素，静默跳过
       var g = gradeValue();
       if (g && data.grades[g]) {
         var summary = lang === 'en' ? data.grades[g].summary_en : data.grades[g].summary;
@@ -264,7 +266,6 @@
     updateHint();
   })();
 </script>
-{% endblock %}
 {% endblock %}
 
 

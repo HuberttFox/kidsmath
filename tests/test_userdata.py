@@ -72,10 +72,10 @@ def test_save_from_main_form():
 
 
 def test_import_single_button_auto_submit():
-    r = client.get("/?embed=1")
-    assert 'import-btn' in r.text
-    assert 'accept="application/json,.json"' in r.text
-    assert 'onchange="this.form.submit()"' in r.text
+    _login()
+    r = client.get("/user")  # 导入设置已移到用户页
+    assert 'action="/api/settings/import"' in r.text
+    assert 'accept=".zip"' in r.text
     assert 'type="file"' in r.text
 
 
