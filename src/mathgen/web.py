@@ -161,11 +161,13 @@ PLACEHOLDER_PAGES = {
         ("🤖", "member.ai", "member.ai_desc", "/member/ai"),
         ("⏱️", "member.timer", "member.timer_desc", "/member/timer"),
         ("🍅", "member.pomodoro", "member.pomodoro_desc", "/member/pomodoro"),
+        ("📄", "member.worksheet", "member.worksheet_desc", "/member/worksheet"),
         ("❌", "member.errors", "member.errors_desc", "/member/errors"),
         ("🔁", "member.review", "member.review_desc", "/member/review"),
     ]),
     "/member/timer": ("member.timer", [("⏱️", "member.timer", "member.timer_desc", None)]),
     "/member/pomodoro": ("member.pomodoro", [("🍅", "member.pomodoro", "member.pomodoro_desc", None)]),
+    "/member/worksheet": ("member.worksheet", [("📄", "member.worksheet", "member.worksheet_desc", None)]),
     "/member/errors": ("member.errors", [("❌", "member.errors", "member.errors_desc", None)]),
     "/member/review": ("member.review", [
         ("🔁", "member.review", "member.review_desc", None),
@@ -460,6 +462,53 @@ async def member_errors(request: Request, user: dict | None = Depends(current_us
     if not user:
         return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
     return _render_errors(request, user, request.query_params.get("f", "all"))
+
+
+def _worksheet_cells(questions) -> list[dict]:
+    """把题目转成答题格：____ 处嵌入输入框；竖式块在题面下方给输入框。"""
+    import html as _html
+    out = []
+    for i, q in enumerate(questions, 1):
+        st = _html.escape(q.statement or "")
+        ans = _html.escape(q.answer or "")
+        if "____" in st:
+            text = st.replace("____", '<input class="ans" data-answer="%s">' % ans)
+        else:
+            text = ('<span class="q-text">%s</span>'
+                    '<input class="ans" data-answer="%s">' % (st, ans))
+        out.append({"i": i, "text": text, "problem": st, "answer": q.answer or "",
+                    "topic": q.topic, "layout_kind": (q.layout or {}).get("kind", "")})
+    return out
+
+
+@app.get("/member/worksheet", response_class=HTMLResponse)
+async def member_worksheet(request: Request, user: dict | None = Depends(current_user)):
+    if not user:
+        return RedirectResponse(f"/login?next={request.url.path}", status_code=302)
+    lang = _lang(request)
+    qp = request.query_params
+    cells = None
+    try:
+        cfg = _config_from_form(qp)
+        resolved = resolve(cfg)
+    except Exception:
+        resolved = None
+    ncols = resolved.columns if resolved else 2
+    if resolved is not None and (qp.get("seed") or qp.get("topic") or qp.get("count")):
+        # pinned-seed URL（可分享）→ 直接渲染答题卷；无 seed 先落 pin 再跳转
+        if cfg.seed is None:
+            cfg.seed = resolved.seed
+            url = f"/member/worksheet?{urlencode(_as_query(cfg))}"
+            return RedirectResponse(url, status_code=302)
+        try:
+            questions = generate(resolved)
+        except GenerationError:
+            questions = []
+        cells = _worksheet_cells(questions)
+    return templates.TemplateResponse(request, "member_worksheet.html", {
+        "lang": lang, "ui_json": _UI_JSON, "app_mode": _app_mode(request),
+        "cells": cells, "resolved": resolved, "ncols": ncols,
+        "topic_options": TOPIC_OPTIONS})
 
 
 @app.post("/api/mistakes")

@@ -10,8 +10,6 @@
       <input type="number" id="focusMin" value="25" min="0"></label>
     <label class="field-group"><span class="field-label" data-i18n="pomodoro.break">{{ t("pomodoro.break", lang) }}</span>
       <input type="number" id="breakMin" value="5" min="0"></label>
-    <label class="field-group"><span class="field-label" data-i18n="timer.seconds">{{ t("timer.seconds", lang) }}</span>
-      <input type="number" id="focusSec" value="" min="0" max="59"></label>
   </div>
   <div class="actions">
     {% for f, b in [(25,5),(50,10),(45,15),(30,5)] %}
@@ -116,7 +114,6 @@
   var display = document.getElementById('timerDisplay');
   var focusMin = document.getElementById('focusMin');
   var breakMin = document.getElementById('breakMin');
-  var focusSec = document.getElementById('focusSec');
   var state = 'idle';
   var plannedSec = 0;
   var loggedIn = {{ 'true' if logged_in else 'false' }};
@@ -141,7 +138,7 @@
       });
     } catch (e) { /* 忽略 */ }
   };
-  function readFocusSec() { return window.Timer.parseMinutesSeconds(focusMin.value, focusSec.value); }
+  function readFocusSec() { return window.Timer.parseMinutesSeconds(focusMin.value, ''); }
   function readBreakSec() { return window.Timer.parseMinutesSeconds(breakMin.value, ''); }
   function soundFollow(action) {
     if (window.Sound && window.Sound.isMusicLoaded()) {
@@ -176,7 +173,6 @@
   window.setPomodoroPreset = function (f, b) {
     focusMin.value = f;
     breakMin.value = b;
-    focusSec.value = '';
     display.textContent = window.Timer.fmt(readFocusSec());
   };
   window.resetPomodoro = function () {

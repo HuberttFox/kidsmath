@@ -887,6 +887,12 @@ html[data-theme="dark"] .landing-hero {
 .pomo-day-list { list-style: none; margin: .4em 0 0; padding: 0; display: flex; flex-direction: column; gap: .25em; }
 .pomo-day-list li { font-size: .88rem; color: var(--text-soft); }
 
+/* Music playlist */
+.music-list { list-style: none; margin: .5em 0 0; padding: 0; display: flex; flex-direction: column; gap: .3em; }
+.music-list li { display: flex; align-items: center; gap: .5em; font-size: .88rem; color: var(--text-soft); }
+.music-list .music-current { font-weight: 700; color: var(--text); }
+.music-list .music-remove { margin-left: auto; border: none; background: none; cursor: pointer; color: var(--pink); font-size: .85rem; padding: .1em .3em; }
+
 /* ---- 错题重出/变式页内预览 ---- */
 .mistake-preview { margin-top: .6em; padding: .5em .8em; border: 1.5px dashed var(--green);
   border-radius: var(--radius-sm); background: var(--mint-soft); font-weight: 700; }
@@ -944,3 +950,18 @@ html[data-theme="dark"] .landing-hero {
 .sheet .cell:nth-child(3n+1) { background: color-mix(in srgb, var(--pink-soft) 45%, var(--bg)); }
 .sheet .cell:nth-child(3n+2) { background: color-mix(in srgb, var(--mint-soft) 45%, var(--bg)); }
 .sheet .cell:nth-child(3n) { background: color-mix(in srgb, var(--blue-soft) 45%, var(--bg)); }
+
+/* ---- Worksheet practice inputs ---- */
+.ws-toolbar { justify-content: center; flex-wrap: wrap; }
+.ws-toolbar .timer-display { font-size: 1.35rem; margin: 0; }
+.ws-sheet .cell { display: flex; flex-direction: column; align-items: center; gap: .25em; }
+.ws-sheet .q-text { white-space: pre-wrap; }
+.ws-sheet .ans { width: 72px; padding: .25em .4em; text-align: center; font: inherit; font-weight: 700;
+  color: var(--text); background: var(--input-bg); border: 1.5px solid var(--input-border);
+  border-radius: var(--radius-sm); }
+.ws-sheet .ans:focus-visible { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 25%, transparent); }
+.ws-sheet .cell.ok .ans { border-color: var(--green); }
+.ws-sheet .cell.bad .ans { border-color: var(--pink); }
+.ws-sheet .cell.bad { color: var(--pink); }
+.result-banner { text-align: center; font-size: 1.05rem; font-weight: 700; margin-top: .6em; color: var(--green); }
+#wsResult[hidden] { display: none; }

@@ -1,0 +1,107 @@
+{% extends "base.html" %}
+{% block title %}{{ t("member.worksheet", lang) }} - Kids Math{% endblock %}
+{% block content %}
+{% if cells %}
+<section class="card card-mint">
+  <div class="actions ws-toolbar">
+    <span class="timer-display" id="wsTimer">00:00</span>
+    <label class="toggle-line" for="wsLive"><input type="checkbox" id="wsLive">
+      <span data-i18n="ws.live">{{ t("ws.live", lang) }}</span></label>
+    <button class="btn" type="button" id="wsSubmit" data-i18n="ws.submit">{{ t("ws.submit", lang) }}</button>
+    <button class="btn btn-secondary" type="button" id="wsReset" data-i18n="ws.reset">{{ t("ws.reset", lang) }}</button>
+  </div>
+  <div class="result-banner" id="wsResult" hidden>
+    <span id="wsResultText" data-score-fmt="{{ t('ws.score', lang) }}"></span>
+  </div>
+</section>
+<section class="preview-wrap">
+  <div class="sheet preview ws-sheet" style="grid-template-columns: repeat({{ ncols }}, minmax(0, 1fr));" id="wsSheet">
+    {% for c in cells %}<div class="cell" data-topic="{{ c.topic }}" data-problem="{{ c.problem|safe }}">{{ c.text | safe }}</div>{% endfor %}
+  </div>
+</section>
+{% else %}
+<section class="card card-mint ai-page">
+  <h2 data-i18n="member.worksheet">{{ t("member.worksheet", lang) }}</h2>
+  <p class="hint" data-i18n="member.worksheet_desc">{{ t("member.worksheet_desc", lang) }}</p>
+  <form method="get" action="/member/worksheet" class="form-grid">
+    <label class="field-group"><span class="field-label" data-i18n="f.topic">{{ t("f.topic", lang) }}</span>
+      <select name="topic">
+        {% for key, label in topic_options %}<option value="{{ key }}">{{ t(label, lang) }}</option>{% endfor %}
+      </select></label>
+    <label class="field-group"><span class="field-label" data-i18n="f.grade">{{ t("f.grade", lang) }}</span>
+      <select name="grade">{% for g in range(1, 7) %}<option value="{{ g }}"{% if g == 2 %} selected{% endif %}>{{ t("grade.x", lang, g=g) }}</option>{% endfor %}</select></label>
+    <label class="field-group"><span class="field-label" data-i18n="f.count">{{ t("f.count", lang) }}</span>
+      <input type="number" name="count" value="20" min="1" max="500"></label>
+    <div class="actions"><button class="btn" type="submit" data-i18n="ws.generate">{{ t("ws.generate", lang) }}</button></div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  (function () {
+    var sheet = document.getElementById('wsSheet');
+    if (!sheet) return;
+    var cells = Array.prototype.slice.call(sheet.querySelectorAll('.cell'));
+    var timer = document.getElementById('wsTimer');
+    var live = document.getElementById('wsLive');
+    var submitBtn = document.getElementById('wsSubmit');
+    var resetBtn = document.getElementById('wsReset');
+    var result = document.getElementById('wsResult');
+    var resultText = document.getElementById('wsResultText');
+    var started = performance.now(), interval = null, submitted = false;
+    function fmt(s) { s = Math.max(0, Math.floor(s)); var m = Math.floor(s/60), r = s%60; return (m<10?'0'+m:m)+':'+(r<10?'0'+r:r); }
+    function tick() { if (timer) timer.textContent = fmt((performance.now()-started)/1000); }
+    interval = setInterval(tick, 500);
+    function checkCell(cell) {
+      var inp = cell.querySelector('input.ans');
+      var ok = inp.value.trim() === (inp.getAttribute('data-answer') || '');
+      cell.classList.toggle('ok', ok);
+      cell.classList.toggle('bad', !ok);
+      return ok;
+    }
+    if (live) live.addEventListener('change', function () {
+      cells.forEach(function (c) { var inp = c.querySelector('input.ans'); if (live.checked && inp && inp.value !== '') checkCell(c); });
+    });
+    function submit() {
+      if (submitted) return; submitted = true;
+      clearInterval(interval);
+      var correct = 0, wrong = [];
+      cells.forEach(function (c) {
+        var inp = c.querySelector('input.ans');
+        if (!inp) return;
+        if (checkCell(c)) correct++; else wrong.push(c);
+      });
+      if (resultText && resultText.dataset.scoreFmt) {
+        var m = Math.floor((performance.now()-started)/1000/60), s = Math.floor((performance.now()-started)/1000)%60;
+        resultText.textContent = resultText.dataset.scoreFmt
+          .replace('{c}', correct).replace('{t}', cells.length)
+          .replace('{m}', m).replace('{s}', s);
+      }
+      if (result) result.hidden = false;
+      // 错题联动：逐题串行 POST 到错题本（并发写共享 SQLite 会偶发报错），静默失败
+      var chain = Promise.resolve();
+      wrong.forEach(function (c) {
+        var inp = c.querySelector('input.ans');
+        var body = 'topic=' + encodeURIComponent(c.getAttribute('data-topic') || '') +
+                   '&problem=' + encodeURIComponent(c.getAttribute('data-problem') || '') +
+                   '&answer=' + encodeURIComponent(inp ? (inp.getAttribute('data-answer') || '') : '');
+        chain = chain.then(function () {
+          return fetch('/api/mistakes/manual', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: body
+          }).catch(function () {});
+        });
+      });
+    }
+    if (submitBtn) submitBtn.addEventListener('click', submit);
+    if (resetBtn) resetBtn.addEventListener('click', function () {
+      submitted = false; clearInterval(interval); started = performance.now(); interval = setInterval(tick, 500);
+      if (timer) timer.textContent = '00:00';
+      cells.forEach(function (c) { var inp = c.querySelector('input.ans'); if (inp) inp.value = ''; c.classList.remove('ok', 'bad'); });
+      if (result) result.hidden = true;
+    });
+  })();
+</script>
+{% endblock %}

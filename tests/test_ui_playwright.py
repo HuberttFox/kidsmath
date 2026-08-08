@@ -275,8 +275,7 @@ def test_pomodoro_chime_and_title_flash(page):
     page.goto(BASE + "/member/pomodoro")
     page.evaluate("window.__chimeCalled = false; "
                   "window.playChime = function () { window.__chimeCalled = true; };")
-    page.locator("#focusMin").fill("0")
-    page.locator("#focusSec").fill("1")
+    page.locator("#focusMin").fill("0.0167")  # ≈1 秒（秒输入已移除，用分钟小数）
     page.locator("#pomodoroStart").click()
     page.wait_for_timeout(2500)
     assert page.evaluate("window.__chimeCalled")
@@ -384,3 +383,32 @@ def test_ai_wizard_guided_backfill(page):
     expect(stage.locator('label.grade-btn:has-text("3 年级") input')).to_be_checked()
     expect(stage.locator('#count')).to_have_value("9")
     expect(stage.locator('input[name="operators"][value="乘"]')).to_be_checked()
+
+
+def test_worksheet_practice_and_mistakes(page):
+    page.goto(BASE + "/register")
+    page.locator('input[name="username"]').fill("做题用户")
+    page.locator('input[name="password"]').fill("secret123")
+    page.locator('button[type="submit"]').click()
+    page.wait_for_url(BASE + "/")
+    page.goto(BASE + "/member/worksheet")
+    page.locator('input[name="count"]').fill("3")
+    page.locator('button[data-i18n="ws.generate"]').click()
+    expect(page.locator('#wsSheet')).to_be_visible()
+    inputs = page.locator('.ws-sheet .cell input.ans')
+    expect(inputs).to_have_count(3)
+    inputs.nth(0).fill(inputs.nth(0).get_attribute("data-answer"))
+    inputs.nth(1).fill("99999")
+    cell2_problem = page.locator('.ws-sheet .cell').nth(1).get_attribute("data-problem")
+    posted = []
+    page.on("response", lambda r: posted.append(r)
+            if r.url.endswith("/api/mistakes/manual") else None)
+    page.locator('#wsSubmit').click()
+    expect(page.locator('#wsResult')).to_be_visible()
+    expect(page.locator('#wsResultText')).to_contain_text("正确 1/3")
+    import time
+    deadline = time.time() + 5
+    while len(posted) < 2 and time.time() < deadline:
+        page.wait_for_timeout(50)  # 等 2 个错题 POST 落库后再跳转
+    page.goto(BASE + "/member/errors")
+    expect(page.locator("body")).to_contain_text(cell2_problem)

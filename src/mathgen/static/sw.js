@@ -1,4 +1,4 @@
-const CACHE = 'kidsmath-v6';
+const CACHE = 'kidsmath-v7';
 const ASSETS = [
   '/', '/static/style.css', '/static/lang.js', '/static/timer.js', '/static/audio.js', '/static/sound.js', '/static/math-icon.svg',
   '/static/icons/settings.svg', '/static/icons/calculator.svg',

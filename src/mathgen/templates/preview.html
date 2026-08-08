@@ -22,6 +22,9 @@
     {% if sheets > 1 %}<a class="btn btn-download-zip" href="/download.zip?{{ query }}">
       <span data-i18n="btn.zip">{{ t("btn.zip", lang, n=sheets) }}</span>
     </a>{% endif %}
+    <a class="btn btn-download-zip" href="/member/worksheet?{{ query }}">
+      <span data-i18n="preview.practice">{{ t("preview.practice", lang) }}</span>
+    </a>
   </div>
   <p class="download-version">Kids Math v{{ version }}</p>
 </section>
