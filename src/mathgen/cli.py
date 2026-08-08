@@ -40,7 +40,7 @@ def _parse_argv(argv: list[str] | None) -> argparse.Namespace:
     gen.add_argument("--seed", type=int, default=None, help="随机种子")
     gen.add_argument("--no-dedupe", action="store_true", help="关闭去重")
     gen.add_argument("--columns", type=int, default=None, choices=[1, 2, 3], help="分栏")
-    gen.add_argument("--gap", type=int, default=None, help="题间距 pt")
+    gen.add_argument("--gap", type=int, default=None, help="题间/答题附加留白 pt")
     gen.add_argument("--answer-lines", type=int, default=None, help="每题答题横线数")
     gen.add_argument("--no-answer-page", action="store_true", help="不要答案页")
     gen.add_argument("--no-numbers", action="store_true", help="不显示题号")

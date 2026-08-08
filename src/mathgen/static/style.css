@@ -1095,6 +1095,7 @@ html[data-theme="dark"] .step-number { color: var(--bg); }
 .ws-sheet .ans:focus-visible { outline: none; border-color: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 25%, transparent); }
 .ws-sheet .cell.ok .ans { border-color: var(--green); }
 .ws-sheet .cell.bad .ans { border-color: var(--pink); }
+.ws-sheet .cell.locked .ans { cursor: not-allowed; opacity: .65; }
 .ws-sheet .cell.bad { color: var(--pink); }
 
 /* Steps reveal inside worksheet cells */

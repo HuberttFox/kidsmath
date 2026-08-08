@@ -3,6 +3,7 @@ from mathgen.core.engine import generate
 from mathgen.core.question import Question
 from mathgen.output.fonts import register_fonts
 from mathgen.output.pdf import render_pdf, _draw_vertical
+import mathgen.output.pdf as pdf_module
 
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import A4
@@ -41,6 +42,88 @@ def test_draw_vertical_division_layout():
 
 def test_font_register_returns_name():
     assert isinstance(register_fonts(), str) and len(register_fonts()) > 0
+
+
+
+class _RecordingCanvas:
+    def __init__(self):
+        self.lines = []
+        self.strings = []
+
+    def setFont(self, *args):
+        pass
+
+    def drawString(self, x, y, text):
+        self.strings.append((x, y, text))
+
+    def drawRightString(self, x, y, text):
+        self.strings.append((x, y, text))
+
+    def line(self, x1, y1, x2, y2):
+        self.lines.append((x1, y1, x2, y2))
+
+    def stringWidth(self, text, font, size):
+        return len(text) * size
+
+
+def test_answer_rules_share_question_to_rule_pitch():
+    cfg = resolve(Config(grade=1, topic="arithmetic", gap=0, answer_lines=3))
+    q = Question(topic="arithmetic", statement="2 + 3 = ____", answer="5", expression="2 + 3")
+    c = _RecordingCanvas()
+    pdf_module._draw_item(c, 50, 700, 1, q, cfg, "Helvetica", 13, 220, ["1. 2 + 3 = ____"])
+    rule_ys = [line[1] for line in c.lines]
+    assert rule_ys == [672, 648, 624]
+    assert (700 - 4) - rule_ys[0] == 24
+    assert rule_ys[0] - rule_ys[1] == 24
+    assert rule_ys[1] - rule_ys[2] == 24
+    assert c.lines[0][0] == 60
+    assert c.lines[0][2] == 260
+
+
+
+def test_gap_is_evenly_distributed_across_answer_intervals():
+    import pytest
+
+    cfg = resolve(Config(grade=1, topic="arithmetic", gap=20, answer_lines=3))
+    q = Question(topic="arithmetic", statement="2 + 3 = ____", answer="5", expression="2 + 3")
+    c = _RecordingCanvas()
+    pdf_module._draw_item(c, 50, 700, 1, q, cfg, "Helvetica", 13, 220, ["1. 2 + 3 = ____"])
+    rule_ys = [line[1] for line in c.lines]
+    pitch = 24 + 20 / 3
+    assert (700 - 4) - rule_ys[0] == pytest.approx(pitch)
+    assert rule_ys[0] - rule_ys[1] == pytest.approx(pitch)
+    assert rule_ys[1] - rule_ys[2] == pytest.approx(pitch)
+
+
+def test_single_answer_line_gets_all_gap():
+    cfg = resolve(Config(grade=1, topic="arithmetic", gap=20, answer_lines=1))
+    q = Question(topic="arithmetic", statement="2 + 3 = ____", answer="5", expression="2 + 3")
+    c = _RecordingCanvas()
+    pdf_module._draw_item(c, 50, 700, 1, q, cfg, "Helvetica", 13, 220, ["1. 2 + 3 = ____"])
+    assert (700 - 4) - c.lines[0][1] == 44
+
+
+def test_wrapped_question_rules_start_after_last_line():
+    cfg = resolve(Config(grade=1, topic="arithmetic", gap=0, answer_lines=2))
+    q = Question(topic="arithmetic", statement="long question", answer="5", expression="2 + 3")
+    c = _RecordingCanvas()
+    pdf_module._draw_item(c, 50, 700, 1, q, cfg, "Helvetica", 13, 220,
+                          ["1. long question", "continued"])
+    rule_ys = [line[1] for line in c.lines]
+    assert rule_ys == [658, 634]
+    assert (700 - 4 - 14) - rule_ys[0] == 24
+
+
+def test_vertical_rules_start_after_calculation_bottom():
+    cfg = resolve(Config(grade=1, topic="vertical", gap=0, answer_lines=2))
+    q = Question(topic="vertical", statement="12 + 34", answer="46", expression="12 + 34",
+                 layout={"kind": "vertical", "op": "+", "numbers": ["12", "34"]})
+    c = _RecordingCanvas()
+    pdf_module._draw_item(c, 50, 700, 1, q, cfg, "Helvetica", 13, 220, None)
+    rule_ys = [line[1] for line in c.lines]
+    calculation_bottom, first_rule, second_rule = rule_ys
+    assert calculation_bottom - first_rule == 24
+    assert first_rule - second_rule == 24
 
 
 def test_gap_and_answer_lines_render():

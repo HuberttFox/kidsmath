@@ -36,7 +36,7 @@ mathgen serve --host 0.0.0.0 --port 8080
 
 ## 参数
 
-年级预设一键套用，显式参数覆盖。常用：`--operators`（+-×÷ 组合）、`--ranges`（每个运算数范围，逗号分隔）、`--carry/--borrow`（yes/no/any）、`--remainder`、`--table`（乘法表/商范围）、`--divisor-range`、`--gap`（题间距，写步骤留空）、`--answer-lines`（每题答题横线）、`--seed`（复现）、`--sheets`（多份不重复卷子）。
+年级预设一键套用，显式参数覆盖。常用：`--operators`（+-×÷ 组合）、`--ranges`（每个运算数范围，逗号分隔）、`--carry/--borrow`（yes/no/any）、`--remainder`、`--table`（乘法表/商范围）、`--divisor-range`、`--gap`（无答题线时为题间距；有横线时均分额外书写留白）、`--answer-lines`（每题答题横线）、`--seed`（复现）、`--sheets`（多份不重复卷子）。
 
 括号权重 `--paren-weight`（1-10，默认 5）：配合 `--parentheses` 使用，控制括号题出现比重；权重越大括号题越多。
 

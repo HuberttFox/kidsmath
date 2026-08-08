@@ -20,6 +20,9 @@ LINE_GAP = 16
 GUTTER = 26  # 编号与竖式题内容之间的固定间距 (pt)，保证列内数字对齐
 SIZE = 13
 LINE_H = 14
+ANSWER_LINE_PITCH = 24  # 题干末行到首条、以及相邻答题线的统一节距（可书写）
+ANSWER_LINE_TAIL = 10   # 最后一条答题线与下一行之间的最小留白
+ANSWER_LINE_INSET = 10  # 横线相对列边的内缩，避免双栏视觉连成一线
 STEP_SIZE = 8.5     # 答案页解题步骤字号
 STEP_LEADING = 10   # 解题步骤行距（尽量让整页答案不因步骤翻页）
 STEP_GAP = 6        # 步骤块与下一条答案基线间距（≥ 答案字上升部，防重叠）
@@ -95,11 +98,37 @@ def _item_height(q: Question, lines: list[str] | None, size: int) -> float:
     return len(lines) * LINE_H + 8
 
 
-def _answer_area(cfg: ResolvedConfig) -> float:
-    return 14 * cfg.answer_lines + 6 if cfg.answer_lines > 0 else 0
+def _content_bottom_offset(q: Question, lines: list[str] | None, size: int) -> float:
+    """题干或竖式最低绘制点相对 top 的距离。"""
+    if lines is not None:
+        return 4 + (len(lines) - 1) * LINE_H
+    layout = q.layout or {}
+    if layout.get("op") == "÷":
+        # _draw_vertical 从 top - 2 开始画；除号竖线最低点为再下 3.5 个字号。
+        return 2 + 3.5 * size
+    return 2 + (len(layout.get("numbers", ())) + 0.5) * size
 
 
-def _draw_item(c, x, top, row_h, idx, q, cfg, font, size, col_w, lines) -> None:
+def _answer_rule_ys(top: float, q: Question, lines: list[str] | None,
+                    size: int, cfg: ResolvedConfig) -> list[float]:
+    """按本题末端定位答题线，避免同排较高题目改变短题的线距。"""
+    if cfg.answer_lines <= 0:
+        return []
+    pitch = ANSWER_LINE_PITCH + cfg.gap / cfg.answer_lines
+    first_y = top - _content_bottom_offset(q, lines, size) - pitch
+    return [first_y - i * pitch for i in range(cfg.answer_lines)]
+
+
+def _item_total_height(q: Question, lines: list[str] | None, size: int,
+                       cfg: ResolvedConfig) -> float:
+    if cfg.answer_lines <= 0:
+        return _item_height(q, lines, size)
+    pitch = ANSWER_LINE_PITCH + cfg.gap / cfg.answer_lines
+    return (_content_bottom_offset(q, lines, size)
+            + cfg.answer_lines * pitch + ANSWER_LINE_TAIL)
+
+
+def _draw_item(c, x, top, idx, q, cfg, font, size, col_w, lines) -> None:
     if q.layout and q.layout.get("kind") == "vertical":
         c.setFont(font, size)
         if cfg.show_numbers:
@@ -115,9 +144,9 @@ def _draw_item(c, x, top, row_h, idx, q, cfg, font, size, col_w, lines) -> None:
             c.drawString(x, top - 4 - li * LINE_H, line)
         c.setFont(font, size)
     if cfg.answer_lines > 0:
-        for i in range(cfg.answer_lines):
-            line_y = top - row_h + 8 + i * 14
-            c.line(x, line_y, x + col_w - 8, line_y)
+        for line_y in _answer_rule_ys(top, q, lines, size, cfg):
+            c.line(x + ANSWER_LINE_INSET, line_y,
+                   x + col_w - ANSWER_LINE_INSET, line_y)
 
 
 def render_pdf(questions: list[Question], cfg: ResolvedConfig) -> bytes:
@@ -161,16 +190,16 @@ def render_pdf(questions: list[Question], cfg: ResolvedConfig) -> bytes:
         items = [q for q in row if q is not None]
         if not items:
             continue
-        row_h = max(_item_height(q, lines_map[id(q)], SIZE) for q in items) + _answer_area(cfg)
+        row_h = max(_item_total_height(q, lines_map[id(q)], SIZE, cfg) for q in items)
         if top - row_h < MARGIN:
             ensure_space(row_h)
         for j, q in enumerate(row):
             if q is None:
                 continue
             x = MARGIN + j * col_w
-            _draw_item(c, x, top, row_h, numbers[id(q)], q, cfg, font, SIZE, col_w,
+            _draw_item(c, x, top, numbers[id(q)], q, cfg, font, SIZE, col_w,
                        lines_map[id(q)])
-        top -= row_h + cfg.gap
+        top -= row_h if cfg.answer_lines > 0 else row_h + cfg.gap
 
     if cfg.answer_page:
         c.showPage()

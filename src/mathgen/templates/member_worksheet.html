@@ -50,19 +50,67 @@
     var resetBtn = document.getElementById('wsReset');
     var result = document.getElementById('wsResult');
     var resultText = document.getElementById('wsResultText');
+    var ui = JSON.parse(document.getElementById('ui-json').textContent);
+    function liveWarning() {
+      var lang = document.documentElement.lang === 'en' ? 'en' : 'zh';
+      return (ui[lang] && ui[lang]['ws.live_warning']) || ui.zh['ws.live_warning'];
+    }
     var started = performance.now(), interval = null, submitted = false;
     function fmt(s) { s = Math.max(0, Math.floor(s)); var m = Math.floor(s/60), r = s%60; return (m<10?'0'+m:m)+':'+(r<10?'0'+r:r); }
     function tick() { if (timer) timer.textContent = fmt((performance.now()-started)/1000); }
     interval = setInterval(tick, 500);
-    function checkCell(cell) {
+    function answerOf(inp) { return (inp.getAttribute('data-answer') || '').trim(); }
+    function clearCell(cell) { cell.classList.remove('ok', 'bad', 'locked'); }
+    function lockWrong(cell) {
       var inp = cell.querySelector('input.ans');
-      var ok = inp.value.trim() === (inp.getAttribute('data-answer') || '');
-      cell.classList.toggle('ok', ok);
-      cell.classList.toggle('bad', !ok);
+      cell.classList.remove('ok');
+      cell.classList.add('bad', 'locked');
+      if (inp) inp.disabled = true;
+    }
+    function checkCell(cell, lock) {
+      var inp = cell.querySelector('input.ans');
+      var ok = inp.value.trim() === answerOf(inp);
+      if (ok) {
+        cell.classList.remove('bad', 'locked');
+        cell.classList.add('ok');
+      } else if (lock) {
+        lockWrong(cell);
+      } else {
+        cell.classList.remove('ok', 'locked');
+        cell.classList.add('bad');
+      }
       return ok;
     }
+    function checkWhileTyping(cell) {
+      var inp = cell.querySelector('input.ans');
+      var value = inp.value.trim();
+      if (!value) { clearCell(cell); return; }
+      var answer = answerOf(inp);
+      if (value === answer) { checkCell(cell, false); return; }
+      if (answer.indexOf(value) === 0) { clearCell(cell); return; }
+      lockWrong(cell);
+    }
     if (live) live.addEventListener('change', function () {
-      cells.forEach(function (c) { var inp = c.querySelector('input.ans'); if (live.checked && inp && inp.value !== '') checkCell(c); });
+      if (submitted) { live.checked = false; return; }
+      if (!live.checked) return;
+      if (!window.confirm(liveWarning())) { live.checked = false; return; }
+      cells.forEach(function (c) {
+        var inp = c.querySelector('input.ans');
+        if (inp && inp.value.trim() !== '') checkWhileTyping(c);
+      });
+    });
+    sheet.addEventListener('input', function (e) {
+      var inp = e.target;
+      if (!live || !live.checked || submitted || !inp.matches('input.ans')) return;
+      var cell = inp.closest('.cell');
+      if (cell) checkWhileTyping(cell);
+    });
+    sheet.addEventListener('change', function (e) {
+      var inp = e.target;
+      if (!live || !live.checked || submitted || !inp.matches('input.ans') || !inp.value.trim()) return;
+      var cell = inp.closest('.cell');
+      var answer = answerOf(inp);
+      if (cell && answer.indexOf(inp.value.trim()) !== 0) checkCell(cell, true);
     });
     function submit() {
       if (submitted) return; submitted = true;
@@ -71,7 +119,7 @@
       cells.forEach(function (c) {
         var inp = c.querySelector('input.ans');
         if (!inp) return;
-        if (checkCell(c)) correct++; else wrong.push(c);
+        if (checkCell(c, false)) correct++; else wrong.push(c);
       });
       // 交卷后自动展示错题的解题步骤
       wrong.forEach(function (c) { var qs = c.querySelector('.q-steps'); if (qs) qs.hidden = false; });
@@ -108,7 +156,11 @@
     if (resetBtn) resetBtn.addEventListener('click', function () {
       submitted = false; clearInterval(interval); started = performance.now(); interval = setInterval(tick, 500);
       if (timer) timer.textContent = '00:00';
-      cells.forEach(function (c) { var inp = c.querySelector('input.ans'); if (inp) inp.value = ''; c.classList.remove('ok', 'bad'); });
+      cells.forEach(function (c) {
+        var inp = c.querySelector('input.ans');
+        if (inp) { inp.value = ''; inp.disabled = false; }
+        clearCell(c);
+      });
       if (result) result.hidden = true;
     });
   })();

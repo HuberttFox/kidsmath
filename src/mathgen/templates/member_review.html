@@ -28,7 +28,8 @@
 <div id="reviewQueue" class="review-queue">
   {% for card in cards %}
   <article class="review-card{% if loop.first %} card-enter{% endif %}" data-mid="{{ card.id }}" data-card-i="{{ loop.index0 }}"{% if not loop.first %} hidden{% endif %}>
-    <p class="hint" data-i18n="review.card_num">{{ t("review.card_num", lang, n=card.n, total=card.total) }}</p>
+    <p class="hint" data-i18n="review.card_num"
+       data-i18n-params='{"n": {{ card.n }}, "total": {{ card.total }}}'>{{ t("review.card_num", lang, n=card.n, total=card.total) }}</p>
     <h2 class="review-problem">{{ card.problem }}</h2>
     <p class="review-answer answer-reveal" hidden>{{ t("review.answer", lang, a=card.answer) }}</p>
     <div class="actions">
