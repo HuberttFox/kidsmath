@@ -893,11 +893,15 @@ async def mistake_note(request: Request, mid: int,
 @app.post("/api/mistakes/{mid}/review")
 async def mistake_review(request: Request, mid: int,
                          user: dict | None = Depends(current_user)):
+    """自评卡：q 来自 query 或表单，SM-2 更新后返回 JSON（单卡队列 JS fetch 用）。"""
     if not user:
         return RedirectResponse("/login", status_code=302)
-    form = await request.form()
+    q_raw = request.query_params.get("q")
+    if q_raw is None:
+        form = await request.form()
+        q_raw = form.get("q")
     try:
-        q = int(form.get("q", 0))
+        q = int(q_raw or 0)
     except ValueError:
         q = 0
     if q not in (1, 3, 5):
@@ -908,7 +912,7 @@ async def mistake_review(request: Request, mid: int,
         ease, interval, reps = sm2_update(q, row["ease"], row["interval"], row["reps"])
         due_at = (datetime.now() + timedelta(days=interval)).isoformat(timespec="seconds")
         db_mod.update_review(user["id"], mid, ease, interval, reps, due_at, q)
-    return RedirectResponse("/member/review", status_code=302)
+    return JSONResponse({"ok": True})
 
 
 @app.post("/api/mistakes/{mid}/reschedule")
@@ -927,7 +931,8 @@ async def mistake_reschedule(request: Request, mid: int,
     except (ValueError, TypeError):
         valid = False
     if row and valid:
-        due_at = f"{date}T12:00:00"
+        # 改期当天 00:00 即到期（字符串字典序比较因当天才「到期」）
+        due_at = f"{date}T00:00:00"
         db_mod.update_review(user["id"], mid, row["ease"], row["interval"],
                              row["reps"], due_at, row["last_q"])
         db_mod.set_mastered(user["id"], mid, None)
@@ -1024,7 +1029,10 @@ async def mistakes_export_batch(request: Request,
     if not user:
         return RedirectResponse("/login", status_code=302)
     form = await request.form()
-    ids = [x for x in (form.get("ids") or "").split(",") if x]
+    # 兼容两种提交：单个 "1,2" 字符串（测试/旧契约）与多个 ids= 复选框
+    ids_list = form.getlist("ids")
+    ids_raw = form.get("ids") if len(ids_list) == 1 else ",".join(ids_list)
+    ids = [x for x in (ids_raw or "").split(",") if x]
     if not ids or len(ids) > 100:
         return RedirectResponse("/member/errors", status_code=302)
     rows = []

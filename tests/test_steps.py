@@ -63,9 +63,25 @@ def test_multi_steps_precedence():
 def test_multi_steps_parens():
     steps = multi_steps(["(", "2", "+", "3", ")", "×", "4"], 20, "zh")
     assert "2 + 3 = 5" in steps[0], "括号最内层先算"
+    assert "5 × 4 = 20" in steps[1], "复合步应代入括号结果"
     assert steps[-1] == "结果：20"
     en = multi_steps(["(", "2", "+", "3", ")", "×", "4"], 20, "en")
     assert en[0].startswith("First:")
+    assert "5 × 4 = 20" in en[1], "composite step should use substituted value"
+
+
+def test_multi_steps_substituted_term():
+    steps = multi_steps(["4", "+", "5", "×", "2"], 14, "zh")
+    assert "5 × 2 = 10" in steps[0], "先乘后加"
+    assert "4 + 10 = 14" in steps[1], "加法复合步代入因数结果"
+    assert steps[-1] == "结果：14"
+
+
+def test_multi_steps_division_parens():
+    steps = multi_steps(["(", "20", "÷", "4", ")", "+", "3"], 8, "zh")
+    assert "20 ÷ 4 = 5" in steps[0], "括号除法先算"
+    assert "5 + 3 = 8" in steps[1], "复合步代入除法结果"
+    assert steps[-1] == "结果：8"
 
 
 def test_arith_steps_carry():

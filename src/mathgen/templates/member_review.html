@@ -25,31 +25,82 @@
 {% endif %}
 
 {% if cards %}
-{% for card in cards %}
-<article class="review-card" id="reviewCard" data-total="{{ card.total }}">
-  <p class="hint" data-i18n="review.card_num">{{ t("review.card_num", lang, n=card.n, total=card.total) }}</p>
-  <h2 class="review-problem">{{ card.problem }}</h2>
-  <p id="answerReveal" class="review-answer" hidden>{{ t("review.answer", lang, a=card.answer) }}</p>
-  <div class="actions">
-    <button class="btn btn-secondary" type="button" id="showAnswer"
-            data-i18n="review.show_answer" onclick="document.getElementById('answerReveal').hidden=false;this.hidden=true;">
-      {{ t("review.show_answer", lang) }}</button>
-  </div>
-  <nav class="actions review-actions">
-    <form method="post" action="/api/mistakes/{{ card.id }}/review" class="inline-form">
-      <button class="btn btn-danger-soft" type="submit" name="q" value="1" data-i18n="review.again">{{ t("review.again", lang) }}</button>
-    </form>
-    <form method="post" action="/api/mistakes/{{ card.id }}/review" class="inline-form">
-      <button class="btn btn-secondary" type="submit" name="q" value="3" data-i18n="review.hard">{{ t("review.hard", lang) }}</button>
-    </form>
-    <form method="post" action="/api/mistakes/{{ card.id }}/review" class="inline-form">
-      <button class="btn btn-primary-soft" type="submit" name="q" value="5" data-i18n="review.good">{{ t("review.good", lang) }}</button>
-    </form>
-  </nav>
-  <p class="hint">{{ t("review.next_due", lang, t=card.days_left) }}</p>
-</article>
-{% endfor %}
+<div id="reviewQueue" class="review-queue">
+  {% for card in cards %}
+  <article class="review-card{% if loop.first %} card-enter{% endif %}" data-mid="{{ card.id }}" data-card-i="{{ loop.index0 }}"{% if not loop.first %} hidden{% endif %}>
+    <p class="hint" data-i18n="review.card_num">{{ t("review.card_num", lang, n=card.n, total=card.total) }}</p>
+    <h2 class="review-problem">{{ card.problem }}</h2>
+    <p class="review-answer answer-reveal" hidden>{{ t("review.answer", lang, a=card.answer) }}</p>
+    <div class="actions">
+      <button class="btn btn-secondary review-show" type="button"
+              data-i18n="review.show_answer" onclick="showAnswer(this)">
+        {{ t("review.show_answer", lang) }}</button>
+    </div>
+    <nav class="actions review-actions">
+      <button class="btn btn-danger-soft review-grade" type="button" data-q="1" data-i18n="review.again">{{ t("review.again", lang) }}</button>
+      <button class="btn btn-secondary review-grade" type="button" data-q="3" data-i18n="review.hard">{{ t("review.hard", lang) }}</button>
+      <button class="btn btn-primary-soft review-grade" type="button" data-q="5" data-i18n="review.good">{{ t("review.good", lang) }}</button>
+    </nav>
+    <p class="hint">{{ t("review.next_due", lang, t=card.days_left) }}</p>
+  </article>
+  {% endfor %}
+</div>
+<div id="reviewDone" class="review-done" hidden>
+  <p class="hint" style="text-align:center" data-i18n="review.done">{{ t("review.done", lang) }}</p>
+</div>
 {% else %}
 <p class="hint" style="text-align:center" data-i18n="review.done">{{ t("review.done", lang) }}</p>
 {% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+  // 单卡复习：每次只显示一张卡，自评后 fetch 成功再显示下一张
+  (function () {
+    var cards = Array.prototype.slice.call(document.querySelectorAll('.review-card'));
+    var doneBox = document.getElementById('reviewDone');
+    var idx = 0;
+
+    function showCard(i) {
+      cards.forEach(function (card, n) {
+        card.hidden = n !== i;
+        if (n === i) card.classList.add('card-enter');
+      });
+    }
+
+    window.showAnswer = function (btn) {
+      var card = btn.closest('.review-card');
+      if (!card) return;
+      var reveal = card.querySelector('.answer-reveal');
+      if (reveal) reveal.hidden = false;
+      btn.hidden = true;
+    };
+
+    function gradeCard(btn) {
+      var card = btn.closest('.review-card');
+      if (!card || btn.disabled) return;
+      btn.disabled = true;  // 避免连点重复提交
+      var id = card.getAttribute('data-mid');
+      var q = btn.getAttribute('data-q');
+      fetch('/api/mistakes/' + id + '/review?q=' + q, { method: 'POST', credentials: 'same-origin' })
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d || d.ok !== true) throw new Error('bad response');
+          idx += 1;
+          if (idx < cards.length) {
+            showCard(idx);
+          } else {
+            cards.forEach(function (c) { c.hidden = true; });
+            if (doneBox) doneBox.hidden = false;
+          }
+        })
+        .catch(function () { btn.disabled = false; });
+    }
+
+    cards.forEach(function (card) {
+      Array.prototype.slice.call(card.querySelectorAll('.review-grade')).forEach(function (btn) {
+        btn.addEventListener('click', function () { gradeCard(btn); });
+      });
+    });
+  })();
+</script>
 {% endblock %}

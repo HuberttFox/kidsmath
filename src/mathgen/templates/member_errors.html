@@ -58,42 +58,8 @@
   {% endif %}
 </section>
 {% endif %}
-<form method="post" action="/api/mistakes/export-batch" class="batch-form">
-  <input type="hidden" name="mode" value="original">
-  <nav class="placeholder-grid">
-    {% for item in items %}
-    <div class="placeholder-card">
-      <label class="checkbox-label"><input type="checkbox" name="ids" value="{{ item.id }}"></label>
-      <h2>{{ item.problem }}</h2>
-      <p>{{ t("mistake.topic." ~ item.topic, lang) }} · 答案 {{ item.answer }}</p>
-      {% if item.note %}<p>{{ item.note }}</p>{% endif %}
-      <p class="hint">{{ t("mistake.wrong_at", lang, t=item.wrong_at) }} · {{ t("mistake.next_due", lang, t=item.due_at) }}</p>
-      <div class="actions">
-        <button class="btn btn-secondary btn-small" type="button" onclick="previewMistake({{ item.id }}, 'original', this)" data-i18n="mistake.redo">{{ t("mistake.redo", lang) }}</button>
-        {% if item.has_variant %}
-        <button class="btn btn-secondary btn-small" type="button" onclick="previewMistake({{ item.id }}, 'variant', this)" data-i18n="mistake.variant">{{ t("mistake.variant", lang) }}</button>
-        {% endif %}
-        <form method="post" action="/api/mistakes/{{ item.id }}/export" class="inline-form">
-          <input type="hidden" name="mode" value="original">
-          <button class="btn btn-secondary btn-small" type="submit" data-i18n="mistake.download_pdf">{{ t("mistake.download_pdf", lang) }}</button>
-        </form>
-        <form method="post" action="/api/mistakes/{{ item.id }}/mastered" class="inline-form">
-          <button class="btn btn-secondary btn-small" type="submit" data-i18n="{% if item.mastered %}mistake.unmark_mastered{% else %}mistake.mark_mastered{% endif %}">{{ t("mistake.mark_mastered" if not item.mastered else "mistake.unmark_mastered", lang) }}</button>
-        </form>
-        <form method="post" action="/api/mistakes/{{ item.id }}/delete" class="inline-form"
-              onsubmit="return confirm('{{ t("mistake.confirm_delete", lang) }}')">
-          <button class="btn btn-secondary btn-small" type="submit" data-i18n="mistake.delete">{{ t("mistake.delete", lang) }}</button>
-        </form>
-      </div>
-      <div class="mistake-preview" hidden>
-        <p class="mistake-preview-problem"></p>
-        <p class="mistake-preview-answer"></p>
-      </div>
-    </div>
-    {% else %}
-    <p class="hint" style="text-align:center" data-i18n="mistake.empty">{{ t("mistake.empty", lang) }}</p>
-    {% endfor %}
-  </nav>
+{% if items %}
+<form method="post" action="/api/mistakes/export-batch" id="batchForm" class="batch-form">
   <div class="actions batch-bar">
     <span class="field-label" data-i18n="mistake.batch_mode">{{ t("mistake.batch_mode", lang) }}</span>
     <select name="mode">
@@ -104,6 +70,37 @@
   </div>
   <p class="hint batch-hint" data-i18n="mistake.batch_hint">{{ t("mistake.batch_hint", lang) }}</p>
 </form>
+{% endif %}
+<nav class="placeholder-grid">
+  {% for item in items %}
+  <div class="placeholder-card">
+    <label class="checkbox-label"><input type="checkbox" name="ids" value="{{ item.id }}" form="batchForm"></label>
+    <h2>{{ item.problem }}</h2>
+    <p>{{ t("mistake.topic." ~ item.topic, lang) }} · 答案 {{ item.answer }}</p>
+    {% if item.note %}<p>{{ item.note }}</p>{% endif %}
+    <p class="hint">{{ t("mistake.wrong_at", lang, t=item.wrong_at) }} · {{ t("mistake.next_due", lang, t=item.due_at) }}</p>
+    <div class="actions">
+      <button class="btn btn-secondary btn-small" type="button" onclick="previewMistake({{ item.id }}, 'original', this)" data-i18n="mistake.redo">{{ t("mistake.redo", lang) }}</button>
+      {% if item.has_variant %}
+      <button class="btn btn-secondary btn-small" type="button" onclick="previewMistake({{ item.id }}, 'variant', this)" data-i18n="mistake.variant">{{ t("mistake.variant", lang) }}</button>
+      {% endif %}
+      <form method="post" action="/api/mistakes/{{ item.id }}/mastered" class="inline-form">
+        <button class="btn btn-secondary btn-small" type="submit" data-i18n="{% if item.mastered %}mistake.unmark_mastered{% else %}mistake.mark_mastered{% endif %}">{{ t("mistake.mark_mastered" if not item.mastered else "mistake.unmark_mastered", lang) }}</button>
+      </form>
+      <form method="post" action="/api/mistakes/{{ item.id }}/delete" class="inline-form"
+            onsubmit="return confirm('{{ t("mistake.confirm_delete", lang) }}')">
+        <button class="btn btn-secondary btn-small" type="submit" data-i18n="mistake.delete">{{ t("mistake.delete", lang) }}</button>
+      </form>
+    </div>
+    <div class="mistake-preview" hidden>
+      <p class="mistake-preview-problem"></p>
+      <p class="mistake-preview-answer"></p>
+    </div>
+  </div>
+  {% else %}
+  <p class="hint" style="text-align:center" data-i18n="mistake.empty">{{ t("mistake.empty", lang) }}</p>
+  {% endfor %}
+</nav>
 {% endblock %}
 {% block scripts %}
 <script>

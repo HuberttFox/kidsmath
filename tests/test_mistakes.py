@@ -57,8 +57,8 @@ def test_review_flow_updates_due():
                 "problem": "3+5", "answer": "8"})
     page = client.get("/member/review").text
     assert "3+5" in page and "显示答案" in page
-    r = client.post("/api/mistakes/1/review", data={"q": "5"}, follow_redirects=False)
-    assert r.status_code == 302
+    r = client.post("/api/mistakes/1/review", data={"q": "5"})
+    assert r.status_code == 200 and r.json() == {"ok": True}
     assert "今日全部完成" in client.get("/member/review").text
 
 

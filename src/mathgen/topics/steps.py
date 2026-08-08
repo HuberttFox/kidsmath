@@ -230,13 +230,12 @@ def _eval_with_steps(tokens: list[str]) -> tuple[int | None, list[tuple[str, int
     def atom() -> tuple[int | None, str]:
         nonlocal pos
         if tokens[pos] == "(":
-            start = pos
             pos += 1
             v, _ = term()
             if v is None or tokens[pos] != ")":
                 return None, ""
             pos += 1
-            return v, " ".join(tokens[start:pos])
+            return v, str(v)
         v = int(tokens[pos]); pos += 1
         return v, str(v)
 
@@ -245,16 +244,17 @@ def _eval_with_steps(tokens: list[str]) -> tuple[int | None, list[tuple[str, int
         v, disp = atom()
         while pos < len(tokens) and tokens[pos] in "×÷":
             op = tokens[pos]; pos += 1
-            b, bdisp = atom()
+            b, _ = atom()
             if v is None or b is None:
                 return None, ""
             if op == "÷":
                 if b == 0 or v % b != 0:
                     return None, ""
-                v //= b
+                new_v = v // b
             else:
-                v *= b
-            disp = f"{disp} {op} {bdisp}"
+                new_v = v * b
+            disp = f"{v} {op} {b}"
+            v = new_v
             steps.append((disp, v))
         return v, disp
 
@@ -263,11 +263,12 @@ def _eval_with_steps(tokens: list[str]) -> tuple[int | None, list[tuple[str, int
         v, disp = factor()
         while pos < len(tokens) and tokens[pos] in "+-":
             op = tokens[pos]; pos += 1
-            rhs, rdisp = factor()
+            rhs, _ = factor()
             if v is None or rhs is None:
                 return None, ""
-            v = v + rhs if op == "+" else v - rhs
-            disp = f"{disp} {op} {rdisp}"
+            new_v = v + rhs if op == "+" else v - rhs
+            disp = f"{v} {op} {rhs}"
+            v = new_v
             steps.append((disp, v))
         return v, disp
 

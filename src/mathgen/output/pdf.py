@@ -22,6 +22,7 @@ SIZE = 13
 LINE_H = 14
 STEP_SIZE = 8.5     # 答案页解题步骤字号
 STEP_LEADING = 10   # 解题步骤行距（尽量让整页答案不因步骤翻页）
+STEP_GAP = 6        # 步骤块与下一条答案基线间距（≥ 答案字上升部，防重叠）
 STEPS_INDENT = 18   # 解题步骤相对答案行的缩进
 STEPS_COLOR = colors.Color(0.42, 0.38, 0.33)  # 答案页步骤的柔和棕灰色
 
@@ -184,18 +185,21 @@ def render_pdf(questions: list[Question], cfg: ResolvedConfig) -> bytes:
         y = height - MARGIN - 40
         lines = answer_lines(questions)
         for i, line in enumerate(lines, 1):
-            if y < MARGIN:
+            if y - SIZE < MARGIN:
                 c.showPage()
                 answer_header()
                 y = height - MARGIN - 40
             c.drawString(MARGIN, y, f"{i}. {line}")
-            y -= 22
             q = questions[i - 1]
             if q.steps:
+                # 步骤块上下各留 16pt（= STEP_LEADING + STEP_GAP）：末步→下条答案
+                # 与答案→首步对称，避免答案字形上升部（≈11.44pt）与步骤重叠，且每条
+                # 带步骤的答案总高与旧版一致（16+2×10+6=42），答案页不会因此多翻一页
+                y -= STEP_LEADING + STEP_GAP
                 c.setFont(font, STEP_SIZE)
                 c.setFillColor(STEPS_COLOR)
                 for s in q.steps:
-                    if y - STEP_LEADING < MARGIN:
+                    if y - STEP_SIZE < MARGIN:
                         c.showPage()
                         answer_header()
                         c.setFont(font, STEP_SIZE)
@@ -203,7 +207,10 @@ def render_pdf(questions: list[Question], cfg: ResolvedConfig) -> bytes:
                         y = height - MARGIN - 40
                     c.drawString(MARGIN + STEPS_INDENT, y, s)
                     y -= STEP_LEADING
+                y -= STEP_GAP
                 c.setFont(font, SIZE)
                 c.setFillColor(colors.black)
+            else:
+                y -= 22
     c.save()
     return buf.getvalue()

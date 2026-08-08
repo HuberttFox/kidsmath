@@ -304,9 +304,9 @@ def test_review_flip_and_complete(page):
     page.wait_for_url(BASE + "/member/errors")
     page.goto(BASE + "/member/review")
     expect(page.locator("text=显示答案")).to_be_visible()
-    page.locator("#showAnswer").click()
-    expect(page.locator("#answerReveal")).to_be_visible()
-    page.locator('button[name="q"][value="5"]').click()
+    page.locator(".review-show").click()
+    expect(page.locator(".answer-reveal")).to_be_visible()
+    page.locator('.review-grade[data-q="5"]').click()
     expect(page.locator("text=今日全部完成")).to_be_visible()
 
 
@@ -491,3 +491,67 @@ def test_worksheet_steps_reveal(page):
     bad_steps = page.locator('.cell').nth(1).locator('.q-steps')
     expect(bad_steps).to_be_visible()
     expect(bad_steps).to_contain_text("结果")
+
+
+def _register(page, username):
+    page.goto(BASE + "/register")
+    page.locator('input[name="username"]').fill(username)
+    page.locator('input[name="password"]').fill("secret123")
+    page.locator('button[type="submit"]').click()
+    page.wait_for_url(BASE + "/")
+
+
+def test_mistakes_batch_sheet(page):
+    # 批量出卷：勾选 2 张卡 + 变式 → 提交 ids 多值 + mode=variant，浏览器下载 PDF
+    _register(page, "批量出卷")
+    for prob, ans in (("12 + 7 = ____", "19"), ("23 + 48 = ____", "71")):
+        resp = page.request.post(BASE + "/api/mistakes", form={
+            "kind": "sheet", "topic": "vertical", "problem": prob, "answer": ans,
+            "expression": prob.split(" = ")[0],
+            "question_json": json.dumps({"topic": "vertical", "statement": prob,
+                                         "answer": ans,
+                                         "expression": prob.split(" = ")[0],
+                                         "layout": {"kind": "vertical"}}),
+            "params": '{"grade": "2", "seed": 1}', "q_index": "0"})
+        assert resp.ok, resp.text
+    page.goto(BASE + "/member/errors")
+    boxes = page.locator('input[name="ids"]')
+    expect(boxes).to_have_count(2)
+    boxes.nth(0).check()
+    boxes.nth(1).check()
+    page.locator('#batchForm select[name="mode"]').select_option("variant")
+    posted = []
+    page.on("request", lambda r: posted.append(r)
+            if r.url.endswith("/api/mistakes/export-batch") else None)
+    with page.expect_download() as dl:
+        page.locator('#batchForm button[type="submit"]').click()
+    download = dl.value
+    with open(download.path(), "rb") as f:
+        assert f.read(4) == b"%PDF", "批量导出应返回 PDF"
+    import time
+    deadline = time.time() + 5
+    while not posted and time.time() < deadline:
+        page.wait_for_timeout(50)
+    assert posted, "未收到批量导出请求"
+    body = posted[0].post_data or ""
+    assert body.count("ids=") == 2, f"应收到 2 个 ids：{body!r}"
+    assert "mode=variant" in body, f"mode 应为 variant：{body!r}"
+
+
+def test_review_single_card_queue(page):
+    # 单卡队列：每次只显示一张卡，自评后推进下一张，全部完成显示横幅
+    _register(page, "单卡复习")
+    for prob, ans in (("5+3", "8"), ("9+2", "11")):
+        resp = page.request.post(BASE + "/api/mistakes/manual",
+                                 form={"topic": "arithmetic",
+                                       "problem": prob, "answer": ans})
+        assert resp.ok, resp.text
+    page.goto(BASE + "/member/review")
+    expect(page.locator(".review-card")).to_have_count(2)
+    expect(page.locator(".review-card:not([hidden])")).to_have_count(1)
+    first_problem = page.locator(".review-card:not([hidden]) .review-problem").inner_text()
+    page.locator('.review-card:not([hidden]) .review-grade[data-q="5"]').click()
+    expect(page.locator(".review-card:not([hidden]) .review-problem")).not_to_have_text(first_problem)
+    page.locator('.review-card:not([hidden]) .review-grade[data-q="5"]').click()
+    expect(page.locator("#reviewDone")).to_be_visible()
+    expect(page.locator("#reviewDone")).to_contain_text("今日全部完成")
