@@ -1,5 +1,12 @@
 # 部署
 
+```mermaid
+flowchart LR
+    client[浏览器<br/>家长 / 老师] --> proxy[反向代理<br/>Caddy / nginx · HTTPS 终止]
+    proxy --> app[容器 mathgen-serve<br/>:8080]
+    app --> data[命名卷 /data<br/>SQLite kidsmath.db<br/>user_audio/]
+```
+
 ## 局域网分享（老师/家长）
 
 ```bash
@@ -29,7 +36,7 @@ docker compose up -d --build
 
 访问 `http://<服务器IP>:8080`。健康检查自动执行（`/healthz`），重启策略 `unless-stopped`。
 
-Compose 将 `KIDSMATH_DB` 设为 `/data/kidsmath.db`，并将命名卷 `mathgen-data` 挂载到 `/data`。该卷同时保存 SQLite 数据库和上传的用户音频目录 `/data/user_audio/<uid>`。`compose.yaml` 通过 `TZ: Asia/Shanghai` 声明容器时区；需要其他时区时，修改该值为所需 IANA 时区后重新创建容器。
+Compose 将 `KIDSMATH_DB` 设为 `/data/kidsmath.db`，并将命名卷 `mathgen-data` 挂载到 `/data`。该卷同时保存 SQLite 数据库和上传的用户音频目录 `/data/user_audio/<uid>`。`compose.yaml` 通过 `TZ: Asia/Shanghai` 声明容器时区；镜像基于 `python:3.12-slim-bookworm`，Dockerfile 已安装 `tzdata`，`TZ` 开箱即用。需要其他时区时，修改 `TZ` 为所需 IANA 时区后重新创建容器。
 
 ### 只用 Dockerfile
 
@@ -85,3 +92,10 @@ docker compose down              # 停止（容器删除，数据保留在 mathg
 - Service worker 版本 bump 后旧缓存自动清理（install 阶段），新版本部署后用户首次访问仍可能命中旧缓存页（显示旧 UI），刷新一次或等下一轮 install 即可。
 - 预览与下载共用 seed，保证题目一致。
 - Docker 镜像运行非 root 用户（mathgen），多阶段构建（uv 锁版本，`--no-dev` 不带测试依赖）。
+
+## 相关文档
+
+- [../README.md](../README.md) — 项目总览与快速上手
+- [android.md](android.md) — 安卓 TWA 打包（依赖 HTTPS 部署）
+- [database.md](database.md) — 数据层表结构与备份策略
+- [troubleshooting.md](troubleshooting.md) — 常见问题排查

@@ -6,7 +6,7 @@ PWA 与 TWA 使用两份独立配置：`src/mathgen/static/manifest.webmanifest`
 
 ## 前置条件
 
-1. kidsmath 服务已部署到 **HTTPS 域名**（TWA 强制 https；见 docs/deploy.md）
+1. kidsmath 服务已部署到 **HTTPS 域名**（TWA 强制 https；见 docs/deployment.md）
 2. Node 18+、JDK 17、Android SDK（`ANDROID_HOME`）
 3. `npx @bubblewrap/cli`（首次运行自动安装）
 
