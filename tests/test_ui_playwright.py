@@ -32,8 +32,16 @@ def _stage_height(page):
     return page.locator(".workbench-stage").evaluate("el => el.getBoundingClientRect().height")
 
 
-def _expected_compact_stage_height(page):
-    return page.evaluate("window.innerHeight - 76")
+def _embedded_scroll_metrics(page):
+    return page.evaluate("""() => {
+        const doc = document.getElementById('stage').contentDocument;
+        return {
+            viewport: doc.documentElement.clientHeight,
+            content: Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight),
+            outerViewport: document.documentElement.clientHeight,
+            outerContent: document.documentElement.scrollHeight,
+        };
+    }""")
 
 
 @pytest.fixture(scope="module")
@@ -633,7 +641,37 @@ def test_mobile_workbench_has_no_horizontal_overflow(page, viewport):
     expect(stage.locator('#generateBtn')).to_be_visible()
     _assert_no_horizontal_overflow(page.locator("html"))
     _assert_no_horizontal_overflow(stage.locator("html"))
-    assert abs(_stage_height(page) - _expected_compact_stage_height(page)) <= 1
+    metrics = _embedded_scroll_metrics(page)
+    assert metrics["viewport"] >= metrics["content"] - 1
+    assert metrics["outerContent"] >= _stage_height(page)
+
+
+def test_mobile_stage_tracks_content_and_route_changes(page):
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(BASE + "/")
+    stage = _stage(page)
+    expect(stage.locator('#advanced')).not_to_have_attribute("open")
+    initial_height = _stage_height(page)
+    stage.locator('#advanced summary').click()
+    expect(stage.locator('#advanced')).to_have_attribute("open", "")
+    page.wait_for_function("height => document.querySelector('.workbench-stage').getBoundingClientRect().height > height", arg=initial_height)
+    stage.locator('#advanced summary').click()
+    expect(stage.locator('#advanced')).not_to_have_attribute("open")
+    page.wait_for_function("height => document.querySelector('.workbench-stage').getBoundingClientRect().height <= height + 1", arg=initial_height)
+    page.locator('#sideToggle').click()
+    page.locator('.side-item:has-text("番茄钟")').click()
+    expect(stage.locator('#pomodoroStart')).to_be_visible()
+    page.wait_for_function("""() => {
+        const doc = document.getElementById('stage').contentDocument;
+        return doc.documentElement.clientHeight >= Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight) - 1;
+    }""")
+    metrics = _embedded_scroll_metrics(page)
+    assert metrics["viewport"] >= metrics["content"] - 1
+    page.set_viewport_size({"width": 812, "height": 375})
+    page.wait_for_function("""() => {
+        const doc = document.getElementById('stage').contentDocument;
+        return doc.documentElement.clientHeight >= Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight) - 1;
+    }""")
 
 
 def test_mobile_drawer_keyboard_backdrop_and_switch(page):
@@ -686,4 +724,6 @@ def test_drawer_state_resets_above_compact_breakpoint(page):
     expect(page.locator('#sideRail')).not_to_have_attribute("aria-hidden")
     expect(page.locator('#sideRail')).not_to_have_class(re.compile("side-open"))
     expect(page.locator('#sideToggle')).to_have_attribute("aria-expanded", "false")
+    expect(page.locator('.workbench-stage')).not_to_have_attribute("style", re.compile("height"))
+    assert abs(_stage_height(page) - (page.viewport_size["height"] - 120)) <= 1
     expect(page.locator('#sideBackdrop')).to_be_hidden()

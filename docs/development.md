@@ -123,7 +123,7 @@ def _isolated_db(tmp_path):
 ## PWA
 
 - `static/sw.js` 缓存白名单：`/`、`/product`、`/guide`、`/docs` 与 `/static/` 下资源，缓存优先策略；其余请求走网络（含 `/user/*`、`/member/*`、`/login`、`/api/*`、`/generate`、`/download.*`）。
-- `activate` 阶段自动删除旧版本缓存。**改动静态资源或缓存策略后必须 bump `CACHE` 版本号**（当前 `kidsmath-v12`），否则用户命中旧缓存。
+- `activate` 阶段自动删除旧版本缓存。**改动静态资源或缓存策略后必须 bump `CACHE` 版本号**（当前 `kidsmath-v13`），否则用户命中旧缓存。
 
 ## Docker 开发
 
