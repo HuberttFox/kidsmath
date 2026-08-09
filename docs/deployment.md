@@ -41,7 +41,7 @@ Compose 将 `KIDSMATH_DB` 设为 `/data/kidsmath.db`，并将命名卷 `mathgen-
 ### 只用 Dockerfile
 
 ```bash
-docker build -t mathgen .
+docker build -t mathgen:0.2.0 -t mathgen:latest .
 # 数据卷必须手动挂载：/data/kidsmath.db（含用户/历史/保存配置）
 docker run -d --name mathgen -p 8080:8080 --restart unless-stopped \
   -v mathgen-data:/data -e KIDSMATH_DB=/data/kidsmath.db -e TZ=Asia/Shanghai mathgen

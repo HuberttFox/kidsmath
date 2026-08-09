@@ -1,7 +1,7 @@
 services:
   mathgen:
     build: .
-    image: mathgen:latest
+    image: mathgen:0.2.0
     container_name: mathgen
     ports:
       - "8080:8080"

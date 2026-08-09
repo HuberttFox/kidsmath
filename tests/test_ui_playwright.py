@@ -604,3 +604,21 @@ def test_review_single_card_queue(page):
     page.locator('.review-card:not([hidden]) .review-grade[data-q="5"]').click()
     expect(page.locator("#reviewDone")).to_be_visible()
     expect(page.locator("#reviewDone")).to_contain_text("All done today!")
+
+
+def test_mobile_drawer_and_switch(page):
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(BASE + "/")
+    page.wait_for_timeout(1200)
+    toggle = page.locator('#sideToggle')
+    expect(toggle).to_be_visible()
+    toggle.click()
+    page.wait_for_timeout(600)
+    expect(page.locator('#sideRail')).to_have_class(re.compile("side-open"))
+    page.locator('.side-item:has-text("番茄钟")').click()
+    page.wait_for_timeout(2000)
+    src = page.evaluate("document.getElementById('stage').src")
+    assert "/member/pomodoro" in src and "embed=1" in src
+    assert page.evaluate("location.hash") == "#/member/pomodoro"
+    expect(page.locator('#sideRail')).not_to_have_class(re.compile("side-open"))
+    expect(page.frame_locator("#stage").locator('#pomodoroStart')).to_be_visible()

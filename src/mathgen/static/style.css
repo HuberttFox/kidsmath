@@ -780,7 +780,11 @@ details#advanced[open] > summary { margin-bottom: .9em; }
 @media (max-width: 768px) {
   .hero-title { font-size: 1.6rem; }
   .topic-card { min-width: 84px; }
-  .nav { order: 10; width: 100%; justify-content: center; }
+  .header-inner { flex-wrap: nowrap; }
+  .header-controls { flex-wrap: nowrap; }
+  .nav { flex: 1 1 auto; min-width: 0; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; flex-wrap: nowrap; }
+  .nav::-webkit-scrollbar { display: none; }
+  .nav a { white-space: nowrap; flex-shrink: 0; }
 }
 @media (max-width: 560px) {
   :root { --gap: 16px; }
@@ -887,7 +891,16 @@ main { flex: 1 0 auto; }
     background: var(--bg);
   }
   .side-rail.side-open { transform: translateX(0); }
-  .side-toggle { display: inline-block; margin-bottom: .3em; }
+  .side-toggle {
+    display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+    position: fixed; top: 68px; left: 10px; z-index: 200;
+    width: 44px; height: 44px; border-radius: var(--radius-md);
+    background: var(--card-bg); border: 1.5px solid var(--border);
+    box-shadow: var(--shadow-sm);
+  }
+  .side-open .side-toggle-bar:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
+  .side-open .side-toggle-bar:nth-child(2) { opacity: 0; }
+  .side-open .side-toggle-bar:nth-child(3) { transform: translateY(-6.5px) rotate(-45deg); }
 }
 
 /* ---- 用户 chip 交互动画 ---- */
@@ -1276,4 +1289,38 @@ html[data-theme="dark"] .side-item::after {
     pointer-events: none;
     z-index: 0;
   }
+}
+
+/* ---- 移动端体验优化（P-J） ---- */
+@media (max-width: 768px) {
+  .header-inner { gap: 8px; }
+  .header-controls { gap: 6px; }
+  .header-controls .pill-toggle, .header-controls .user-chip { height: 40px; padding: 0 12px; }
+  .workbench { padding: 0 8px 1em; gap: .8em; }
+  .workbench-stage {
+    height: calc(100dvh - 76px);
+    border-radius: var(--radius-md);
+  }
+}
+@media (max-width: 560px) {
+  .side-item { min-height: 44px; }
+  .review-card .actions { flex-direction: column; }
+  .review-card .actions .btn, .review-card .actions .field-group { width: 100%; }
+  .review-card .field-group input { width: 100%; }
+  .timer-display { font-size: 2.4em; }
+  .placeholder-grid { grid-template-columns: minmax(0, 1fr); }
+  .placeholder-card .actions { flex-direction: column; align-items: stretch; }
+  .placeholder-card .actions .btn { width: 100%; }
+}
+@media (max-width: 480px) {
+  :root { --gap: 12px; }
+  .hero { padding: 1.4em var(--gap) 1em; }
+  .hero-title { font-size: 1.3rem; }
+  .sheet-form { padding: .2em var(--gap) 1.4em; }
+  .actions { gap: .5em; }
+  .actions .btn { width: 100%; }
+  .actions .save-name { width: 100%; }
+}
+@media (max-width: 360px) {
+  .logo-text { display: none; }
 }
