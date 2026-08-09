@@ -650,7 +650,7 @@ def test_mobile_drawer_keyboard_backdrop_and_switch(page):
     expect(page.locator('#sideRail')).not_to_have_class(re.compile("side-open"))
     assert page.evaluate("document.activeElement.id") == "sideToggle"
     toggle.click()
-    page.locator('#sideBackdrop').click(position={"x": 10, "y": 10})
+    page.locator('#sideBackdrop').click(position={"x": 300, "y": 400})
     expect(page.locator('#sideRail')).not_to_have_class(re.compile("side-open"))
     assert page.evaluate("document.activeElement.id") == "sideToggle"
     toggle.click()
