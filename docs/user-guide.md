@@ -1,6 +1,6 @@
 # 用户指南
 
-面向家长与老师的 mathgen（Kids Math）使用说明：网页出题、会员功能、PWA 安装与命令行用法。安装与环境准备见根目录 [README.md](../README.md)，部署见 [deployment.md](deployment.md)，接口细节见 [api.md](api.md)。
+面向家长与老师的 kidsmath（Kids Math）使用说明：网页出题、会员功能、PWA 安装与命令行用法。安装与环境准备见根目录 [README.md](../README.md)，部署见 [deployment.md](deployment.md)，接口细节见 [api.md](api.md)。
 
 ## 快速开始（网页）
 

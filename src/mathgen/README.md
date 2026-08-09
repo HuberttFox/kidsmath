@@ -1,6 +1,6 @@
 # mathgen 包
 
-mathgen（小学数学出题工具）的 Python 包源码：按年级与参数随机生成 1-6 年级数学题（口算/竖式/应用题），输出 PDF 卷子与答案页，并提供 CLI 与 FastAPI 网页双入口。纯规则生成，无 LLM。
+kidsmath（小学数学出题工具）的 `mathgen` Python 包源码：按年级与参数随机生成 1-6 年级数学题（口算/竖式/应用题），输出 PDF 卷子与答案页，并提供 CLI 与 FastAPI 网页双入口。纯规则生成，无 LLM。
 
 ## 模块
 
