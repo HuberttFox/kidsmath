@@ -473,7 +473,7 @@ def test_pwa_assets():
     assert r.headers.get("content-type", "").startswith("application/manifest")
     r2 = client.get("/static/sw.js")
     assert r2.status_code == 200
-    assert "kidsmath-v11" in r2.text
+    assert "kidsmath-v12" in r2.text
     assert "startsWith('/static/')" in r2.text  # v3 白名单：仅缓存 /、/product、/static/*
     r3 = client.get("/")
     assert 'rel="manifest"' in r3.text

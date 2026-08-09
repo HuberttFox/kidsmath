@@ -24,6 +24,18 @@ def _stage(page):
     return page.frame_locator("#stage")
 
 
+def _assert_no_horizontal_overflow(locator):
+    assert locator.evaluate("el => el.scrollWidth <= el.clientWidth + 1")
+
+
+def _stage_height(page):
+    return page.locator(".workbench-stage").evaluate("el => el.getBoundingClientRect().height")
+
+
+def _expected_compact_stage_height(page):
+    return page.evaluate("window.innerHeight - 76")
+
+
 @pytest.fixture(scope="module")
 def server():
     config = uvicorn.Config(app, host="127.0.0.1", port=18099, log_level="warning")
@@ -133,7 +145,8 @@ def test_generate_preview_and_download_flow(page):
     expect(stage.locator('#download')).to_be_visible()
     expect(stage.locator('.cell')).to_have_count(6)
     first_batch = stage.locator('.cell').all_text_contents()
-    stage.locator('.inline-form button[type="submit"]').click()
+    with page.expect_event("framenavigated", predicate=lambda frame: frame.name == "stage"):
+        stage.locator('.inline-form button[type="submit"]').click()
     expect(stage.locator('.cell')).to_have_count(6)
     second_batch = stage.locator('.cell').all_text_contents()
     assert first_batch != second_batch, "换一批应生成不同题目"
@@ -606,19 +619,71 @@ def test_review_single_card_queue(page):
     expect(page.locator("#reviewDone")).to_contain_text("All done today!")
 
 
-def test_mobile_drawer_and_switch(page):
+@pytest.mark.parametrize("viewport", [
+    {"width": 375, "height": 812},
+    {"width": 390, "height": 844},
+    {"width": 768, "height": 1024},
+    {"width": 820, "height": 1180},
+    {"width": 812, "height": 375},
+])
+def test_mobile_workbench_has_no_horizontal_overflow(page, viewport):
+    page.set_viewport_size(viewport)
+    page.goto(BASE + "/")
+    stage = _stage(page)
+    expect(stage.locator('#generateBtn')).to_be_visible()
+    _assert_no_horizontal_overflow(page.locator("html"))
+    _assert_no_horizontal_overflow(stage.locator("html"))
+    assert abs(_stage_height(page) - _expected_compact_stage_height(page)) <= 1
+
+
+def test_mobile_drawer_keyboard_backdrop_and_switch(page):
     page.set_viewport_size({"width": 375, "height": 812})
     page.goto(BASE + "/")
-    page.wait_for_timeout(1200)
+    page.wait_for_timeout(300)
     toggle = page.locator('#sideToggle')
-    expect(toggle).to_be_visible()
-    toggle.click()
-    page.wait_for_timeout(600)
+    toggle.focus()
+    page.keyboard.press("Enter")
     expect(page.locator('#sideRail')).to_have_class(re.compile("side-open"))
+    expect(page.locator('#sideRail')).not_to_have_attribute("aria-hidden", "true")
+    assert page.evaluate("document.activeElement.classList.contains('side-item')")
+    page.keyboard.press("Escape")
+    expect(page.locator('#sideRail')).not_to_have_class(re.compile("side-open"))
+    assert page.evaluate("document.activeElement.id") == "sideToggle"
+    toggle.click()
+    page.locator('#sideBackdrop').click(position={"x": 10, "y": 10})
+    expect(page.locator('#sideRail')).not_to_have_class(re.compile("side-open"))
+    assert page.evaluate("document.activeElement.id") == "sideToggle"
+    toggle.click()
     page.locator('.side-item:has-text("番茄钟")').click()
-    page.wait_for_timeout(2000)
+    page.wait_for_timeout(300)
     src = page.evaluate("document.getElementById('stage').src")
     assert "/member/pomodoro" in src and "embed=1" in src
     assert page.evaluate("location.hash") == "#/member/pomodoro"
     expect(page.locator('#sideRail')).not_to_have_class(re.compile("side-open"))
+    assert page.evaluate("document.activeElement.id") == "stage"
     expect(page.frame_locator("#stage").locator('#pomodoroStart')).to_be_visible()
+
+
+def test_mobile_preview_pager_has_no_horizontal_overflow(page):
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(BASE + "/")
+    stage = _stage(page)
+    stage.locator('#count').fill("30")
+    stage.locator('#generateBtn').click()
+    expect(stage.locator('#pager')).to_be_visible()
+    _assert_no_horizontal_overflow(page.locator("html"))
+    _assert_no_horizontal_overflow(stage.locator("html"))
+    _assert_no_horizontal_overflow(stage.locator('#pager'))
+
+
+def test_drawer_state_resets_above_compact_breakpoint(page):
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(BASE + "/")
+    page.locator('#sideToggle').click()
+    expect(page.locator('#sideRail')).to_have_class(re.compile("side-open"))
+    page.set_viewport_size({"width": 821, "height": 900})
+    expect(page.locator('#sideRail')).not_to_have_attribute("inert", "")
+    expect(page.locator('#sideRail')).not_to_have_attribute("aria-hidden")
+    expect(page.locator('#sideRail')).not_to_have_class(re.compile("side-open"))
+    expect(page.locator('#sideToggle')).to_have_attribute("aria-expanded", "false")
+    expect(page.locator('#sideBackdrop')).to_be_hidden()

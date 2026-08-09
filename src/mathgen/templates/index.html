@@ -19,7 +19,7 @@
 
 {% block content %}
 <div class="workbench">
-<button class="side-toggle" id="sideToggle" type="button" aria-label="菜单" aria-expanded="false">
+<button class="side-toggle" id="sideToggle" type="button" aria-label="菜单" aria-controls="sideRail" aria-expanded="false">
   <span class="side-toggle-bar"></span><span class="side-toggle-bar"></span><span class="side-toggle-bar"></span>
 </button>
 <aside class="side-rail" id="sideRail" aria-label="功能导航">
@@ -65,16 +65,46 @@
     var toggle = document.getElementById('sideToggle');
     var backdrop = document.getElementById('sideBackdrop');
     var stage = document.getElementById('stage');
+    var header = document.querySelector('.site-header');
     var items = Array.prototype.slice.call(document.querySelectorAll('.side-item'));
     var routes = {};
+
+    var compact = window.matchMedia('(max-width: 820px)');
 
     function hashPath() {
       return (location.hash || '#/').replace(/^#/, '') || '/';
     }
-    function setOpen(open) {
+    function isOpen() {
+      return rail.classList.contains('side-open');
+    }
+    function focusDrawer() {
+      (rail.querySelector('.side-active') || items[0]).focus();
+    }
+    function setOpen(open, restoreFocus) {
+      if (!compact.matches) open = false;
       rail.classList.toggle('side-open', open);
+      rail.toggleAttribute('inert', compact.matches && !open);
+      rail.setAttribute('aria-hidden', String(compact.matches && !open));
+      header.toggleAttribute('inert', open);
+      stage.toggleAttribute('inert', open);
       backdrop.hidden = !open;
       toggle.setAttribute('aria-expanded', String(open));
+      document.documentElement.classList.toggle('drawer-open', open);
+      if (open) focusDrawer();
+      else if (restoreFocus) toggle.focus();
+    }
+    function syncCompact() {
+      if (compact.matches) setOpen(false);
+      else {
+        rail.classList.remove('side-open');
+        rail.removeAttribute('inert');
+        rail.removeAttribute('aria-hidden');
+        header.removeAttribute('inert');
+        stage.removeAttribute('inert');
+        backdrop.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+        document.documentElement.classList.remove('drawer-open');
+      }
     }
     function highlight(path) {
       items.forEach(function (it) {
@@ -96,6 +126,7 @@
         location.hash = '#' + path;
         highlight(path);
         setOpen(false);
+        stage.focus();
       });
     });
     function injectEmbed(doc) {
@@ -144,10 +175,32 @@
       stage.src = '/' + q + (q.indexOf('embed') === -1 ? '&embed=1' : '');
     }
     highlight('/');
+    syncCompact();
+    compact.addEventListener('change', syncCompact);
     toggle.addEventListener('click', function () {
-      setOpen(!rail.classList.contains('side-open'));
+      setOpen(!isOpen(), isOpen());
     });
-    backdrop.addEventListener('click', function () { setOpen(false); });
+    backdrop.addEventListener('click', function () { setOpen(false, true); });
+    document.addEventListener('keydown', function (e) {
+      if (!compact.matches || !isOpen()) return;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setOpen(false, true);
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      var focusable = items.filter(function (item) { return !item.hidden; });
+      var first = focusable[0];
+      var last = focusable[focusable.length - 1];
+      if (!first || !last) return;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    });
     // 主题/语言切换：向 iframe 转发事件而非重载，保留表单输入
     document.addEventListener('langchange', function (e) {
       var d = stage.contentDocument;

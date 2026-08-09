@@ -47,6 +47,62 @@ docker run -d --name mathgen -p 8080:8080 --restart unless-stopped \
   -v mathgen-data:/data -e KIDSMATH_DB=/data/kidsmath.db -e TZ=Asia/Shanghai mathgen
 ```
 
+### 更新 Docker 镜像
+
+本项目通过部署服务器上的源码 checkout 本地构建镜像：`compose.yaml` 使用 `build: .`，`mathgen:0.2.0` 是本机构建后的标签，不是镜像仓库中的发布产物。因此**不要执行** `docker compose pull`；更新以目标 Git branch、tag 或 commit 为准。
+
+更新前先在实际部署目录记录当前 revision，并备份数据卷。`git status --short` 有未预期输出时先处理该修改，避免将临时改动混入镜像或被源码切换覆盖。
+
+```bash
+# 记录当前可回滚 revision
+git status --short
+git branch --show-current
+git log -1 --format='%H%n%s'
+
+# 备份完整 /data；命令与下节相同，保留生成的 tar.gz 文件名
+docker compose stop mathgen
+docker compose run --rm --no-deps --user root -v "$PWD:/backup" --entrypoint sh mathgen \
+  -c 'tar czf /backup/mathgen-data-$(date +%F).tar.gz -C /data .'
+docker compose start mathgen
+```
+
+选择并获取目标源码。跟踪 branch 使用 fast-forward 更新，固定 tag 或 commit 使用 detached HEAD；后者不执行 `git pull`。
+
+```bash
+# branch 部署示例
+git fetch --prune origin
+git switch main
+git pull --ff-only origin main
+
+# 固定 tag 或 commit 部署示例（二选一）
+# git switch --detach v0.2.0
+# git switch --detach <commit-sha>
+
+# 基于当前 checkout 重建镜像并更新容器；mathgen-data 卷会保留
+docker compose up -d --build
+```
+
+更新后验证容器健康、接口和启动日志。健康检查有 10 秒 start period、30 秒轮询与重试；刚启动时先等待再判定失败。
+
+```bash
+docker compose ps
+curl --fail --show-error http://127.0.0.1:8080/healthz
+# 预期：{"status":"ok"}
+docker compose logs --tail=100 mathgen
+# 持续观察时：docker compose logs -f mathgen
+```
+
+如更新后发现应用问题，切回更新前记录的 SHA 后重新构建。源码/镜像回滚默认不修改 `mathgen-data`；只有数据问题才按下节从更新前备份恢复。
+
+```bash
+git switch --detach <previous-commit-sha>
+docker compose up -d --build
+docker compose ps
+curl --fail --show-error http://127.0.0.1:8080/healthz
+```
+
+若更新包含静态资源，还要检查 PWA：确认 `/static/sw.js` 已返回新内容；必要时在浏览器 DevTools 的 Application → Service Workers 勾选 “Update on reload” 后刷新。旧 Service Worker 可能在首次访问时继续显示旧 UI，刷新后再确认新版本生效。
+
 ### 备份与恢复数据卷
 
 以下命令通过 Compose 使用当前项目的命名卷。为得到一致的 SQLite 备份，先停止服务；备份文件写入当前目录。恢复命令只解压并覆盖备份内同名文件，不会删除卷中其他数据。
