@@ -29,13 +29,35 @@ docker compose up -d --build
 
 访问 `http://<服务器IP>:8080`。健康检查自动执行（`/healthz`），重启策略 `unless-stopped`。
 
+Compose 将 `KIDSMATH_DB` 设为 `/data/kidsmath.db`，并将命名卷 `mathgen-data` 挂载到 `/data`。该卷同时保存 SQLite 数据库和上传的用户音频目录 `/data/user_audio/<uid>`。`compose.yaml` 通过 `TZ: Asia/Shanghai` 声明容器时区；需要其他时区时，修改该值为所需 IANA 时区后重新创建容器。
+
 ### 只用 Dockerfile
 
 ```bash
 docker build -t mathgen .
 # 数据卷必须手动挂载：/data/kidsmath.db（含用户/历史/保存配置）
 docker run -d --name mathgen -p 8080:8080 --restart unless-stopped \
-  -v mathgen-data:/data -e KIDSMATH_DB=/data/kidsmath.db mathgen
+  -v mathgen-data:/data -e KIDSMATH_DB=/data/kidsmath.db -e TZ=Asia/Shanghai mathgen
+```
+
+### 备份与恢复数据卷
+
+以下命令通过 Compose 使用当前项目的命名卷。为得到一致的 SQLite 备份，先停止服务；备份文件写入当前目录。恢复命令只解压并覆盖备份内同名文件，不会删除卷中其他数据。
+
+镜像默认以非 root 的 `mathgen` 用户运行，无法保证可写宿主机当前目录；归档容器用 `--user root` 运行。生成的 tar 在宿主机上归 root 所有（属预期备份产物）。
+
+```bash
+# 备份完整 /data（含 kidsmath.db 和 user_audio/<uid>）
+docker compose stop mathgen
+docker compose run --rm --no-deps --user root -v "$PWD:/backup" --entrypoint sh mathgen \
+  -c 'tar czf /backup/mathgen-data-$(date +%F).tar.gz -C /data .'
+docker compose start mathgen
+
+# 从完整备份恢复；将文件名替换为实际备份
+docker compose stop mathgen
+docker compose run --rm --no-deps --user root -v "$PWD:/backup" --entrypoint sh mathgen \
+  -c 'tar xzf /backup/mathgen-data-YYYY-MM-DD.tar.gz -C /data'
+docker compose start mathgen
 ```
 
 ### 常用操作
@@ -53,7 +75,7 @@ docker compose down              # 停止（容器删除，数据保留在 mathg
   - `Content-Type: application/manifest+json` 用于 `/static/manifest.webmanifest`（缺失时部分浏览器仍可解析，但建议配全）；
   - `Cache-Control: no-cache` 或短 TTL 用于 `/static/sw.js`，避免旧 SW 长期驻留；
   - 其余静态资源（HTML/CSS/JS）建议 `Cache-Control: max-age=31536000, immutable` + SW 内部版本化刷新。
-- Service worker 离线缓存 app shell 与 `/product`；`/user/*`、`/login`、`/api/*`、`/generate`、`/download.*` **一律走网络**（认证与会话状态必须实时）。
+- Service Worker 预缓存并按缓存优先策略处理 `/`、`/product`、`/guide`、`/docs` 与 `/static/` 下的资源。除此白名单之外的请求均走网络，包括 `/user/*`、`/member/*`、`/login`、`/api/*`、`/generate` 与 `/download.*`。
 
 ## 说明
 
