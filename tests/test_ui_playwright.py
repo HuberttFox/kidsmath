@@ -437,14 +437,25 @@ def test_ai_wizard_guided_backfill(page):
 
 
 def test_preview_omits_answer_lines_and_gap(page):
-    page.goto(BASE + "/?embed=1")
-    page.locator('#count').fill("2")
-    page.locator('#advanced summary').click()
-    page.locator('#answer_lines').fill("2")
-    page.locator('#gap').fill("28")
-    page.locator('#generateBtn').click()
-    expect(page.locator('#preview .preview-answer-line')).to_have_count(0)
-    assert "--preview-row-gap" not in page.locator('#preview .sheet').get_attribute("style")
+    def render(styled):
+        page.goto(BASE + "/?embed=1")
+        page.locator('#count').fill("2")
+        if styled:
+            page.locator('#advanced summary').click()
+            page.locator('#answer_lines').fill("2")
+            page.locator('#gap').fill("28")
+        page.locator('#generateBtn').click()
+        return page.locator('#preview')
+
+    for styled in (False, True):
+        preview = render(styled)
+        cells = preview.locator('.cell')
+        expect(cells).to_have_count(2)
+        # 每个单元格只含题目文本，无输入框/答题线等额外元素
+        for i in range(2):
+            expect(cells.nth(i).locator('*')).to_have_count(0)
+        style = preview.locator('.sheet').get_attribute("style") or ""
+        assert "--preview-row-gap" not in style
 
 
 def test_worksheet_practice_and_mistakes(page):

@@ -109,12 +109,26 @@ def _content_bottom_offset(q: Question, lines: list[str] | None, size: int) -> f
     return 2 + (len(layout.get("numbers", ())) + 0.5) * size
 
 
+def _answer_pitch(q: Question, lines: list[str] | None, size: int,
+                  cfg: ResolvedConfig) -> float:
+    """正线数时的统一线距：24 + gap/N，但整体答题区不超过一页可用高度。
+
+    极端参数（超大 gap 或大量横线）下若按原始公式，单题高度会超过整页，
+    答题线被画到页面之外不可见；这里压缩线距，把答题区收进页面。
+    """
+    base = ANSWER_LINE_PITCH + cfg.gap / cfg.answer_lines
+    # 页顶 = height - MARGIN - 40（页眉区 40pt），页底边界 = MARGIN
+    avail = (A4[1] - 2 * MARGIN - 40
+             - _content_bottom_offset(q, lines, size) - ANSWER_LINE_TAIL)
+    return min(base, max(avail, 0.0) / cfg.answer_lines)
+
+
 def _answer_rule_ys(top: float, q: Question, lines: list[str] | None,
                     size: int, cfg: ResolvedConfig) -> list[float]:
     """按本题末端定位答题线，避免同排较高题目改变短题的线距。"""
     if cfg.answer_lines <= 0:
         return []
-    pitch = ANSWER_LINE_PITCH + cfg.gap / cfg.answer_lines
+    pitch = _answer_pitch(q, lines, size, cfg)
     first_y = top - _content_bottom_offset(q, lines, size) - pitch
     return [first_y - i * pitch for i in range(cfg.answer_lines)]
 
@@ -123,9 +137,9 @@ def _item_total_height(q: Question, lines: list[str] | None, size: int,
                        cfg: ResolvedConfig) -> float:
     if cfg.answer_lines <= 0:
         return _item_height(q, lines, size)
-    pitch = ANSWER_LINE_PITCH + cfg.gap / cfg.answer_lines
     return (_content_bottom_offset(q, lines, size)
-            + cfg.answer_lines * pitch + ANSWER_LINE_TAIL)
+            + cfg.answer_lines * _answer_pitch(q, lines, size, cfg)
+            + ANSWER_LINE_TAIL)
 
 
 def _draw_item(c, x, top, idx, q, cfg, font, size, col_w, lines) -> None:

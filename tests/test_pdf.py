@@ -126,6 +126,18 @@ def test_vertical_rules_start_after_calculation_bottom():
     assert first_rule - second_rule == 24
 
 
+def test_extreme_gap_and_many_lines_keep_rules_on_page():
+    fresh_top = A4[1] - pdf_module.MARGIN - 40  # 新页页顶，模拟 ensure_space 换页后
+    for gap, lines_n in [(800, 1), (0, 30), (1000, 3), (0, 60)]:
+        cfg = resolve(Config(grade=1, topic="arithmetic",
+                             gap=gap, answer_lines=lines_n))
+        q = Question(topic="arithmetic", statement="2 + 3 = ____", answer="5",
+                     expression="2 + 3")
+        ys = pdf_module._answer_rule_ys(fresh_top, q, ["1. 2 + 3 = ____"], 13, cfg)
+        assert len(ys) == lines_n
+        assert all(y >= pdf_module.MARGIN - 0.01 for y in ys), (gap, lines_n)
+
+
 def test_gap_and_answer_lines_render():
     cfg = resolve(Config(grade=1, topic="arithmetic", count=6, seed=2, gap=40, answer_lines=3))
     data = render_pdf(generate(cfg), cfg)

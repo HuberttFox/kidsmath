@@ -114,6 +114,7 @@
     });
     function submit() {
       if (submitted) return; submitted = true;
+      if (live) live.checked = false;  // 交卷后实时判断已无意义，取消勾选避免界面误导
       clearInterval(interval);
       var correct = 0, wrong = [];
       cells.forEach(function (c) {

@@ -22,12 +22,18 @@ def test_generate_preview():
 
 
 def test_preview_omits_answer_lines_and_gap():
-    r = client.post("/generate", data={
-        "grade": "2", "count": "2", "topic": "arithmetic",
-        "answer_lines": "2", "gap": "28"})
-    assert r.status_code == 200
-    assert 'class="preview-answer-line"' not in r.text
-    assert "--preview-row-gap" not in r.text
+    data = {"grade": "2", "count": "2", "topic": "arithmetic", "seed": "42"}
+    base = client.post("/generate", data=data)
+    styled = client.post("/generate", data={**data, "answer_lines": "2", "gap": "28"})
+    assert base.status_code == styled.status_code == 200
+    # 预览对答题线/题间距参数不敏感：同一 seed 下单元格标记与样式应完全一致
+    def cells(resp):
+        return re.findall(r'<div class="cell">(.*?)</div>', resp.text, re.DOTALL)
+    def sheet_style(resp):
+        m = re.search(r'<div class="sheet preview"[^>]*style="([^"]*)"', resp.text)
+        return m.group(1) if m else None
+    assert cells(base) and cells(base) == cells(styled)
+    assert sheet_style(base) == sheet_style(styled)
 
 
 def test_download_pdf():
