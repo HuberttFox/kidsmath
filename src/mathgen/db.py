@@ -32,10 +32,7 @@ def configure(path: str | None = None) -> None:
 
 
 def _resolve_path() -> str:
-    env = os.environ.get("KIDSMATH_DB")
-    if env:
-        return env
-    p = _path or str(DEFAULT_DB)
+    p = os.environ.get("KIDSMATH_DB") or _path or str(DEFAULT_DB)
     Path(p).parent.mkdir(parents=True, exist_ok=True)
     return p
 

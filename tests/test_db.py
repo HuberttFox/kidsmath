@@ -10,6 +10,26 @@ def test_configure_and_tables():
     assert {"users", "sessions", "config_history", "saved_configs"} <= tables
 
 
+@pytest.mark.parametrize("source", ["env", "configured", "default"])
+def test_resolve_path_creates_nested_parent_without_opening_database(
+        tmp_path, monkeypatch, source):
+    path = tmp_path / "nested" / "kidsmath.db"
+    monkeypatch.delenv("KIDSMATH_DB", raising=False)
+    monkeypatch.setattr(db, "_path", None)
+    if source == "env":
+        monkeypatch.setenv("KIDSMATH_DB", str(path))
+    elif source == "configured":
+        monkeypatch.setattr(db, "_path", str(path))
+    else:
+        monkeypatch.chdir(tmp_path)
+        path = tmp_path / db.DEFAULT_DB
+
+    expected = str(path) if source != "default" else str(db.DEFAULT_DB)
+    assert db._resolve_path() == expected
+    assert path.parent.is_dir()
+    assert not path.exists()
+
+
 def test_user_crud():
     uid = db.create_user("家长", "hash1")
     assert db.get_user_by_name("家长")["id"] == uid

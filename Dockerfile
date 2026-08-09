@@ -9,10 +9,12 @@ RUN uv sync --frozen --no-dev
 
 # 阶段2：运行（精简镜像、非 root）
 FROM python:3.12-slim-bookworm
+RUN apt-get update \
+    && apt-get install --no-install-recommends -y tzdata \
+    && rm -rf /var/lib/apt/lists/*
 ENV LANG=C.UTF-8 \
     LC_ALL=C.UTF-8 \
-    PYTHONUNBUFFERED=1 \
-    PORT=8080
+    PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/src /app/src
