@@ -50,7 +50,7 @@ class UserAndCSRFMiddleware(BaseHTTPMiddleware):
                     from fastapi.responses import PlainTextResponse
                     return PlainTextResponse("请求来源不合法", status_code=403)
         response = await call_next(request)
-        if request.query_params.get("embed") and response.status_code == 302:
+        if request.query_params.get("embed") == "1" and response.status_code == 302:
             loc = response.headers.get("location", "")
             if loc and loc.startswith("/") and "embed=1" not in loc:
                 sep = "&" if "?" in loc else "?"
@@ -1552,13 +1552,13 @@ async def api_me(request: Request):
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
-    if request.query_params.get("embed"):
-        lang = _lang(request)
-        form = {k: v for k, v in request.query_params.items() if k != "embed"}
+    embedded = request.query_params.get("embed") == "1"
+    mobile = request.query_params.get("mobile") == "1"
+    lang = _lang(request)
+    form = {k: v for k, v in request.query_params.items() if k not in ("embed", "mobile")}
+    if embedded or mobile:
         return templates.TemplateResponse(request, "form.html",
             _index_context(form, None, lang, _app_mode(request)))
-    lang = _lang(request)
-    form = {k: v for k, v in request.query_params.items()}
     return templates.TemplateResponse(
         request, "index.html",
         _index_context(form, None, lang, _app_mode(request)))

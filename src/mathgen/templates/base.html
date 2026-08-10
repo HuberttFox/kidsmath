@@ -1,5 +1,7 @@
 <!doctype html>
 {% set _theme = request.cookies.get('mathgen_theme', 'auto') %}
+{% set _embedded = request.query_params.get('embed') == '1' %}
+{% set _path = request.url.path %}
 <html lang="{{ lang or 'zh' }}"{% if _theme in ('light', 'dark') %} data-theme="{{ _theme }}"{% endif %}>
 <head>
   <meta charset="utf-8">
@@ -25,14 +27,13 @@
   <link rel="manifest" href="/static/manifest.webmanifest">
   <link rel="stylesheet" href="/static/style.css">
 </head>
-<body{% if request.query_params.get("embed") %} class="embed"{% endif %}{% if request.state.user %} data-logged-in="1"{% endif %}>
+<body{% if _embedded %} class="embed"{% endif %}{% if request.state.user %} data-logged-in="1"{% endif %}>
   <header class="site-header">
     <div class="container header-inner">
       <a class="logo" href="{% if app_mode %}/{% else %}/product{% endif %}">
         <img class="logo-icon" src="/static/math-icon.svg" alt="" width="36" height="36">
         <span class="logo-text">Kids Math</span>
       </a>
-      {% set _path = request.url.path %}
       <nav class="nav" aria-label="导航">
         <a href="/product"{% if _path == '/product' %} aria-current="page"{% endif %} data-i18n="nav.product">{{ t("nav.product", lang) }}</a>
         <a href="/guide"{% if _path == '/guide' %} aria-current="page"{% endif %} data-i18n="nav.guide">{{ t("nav.guide", lang) }}</a>
@@ -44,18 +45,55 @@
       </nav>
       <div class="header-controls">
         {% if request.state.user %}
-      <a class="user-chip" href="/user">{{ request.state.user.username }}</a>
-      <form method="post" action="/api/logout" class="inline-form">
-        <button class="pill-toggle" type="submit" data-i18n="auth.logout">{{ t("auth.logout", lang) }}</button>
-      </form>
-      {% else %}
-      <a class="pill-toggle" href="/login" data-i18n="auth.login">{{ t("auth.login", lang) }}</a>
-      {% endif %}
+        <a class="user-chip" href="/user">{{ request.state.user.username }}</a>
+        <form method="post" action="/api/logout" class="inline-form">
+          <button class="pill-toggle" type="submit" data-i18n="auth.logout">{{ t("auth.logout", lang) }}</button>
+        </form>
+        {% else %}
+        <a class="pill-toggle" href="/login" data-i18n="auth.login">{{ t("auth.login", lang) }}</a>
+        {% endif %}
         <button class="pill-toggle" id="langToggle" type="button" aria-label="Language"><span id="langLabel"></span></button>
         <button class="pill-toggle" id="themeToggle" type="button" aria-label="Theme"><span id="themeLabel"></span></button>
       </div>
     </div>
   </header>
+  {% if not _embedded %}
+  <button class="mobile-drawer-toggle" id="mobileDrawerToggle" type="button"
+          aria-label="{{ t('mobile.menu_open', lang) }}" aria-controls="mobileDrawer" aria-expanded="false">
+    <span class="mobile-drawer-bar"></span><span class="mobile-drawer-bar"></span><span class="mobile-drawer-bar"></span>
+  </button>
+  <aside class="mobile-drawer" id="mobileDrawer" aria-label="{{ t('mobile.menu_open', lang) }}" aria-hidden="true" inert>
+    <nav class="mobile-drawer-nav">
+      <a href="/?mobile=1"{% if _path == '/' %} aria-current="page"{% endif %}>
+        <span data-i18n="side.gen">{{ t("side.gen", lang) }}</span>
+      </a>
+      <a href="/member/timer"{% if _path == '/member/timer' %} aria-current="page"{% endif %}>
+        <span data-i18n="member.timer">{{ t("member.timer", lang) }}</span>
+      </a>
+      <a href="/member/pomodoro"{% if _path == '/member/pomodoro' %} aria-current="page"{% endif %}>
+        <span data-i18n="member.pomodoro">{{ t("member.pomodoro", lang) }}</span>
+      </a>
+      <a href="/member/worksheet"{% if _path == '/member/worksheet' %} aria-current="page"{% endif %}>
+        <span data-i18n="member.worksheet">{{ t("member.worksheet", lang) }}</span>
+      </a>
+      <a href="/member/errors"{% if _path == '/member/errors' %} aria-current="page"{% endif %}>
+        <span data-i18n="member.errors">{{ t("member.errors", lang) }}</span>
+      </a>
+      <a href="/member/review"{% if _path == '/member/review' %} aria-current="page"{% endif %}>
+        <span data-i18n="member.review">{{ t("member.review", lang) }}</span>
+      </a>
+      <a href="/member/ai"{% if _path == '/member/ai' %} aria-current="page"{% endif %}>
+        <span data-i18n="ai.title">{{ t("ai.title", lang) }}</span>
+      </a>
+      {% if request.state.user %}
+      <a href="/user"{% if _path.startswith('/user') %} aria-current="page"{% endif %}>
+        <span data-i18n="user.title">{{ t("user.title", lang) }}</span>
+      </a>
+      {% endif %}
+    </nav>
+  </aside>
+  <div class="mobile-drawer-backdrop" id="mobileDrawerBackdrop" hidden></div>
+  {% endif %}
   <main>
     {% block content %}{% endblock %}
   </main>
@@ -68,6 +106,52 @@
   </footer>
   {% if ui_json %}<script type="application/json" id="ui-json">{{ ui_json | safe }}</script>{% endif %}
   <script src="/static/lang.js"></script>
+  {% if not _embedded %}
+  <script>
+    (function () {
+      var toggle = document.getElementById('mobileDrawerToggle');
+      var drawer = document.getElementById('mobileDrawer');
+      var backdrop = document.getElementById('mobileDrawerBackdrop');
+      var header = document.querySelector('.site-header');
+      var main = document.querySelector('main');
+      var footer = document.querySelector('.site-footer');
+      var compact = window.matchMedia('(max-width: 820px)');
+      if (!toggle || !drawer || !backdrop) return;
+      var items = Array.prototype.slice.call(drawer.querySelectorAll('a[href]'));
+      var openLabel = {{ t('mobile.menu_open', lang) | tojson }};
+      var closeLabel = {{ t('mobile.menu_close', lang) | tojson }};
+      function isOpen() { return document.documentElement.classList.contains('mobile-drawer-open'); }
+      function setOpen(open, restoreFocus) {
+        if (!compact.matches) open = false;
+        drawer.classList.toggle('mobile-drawer-open', open);
+        drawer.toggleAttribute('inert', !open);
+        drawer.setAttribute('aria-hidden', String(!open));
+        header.toggleAttribute('inert', open);
+        main.toggleAttribute('inert', open);
+        footer.toggleAttribute('inert', open);
+        backdrop.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+        toggle.setAttribute('aria-label', open ? closeLabel : openLabel);
+        document.documentElement.classList.toggle('mobile-drawer-open', open);
+        if (open) (drawer.querySelector('[aria-current="page"]') || items[0]).focus();
+        else if (restoreFocus) toggle.focus();
+      }
+      function sync() { setOpen(false); }
+      toggle.addEventListener('click', function () { setOpen(!isOpen(), isOpen()); });
+      backdrop.addEventListener('click', function () { setOpen(false, true); });
+      compact.addEventListener('change', sync);
+      document.addEventListener('keydown', function (e) {
+        if (!compact.matches || !isOpen()) return;
+        if (e.key === 'Escape') { e.preventDefault(); setOpen(false, true); return; }
+        if (e.key !== 'Tab') return;
+        var first = items[0], last = items[items.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      });
+      sync();
+    })();
+  </script>
+  {% endif %}
   <script>
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       navigator.serviceWorker.register('/static/sw.js').catch(function () {});

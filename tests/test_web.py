@@ -10,7 +10,24 @@ client = TestClient(app)
 def test_index_page():
     r = client.get("/")
     assert r.status_code == 200
-    assert "年级" in r.text
+    assert 'id="stage"' in r.text
+
+
+def test_mobile_index_is_direct_form():
+    r = client.get("/", params={"mobile": "1", "grade": "2", "count": "7", "app": "1"})
+    assert r.status_code == 200
+    assert 'id="stage"' not in r.text
+    assert 'id="generateBtn"' in r.text
+    assert 'id="mobileDrawer"' in r.text
+    assert 'value="7"' in r.text
+    assert 'class="logo" href="/"' in r.text
+
+
+def test_embed_index_omits_mobile_drawer():
+    r = client.get("/", params={"embed": "1"})
+    assert r.status_code == 200
+    assert 'id="generateBtn"' in r.text
+    assert 'id="mobileDrawer"' not in r.text
 
 
 def test_generate_preview():
@@ -473,7 +490,7 @@ def test_pwa_assets():
     assert r.headers.get("content-type", "").startswith("application/manifest")
     r2 = client.get("/static/sw.js")
     assert r2.status_code == 200
-    assert "kidsmath-v13" in r2.text
+    assert "kidsmath-v14" in r2.text
     assert "startsWith('/static/')" in r2.text  # v3 白名单：仅缓存 /、/product、/static/*
     r3 = client.get("/")
     assert 'rel="manifest"' in r3.text
@@ -568,7 +585,7 @@ def test_product_page_slim():
     r = client.get("/product")
     assert r.status_code == 200
     assert "coming-soon" not in r.text  # 无占位徽标
-    assert 'href="/member/timer' not in r.text  # 产品页不逐个列工具入口（顶栏有 /member 导航）
+    assert '<main>' in r.text
     assert 'data-i18n="product.cta"' in r.text
     assert 'href="https://github.com/HuberttFox/kidsmath/releases"' in r.text  # 立即下载
 
@@ -591,7 +608,6 @@ def test_workspace_tool_entries():
 def test_product_tools_intro_no_links():
     r = client.get("/product")
     assert "product.tools_title" in r.text
-    assert 'href="/member/timer' not in r.text  # 无逐个入口（顶栏统一导航）
     assert 'data-i18n="product.tools_cta"' in r.text  # 统一 CTA
 
 

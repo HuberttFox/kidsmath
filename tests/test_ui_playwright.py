@@ -634,96 +634,69 @@ def test_review_single_card_queue(page):
     {"width": 820, "height": 1180},
     {"width": 812, "height": 375},
 ])
-def test_mobile_workbench_has_no_horizontal_overflow(page, viewport):
+def test_mobile_routes_directly_without_iframe(page, viewport):
     page.set_viewport_size(viewport)
-    page.goto(BASE + "/")
-    stage = _stage(page)
-    expect(stage.locator('#generateBtn')).to_be_visible()
+    page.goto(BASE + "/?grade=2&count=7&app=1")
+    page.wait_for_url(re.compile(r"mobile=1"))
+    assert page.locator('#stage').count() == 0
+    expect(page.locator('#generateBtn')).to_be_visible()
+    expect(page.locator('#count')).to_have_value("7")
     _assert_no_horizontal_overflow(page.locator("html"))
-    _assert_no_horizontal_overflow(stage.locator("html"))
-    metrics = _embedded_scroll_metrics(page)
-    assert metrics["viewport"] >= metrics["content"] - 1
-    assert metrics["outerContent"] >= _stage_height(page)
 
 
-def test_mobile_stage_tracks_content_and_route_changes(page):
+def test_mobile_hash_deep_link_becomes_direct_route(page):
+    page.set_viewport_size({"width": 375, "height": 812})
+    page.goto(BASE + "/#/member/pomodoro")
+    page.wait_for_url(BASE + "/member/pomodoro")
+    assert page.locator('#stage').count() == 0
+    expect(page.locator('#pomodoroStart')).to_be_visible()
+
+
+def test_mobile_drawer_is_accessible_x_and_navigates_directly(page):
     page.set_viewport_size({"width": 375, "height": 812})
     page.goto(BASE + "/")
-    stage = _stage(page)
-    expect(stage.locator('#advanced')).not_to_have_attribute("open")
-    initial_height = _stage_height(page)
-    stage.locator('#advanced summary').click()
-    expect(stage.locator('#advanced')).to_have_attribute("open", "")
-    page.wait_for_function("height => document.querySelector('.workbench-stage').getBoundingClientRect().height > height", arg=initial_height)
-    stage.locator('#advanced summary').click()
-    expect(stage.locator('#advanced')).not_to_have_attribute("open")
-    page.wait_for_function("height => document.querySelector('.workbench-stage').getBoundingClientRect().height <= height + 1", arg=initial_height)
-    page.locator('#sideToggle').click()
-    page.locator('.side-item:has-text("番茄钟")').click()
-    expect(stage.locator('#pomodoroStart')).to_be_visible()
-    page.wait_for_function("""() => {
-        const doc = document.getElementById('stage').contentDocument;
-        return doc.documentElement.clientHeight >= Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight) - 1;
-    }""")
-    metrics = _embedded_scroll_metrics(page)
-    assert metrics["viewport"] >= metrics["content"] - 1
-    page.set_viewport_size({"width": 812, "height": 375})
-    page.wait_for_function("""() => {
-        const doc = document.getElementById('stage').contentDocument;
-        return doc.documentElement.clientHeight >= Math.max(doc.documentElement.scrollHeight, doc.body.scrollHeight) - 1;
-    }""")
-
-
-def test_mobile_drawer_keyboard_backdrop_and_switch(page):
-    page.set_viewport_size({"width": 375, "height": 812})
-    page.goto(BASE + "/")
-    page.wait_for_timeout(300)
-    toggle = page.locator('#sideToggle')
+    page.wait_for_url(re.compile(r"mobile=1"))
+    toggle = page.locator('#mobileDrawerToggle')
     toggle.focus()
     page.keyboard.press("Enter")
-    expect(page.locator('#sideRail')).to_have_class(re.compile("side-open"))
-    expect(page.locator('#sideRail')).not_to_have_attribute("aria-hidden", "true")
-    assert page.evaluate("document.activeElement.classList.contains('side-item')")
+    expect(page.locator('#mobileDrawer')).to_have_class(re.compile("mobile-drawer-open"))
+    expect(page.locator('.mobile-drawer-bar').nth(1)).to_have_css("opacity", "0")
+    assert page.evaluate("document.activeElement.closest('#mobileDrawer') !== null")
+    assert page.locator('.mobile-drawer-bar').first.evaluate("el => getComputedStyle(el).transform") != "none"
     page.keyboard.press("Escape")
-    expect(page.locator('#sideRail')).not_to_have_class(re.compile("side-open"))
-    assert page.evaluate("document.activeElement.id") == "sideToggle"
+    expect(page.locator('#mobileDrawer')).not_to_have_class(re.compile("mobile-drawer-open"))
+    assert page.evaluate("document.activeElement.id") == "mobileDrawerToggle"
     toggle.click()
-    page.locator('#sideBackdrop').click(position={"x": 300, "y": 400})
-    expect(page.locator('#sideRail')).not_to_have_class(re.compile("side-open"))
-    assert page.evaluate("document.activeElement.id") == "sideToggle"
+    page.locator('#mobileDrawerBackdrop').click(position={"x": 300, "y": 400})
+    expect(page.locator('#mobileDrawer')).not_to_have_class(re.compile("mobile-drawer-open"))
     toggle.click()
-    page.locator('.side-item:has-text("番茄钟")').click()
-    page.wait_for_timeout(300)
-    src = page.evaluate("document.getElementById('stage').src")
-    assert "/member/pomodoro" in src and "embed=1" in src
-    assert page.evaluate("location.hash") == "#/member/pomodoro"
-    expect(page.locator('#sideRail')).not_to_have_class(re.compile("side-open"))
-    assert page.evaluate("document.activeElement.id") == "stage"
-    expect(page.frame_locator("#stage").locator('#pomodoroStart')).to_be_visible()
+    page.locator('#mobileDrawer a[href="/member/pomodoro"]').click()
+    page.wait_for_url(BASE + "/member/pomodoro")
+    assert page.locator('#stage').count() == 0
+    expect(page.locator('#pomodoroStart')).to_be_visible()
 
 
-def test_mobile_preview_pager_has_no_horizontal_overflow(page):
-    page.set_viewport_size({"width": 375, "height": 812})
+def test_mobile_theme_language_and_preview_preserve_form_state(page):
+    page.set_viewport_size({"width": 390, "height": 844})
     page.goto(BASE + "/")
-    stage = _stage(page)
-    stage.locator('#count').fill("30")
-    stage.locator('#generateBtn').click()
-    expect(stage.locator('#pager')).to_be_visible()
+    page.wait_for_url(re.compile(r"mobile=1"))
+    page.locator('#count').fill("31")
+    page.locator('#langToggle').click()
+    expect(page.locator('.hero-title')).to_have_text("Math Worksheets for Kids")
+    expect(page.locator('#count')).to_have_value("31")
+    page.locator('#themeToggle').click()
+    expect(page.locator("html")).to_have_attribute("data-theme", "light")
+    expect(page.locator('#count')).to_have_value("31")
+    page.locator('#count').fill("30")
+    page.locator('#generateBtn').click()
+    expect(page.locator('#pager')).to_be_visible()
     _assert_no_horizontal_overflow(page.locator("html"))
-    _assert_no_horizontal_overflow(stage.locator("html"))
-    _assert_no_horizontal_overflow(stage.locator('#pager'))
+    _assert_no_horizontal_overflow(page.locator('#pager'))
 
 
-def test_drawer_state_resets_above_compact_breakpoint(page):
-    page.set_viewport_size({"width": 375, "height": 812})
-    page.goto(BASE + "/")
-    page.locator('#sideToggle').click()
-    expect(page.locator('#sideRail')).to_have_class(re.compile("side-open"))
+def test_desktop_workbench_remains_iframe(page):
     page.set_viewport_size({"width": 821, "height": 900})
-    expect(page.locator('#sideRail')).not_to_have_attribute("inert", "")
-    expect(page.locator('#sideRail')).not_to_have_attribute("aria-hidden")
-    expect(page.locator('#sideRail')).not_to_have_class(re.compile("side-open"))
-    expect(page.locator('#sideToggle')).to_have_attribute("aria-expanded", "false")
-    expect(page.locator('.workbench-stage')).not_to_have_attribute("style", re.compile("height"))
-    assert abs(_stage_height(page) - (page.viewport_size["height"] - 120)) <= 1
-    expect(page.locator('#sideBackdrop')).to_be_hidden()
+    page.goto(BASE + "/")
+    expect(page.locator('#stage')).to_be_visible()
+    expect(_stage(page).locator('#generateBtn')).to_be_visible()
+    assert "mobile=1" not in page.url

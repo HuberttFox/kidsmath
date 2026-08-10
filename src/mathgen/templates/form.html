@@ -262,6 +262,15 @@
 {% endblock %}
 
 {% block scripts %}
+<script>
+  (function () {
+    if (!window.matchMedia('(min-width: 821px)').matches) return;
+    var url = new URL(location.href);
+    if (url.searchParams.get('mobile') !== '1') return;
+    url.searchParams.delete('mobile');
+    location.replace(url.href);
+  })();
+</script>
 <script type="application/json" id="preset-hints">{{ presets_json | safe }}</script>
 <script>
   (function () {

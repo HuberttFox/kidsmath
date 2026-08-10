@@ -18,10 +18,25 @@
 
 
 {% block content %}
+<script>
+  (function () {
+    if (!window.matchMedia('(max-width: 820px)').matches) return;
+    var url = new URL(location.href);
+    if (url.searchParams.get('mobile') === '1') return;
+    var hashPath = url.hash.replace(/^#/, '');
+    if (hashPath && hashPath !== '/' && hashPath.startsWith('/')) {
+      url.pathname = hashPath;
+      url.search = '';
+      url.hash = '';
+      location.replace(url.href);
+      return;
+    }
+    url.searchParams.set('mobile', '1');
+    url.hash = '';
+    location.replace(url.href);
+  })();
+</script>
 <div class="workbench">
-<button class="side-toggle" id="sideToggle" type="button" aria-label="菜单" aria-controls="sideRail" aria-expanded="false">
-  <span class="side-toggle-bar"></span><span class="side-toggle-bar"></span><span class="side-toggle-bar"></span>
-</button>
 <aside class="side-rail" id="sideRail" aria-label="功能导航">
   <nav class="side-nav">
     <a class="side-item side-active" href="/">
@@ -52,7 +67,6 @@
     {% endif %}
   </nav>
 </aside>
-<div class="side-backdrop" id="sideBackdrop" hidden></div>
 <div class="workbench-main">
   <div class="workbench-stage">
     <iframe id="stage" name="stage" title="工作台"
@@ -62,119 +76,12 @@
 <script>
   (function () {
     var rail = document.getElementById('sideRail');
-    var toggle = document.getElementById('sideToggle');
-    var backdrop = document.getElementById('sideBackdrop');
     var stage = document.getElementById('stage');
-    var stageBox = stage.parentElement;
-    var header = document.querySelector('.site-header');
     var items = Array.prototype.slice.call(document.querySelectorAll('.side-item'));
     var routes = {};
 
-    var compact = window.matchMedia('(max-width: 820px)');
-    var stageResizeObserver;
-    var stageMutationObserver;
-    var stageMeasureFrame;
-    var stageStyleState;
-
-    function clearStageSizer() {
-      if (stageResizeObserver) stageResizeObserver.disconnect();
-      if (stageMutationObserver) stageMutationObserver.disconnect();
-      stageResizeObserver = null;
-      stageMutationObserver = null;
-      if (stageMeasureFrame) cancelAnimationFrame(stageMeasureFrame);
-      stageMeasureFrame = 0;
-      if (stageStyleState) {
-        stageStyleState.html.style.height = stageStyleState.htmlHeight;
-        stageStyleState.body.style.height = stageStyleState.bodyHeight;
-        stageStyleState.body.style.minHeight = stageStyleState.bodyMinHeight;
-        stageStyleState = null;
-      }
-      stageBox.style.height = '';
-    }
-    function measureStage() {
-      stageMeasureFrame = 0;
-      if (!compact.matches) return;
-      try {
-        var doc = stage.contentDocument;
-        var root = doc && doc.documentElement;
-        var body = doc && doc.body;
-        if (!root || !body) return;
-        stageBox.style.height = '0px';
-        var height = Math.max(root.scrollHeight, root.offsetHeight, body.scrollHeight, body.offsetHeight);
-        stageBox.style.height = Math.ceil(height + stageBox.getBoundingClientRect().height - stageBox.clientHeight) + 'px';
-      } catch (e) { clearStageSizer(); }
-    }
-    function scheduleStageMeasure() {
-      if (!compact.matches || stageMeasureFrame) return;
-      stageMeasureFrame = requestAnimationFrame(measureStage);
-    }
-    function installStageSizer(doc) {
-      clearStageSizer();
-      if (!compact.matches || !doc || !doc.body) return;
-      var root = doc.documentElement;
-      var body = doc.body;
-      stageStyleState = {
-        html: root, body: body,
-        htmlHeight: root.style.height,
-        bodyHeight: body.style.height,
-        bodyMinHeight: body.style.minHeight
-      };
-      root.style.height = 'auto';
-      body.style.height = 'auto';
-      body.style.minHeight = '0';
-      stageResizeObserver = new ResizeObserver(scheduleStageMeasure);
-      stageResizeObserver.observe(root);
-      stageResizeObserver.observe(body);
-      stageMutationObserver = new MutationObserver(scheduleStageMeasure);
-      stageMutationObserver.observe(body, {
-        subtree: true, attributes: true, attributeFilter: ['class', 'hidden', 'open', 'style']
-      });
-      if (doc.fonts && doc.fonts.ready) doc.fonts.ready.then(scheduleStageMeasure);
-      scheduleStageMeasure();
-    }
-    function syncStageSizer() {
-      if (!compact.matches) {
-        clearStageSizer();
-        return;
-      }
-      try { installStageSizer(stage.contentDocument); } catch (e) { clearStageSizer(); }
-    }
-
     function hashPath() {
       return (location.hash || '#/').replace(/^#/, '') || '/';
-    }
-    function isOpen() {
-      return rail.classList.contains('side-open');
-    }
-    function focusDrawer() {
-      (rail.querySelector('.side-active') || items[0]).focus();
-    }
-    function setOpen(open, restoreFocus) {
-      if (!compact.matches) open = false;
-      rail.classList.toggle('side-open', open);
-      rail.toggleAttribute('inert', compact.matches && !open);
-      rail.setAttribute('aria-hidden', String(compact.matches && !open));
-      header.toggleAttribute('inert', open);
-      stage.toggleAttribute('inert', open);
-      backdrop.hidden = !open;
-      toggle.setAttribute('aria-expanded', String(open));
-      document.documentElement.classList.toggle('drawer-open', open);
-      if (open) focusDrawer();
-      else if (restoreFocus) toggle.focus();
-    }
-    function syncCompact() {
-      if (compact.matches) setOpen(false);
-      else {
-        rail.classList.remove('side-open');
-        rail.removeAttribute('inert');
-        rail.removeAttribute('aria-hidden');
-        header.removeAttribute('inert');
-        stage.removeAttribute('inert');
-        backdrop.hidden = true;
-        toggle.setAttribute('aria-expanded', 'false');
-        document.documentElement.classList.remove('drawer-open');
-      }
-      syncStageSizer();
     }
     function highlight(path) {
       items.forEach(function (it) {
@@ -188,14 +95,9 @@
       routes[path] = it;
       it.addEventListener('click', function (e) {
         e.preventDefault();
-        if (stage.src.indexOf('?embed') === -1) {
-          stage.src = path + (path.indexOf('?') === -1 ? '?' : '&') + 'embed=1';
-        } else {
-          stage.src = path.split('?')[0] + '?embed=1';
-        }
+        stage.src = path.split('?')[0] + '?embed=1';
         location.hash = '#' + path;
         highlight(path);
-        setOpen(false);
         stage.focus();
       });
     });
@@ -215,7 +117,6 @@
       });
     }
     function replayFade() {
-      // 单机制淡入：新页加载后重放一次性动画，旧页不先淡出（无闪烁）
       stage.style.animation = 'none';
       void stage.offsetWidth;
       stage.style.animation = 'pageFade .18s ease';
@@ -228,8 +129,7 @@
         var h = hashPath();
         if (h === '/') highlight('/');
         else if (routes[p]) highlight(p);
-        installStageSizer(stage.contentDocument);
-      } catch (e) { clearStageSizer(); }
+      } catch (e) { /* 跨域不可读，忽略 */ }
     });
     window.addEventListener('hashchange', function () {
       var h = hashPath();
@@ -238,42 +138,10 @@
         highlight(h);
       }
     });
-    if (hashPath() !== '/' && routes[hashPath()]) {
-      stage.src = hashPath() + '?embed=1';
-    }
+    if (hashPath() !== '/' && routes[hashPath()]) stage.src = hashPath() + '?embed=1';
     var q = location.search;
-    if (q) {  // 外部 302 回填（AI/历史重生成）→ 透传给 iframe 表单
-      stage.src = '/' + q + (q.indexOf('embed') === -1 ? '&embed=1' : '');
-    }
+    if (q) stage.src = '/' + q + (q.indexOf('embed') === -1 ? '&embed=1' : '');
     highlight('/');
-    syncCompact();
-    compact.addEventListener('change', syncCompact);
-    window.addEventListener('resize', scheduleStageMeasure);
-    toggle.addEventListener('click', function () {
-      setOpen(!isOpen(), isOpen());
-    });
-    backdrop.addEventListener('click', function () { setOpen(false, true); });
-    document.addEventListener('keydown', function (e) {
-      if (!compact.matches || !isOpen()) return;
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setOpen(false, true);
-        return;
-      }
-      if (e.key !== 'Tab') return;
-      var focusable = items.filter(function (item) { return !item.hidden; });
-      var first = focusable[0];
-      var last = focusable[focusable.length - 1];
-      if (!first || !last) return;
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    });
-    // 主题/语言切换：向 iframe 转发事件而非重载，保留表单输入
     document.addEventListener('langchange', function (e) {
       var d = stage.contentDocument;
       if (d && d.documentElement) d.dispatchEvent(new CustomEvent('langchange', { detail: e.detail }));
