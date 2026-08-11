@@ -56,18 +56,50 @@ def test_multi_operand_parens_have_steps():
 
 def test_multi_steps_precedence():
     steps = multi_steps(["2", "+", "3", "×", "4"], 14, "zh")
-    assert "3 × 4 = 12" in steps[0], "先乘后加"
-    assert steps[-1] == "结果：14"
+    assert steps == [
+        "先算乘法：3 × 4 = 12",
+        "再算加减（从左到右）：2 + 12 = 14",
+        "结果：14",
+    ]
+
+
+def test_multi_steps_multiplication_before_add_subtract():
+    steps = multi_steps(
+        ["2774", "+", "1794", "-", "13", "×", "46"], 3970, "zh")
+    assert steps == [
+        "先算乘法：13 × 46 = 598",
+        "再算加减（从左到右）：2774 + 1794 = 4568",
+        "再算加减（从左到右）：4568 - 598 = 3970",
+        "结果：3970",
+    ]
+
+
+def test_multi_steps_same_precedence_runs_left_to_right():
+    add_sub = multi_steps(["20", "-", "3", "+", "5"], 22, "zh")
+    assert add_sub[:2] == [
+        "先算加减：20 - 3 = 17",
+        "再算加减（从左到右）：17 + 5 = 22",
+    ]
+    mul_div = multi_steps(["48", "÷", "6", "×", "5"], 40, "zh")
+    assert mul_div[:2] == [
+        "先算除法：48 ÷ 6 = 8",
+        "再算乘法（从左到右）：8 × 5 = 40",
+    ]
 
 
 def test_multi_steps_parens():
     steps = multi_steps(["(", "2", "+", "3", ")", "×", "4"], 20, "zh")
-    assert "2 + 3 = 5" in steps[0], "括号最内层先算"
-    assert "5 × 4 = 20" in steps[1], "复合步应代入括号结果"
-    assert steps[-1] == "结果：20"
+    assert steps == [
+        "先算括号内的加减：2 + 3 = 5",
+        "再算乘法（从左到右）：5 × 4 = 20",
+        "结果：20",
+    ]
     en = multi_steps(["(", "2", "+", "3", ")", "×", "4"], 20, "en")
-    assert en[0].startswith("First:")
-    assert "5 × 4 = 20" in en[1], "composite step should use substituted value"
+    assert en == [
+        "First add/subtract inside parentheses: 2 + 3 = 5",
+        "Then multiply (left to right): 5 × 4 = 20",
+        "Result: 20",
+    ]
 
 
 def test_multi_steps_substituted_term():

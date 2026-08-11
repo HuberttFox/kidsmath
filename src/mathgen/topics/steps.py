@@ -217,21 +217,25 @@ def _mul_steps(a: int, b: int, result: int, lang: str) -> list[str]:
     return out
 
 
-def _eval_with_steps(tokens: list[str]) -> tuple[int | None, list[tuple[str, int]]]:
-    """Evaluate with standard precedence while recording (subexpr, value) steps.
+def _eval_with_steps(tokens: list[str]) -> tuple[int | None, list[tuple[str, int, str, int]]]:
+    """Evaluate with standard precedence while recording calculation steps.
 
-    Mirrors arithmetic._eval_precedence: innermost parens first, then x and /
-    left-to-right, then + and - left-to-right; division must be exact.
-    Returns (None, []) when the expression cannot be evaluated.
+    Each step records substituted expression, value, operator, and parenthesis
+    depth. Mirrors arithmetic._eval_precedence: innermost parens
+    first, then x and / left-to-right, then + and - left-to-right; division
+    must be exact. Returns (None, []) when expression cannot be evaluated.
     """
     pos = 0
-    steps: list[tuple[str, int]] = []
+    paren_depth = 0
+    steps: list[tuple[str, int, str, int]] = []
 
     def atom() -> tuple[int | None, str]:
-        nonlocal pos
+        nonlocal pos, paren_depth
         if tokens[pos] == "(":
             pos += 1
+            paren_depth += 1
             v, _ = term()
+            paren_depth -= 1
             if v is None or tokens[pos] != ")":
                 return None, ""
             pos += 1
@@ -255,7 +259,7 @@ def _eval_with_steps(tokens: list[str]) -> tuple[int | None, list[tuple[str, int
                 new_v = v * b
             disp = f"{v} {op} {b}"
             v = new_v
-            steps.append((disp, v))
+            steps.append((disp, v, op, paren_depth))
         return v, disp
 
     def term() -> tuple[int | None, str]:
@@ -269,7 +273,7 @@ def _eval_with_steps(tokens: list[str]) -> tuple[int | None, list[tuple[str, int
             new_v = v + rhs if op == "+" else v - rhs
             disp = f"{v} {op} {rhs}"
             v = new_v
-            steps.append((disp, v))
+            steps.append((disp, v, op, paren_depth))
         return v, disp
 
     result, _ = term()
@@ -278,12 +282,33 @@ def _eval_with_steps(tokens: list[str]) -> tuple[int | None, list[tuple[str, int
     return result, steps
 
 
+def _multi_step_label(op: str, paren_depth: int, index: int, zh: bool) -> str:
+    """Return an order-of-operations explanation for one mixed-expression step."""
+    family = {"×": "乘法", "÷": "除法", "+": "加减", "-": "加减"}[op]
+    en_family = {"×": "multiply", "÷": "divide", "+": "add/subtract", "-": "add/subtract"}[op]
+    left_to_right = op in "+-×÷"
+    if index == 0:
+        if zh:
+            return f"先算括号内的{family}" if paren_depth else f"先算{family}"
+        return (f"First {en_family} inside parentheses" if paren_depth
+                else f"First {en_family}")
+    if zh:
+        scope = "括号内的" if paren_depth else ""
+        direction = "（从左到右）" if left_to_right else ""
+        return f"再算{scope}{family}{direction}"
+    scope = " inside parentheses" if paren_depth else ""
+    direction = " (left to right)" if left_to_right else ""
+    return f"Then {en_family}{scope}{direction}"
+
+
 def multi_steps(tokens: list[str], result: int, lang: str) -> list[str]:
     """Steps for multi-operand mixed arithmetic (parens allowed), by precedence."""
     zh = lang != "en"
     _, evals = _eval_with_steps(tokens)
-    out = [f"先算：{sub} = {v}" if zh else f"First: {sub} = {v}"
-           for sub, v in evals]
+    evals.sort(key=lambda step: (-step[3], step[2] in "+-"))
+    out = [f"{_multi_step_label(op, paren_depth, i, zh)}：{sub} = {v}"
+           if zh else f"{_multi_step_label(op, paren_depth, i, zh)}: {sub} = {v}"
+           for i, (sub, v, op, paren_depth) in enumerate(evals)]
     out.append(f"结果：{result}" if zh else f"Result: {result}")
     return out
 
